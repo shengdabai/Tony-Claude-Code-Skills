@@ -1,0 +1,186 @@
+{
+  "repos": {
+    "xiaolai/loc-guardian-for-claude": {
+      "status": "audited",
+      "score": 97,
+      "strategy": "single"
+    },
+    "hashicorp/agent-skills": {
+      "status": "audited",
+      "score": 98,
+      "strategy": "batched",
+      "security": "CLEAR"
+    },
+    "anthropics/claude-plugins-official": {
+      "status": "tracked",
+      "score": 96,
+      "strategy": "progressive",
+      "security": "REVIEW",
+      "artifacts": 103,
+      "bugs": 4,
+      "quality_issues": 16,
+      "security_findings": 7,
+      "audit_date": "2026-04-06",
+      "report": "auditor/audits/anthropics-claude-plugins-official.md",
+      "pipeline_prs": [
+        1255,
+        1256,
+        1257
+      ],
+      "prs": [
+        {
+          "closedAt": "2026-04-06T13:06:54Z",
+          "mergedAt": null,
+          "number": 1255,
+          "state": "CLOSED",
+          "title": "fix: add missing YAML frontmatter to skill-creator agents (grader, analyzer, comparator)"
+        },
+        {
+          "closedAt": "2026-04-06T13:07:18Z",
+          "mergedAt": null,
+          "number": 1256,
+          "state": "CLOSED",
+          "title": "fix: replace invalid color 'pink' with 'cyan' in type-design-analyzer agent"
+        },
+        {
+          "closedAt": "2026-04-06T13:08:16Z",
+          "mergedAt": null,
+          "number": 1257,
+          "state": "CLOSED",
+          "title": "fix: use --frozen-lockfile in MCP server start scripts to prevent silent dependency upgrades"
+        }
+      ]
+    },
+    "trailofbits/skills": {
+      "status": "audited",
+      "score": 95,
+      "strategy": "progressive",
+      "security": "BLOCKED"
+    },
+    "slavingia/skills": {
+      "status": "contributed",
+      "score": 97,
+      "strategy": "single",
+      "security": "CLEAR",
+      "pipeline_prs": [
+        19
+      ],
+      "prs": [
+        {
+          "closedAt": null,
+          "mergedAt": null,
+          "number": 19,
+          "state": "OPEN",
+          "title": "fix: add skills array to plugin.json for explicit skill registration"
+        }
+      ]
+    },
+    "thedotmack/claude-mem": {
+      "status": "audited",
+      "score": 97,
+      "strategy": "batched",
+      "security": "BLOCKED"
+    },
+    "tech-leads-club/agent-skills": {
+      "status": "contributed",
+      "score": 93,
+      "strategy": "progressive",
+      "security": "CLEAR",
+      "pipeline_prs": [
+        90,
+        91,
+        92,
+        93
+      ],
+      "prs": [
+        {
+          "closedAt": null,
+          "mergedAt": null,
+          "number": 90,
+          "state": "OPEN",
+          "title": "fix: add missing version field to MCP plugin.json"
+        },
+        {
+          "closedAt": null,
+          "mergedAt": null,
+          "number": 91,
+          "state": "OPEN",
+          "title": "fix(security): make Chromium --no-sandbox conditional on env var"
+        },
+        {
+          "closedAt": null,
+          "mergedAt": null,
+          "number": 92,
+          "state": "OPEN",
+          "title": "docs(security): warn against building inline exec strings from untrusted input"
+        },
+        {
+          "closedAt": null,
+          "mergedAt": null,
+          "number": 93,
+          "state": "OPEN",
+          "title": "fix(security): allow VERCEL_DEPLOY_ENDPOINT to override hard-coded deploy server URL"
+        }
+      ]
+    },
+    "openai/codex-plugin-cc": {
+      "status": "tracked",
+      "score": 93,
+      "strategy": "single",
+      "security": "REVIEW",
+      "pipeline_prs": [
+        168,
+        169
+      ],
+      "prs": [
+        {
+          "closedAt": "2026-04-08T21:48:50Z",
+          "mergedAt": "2026-04-08T21:48:50Z",
+          "number": 168,
+          "state": "MERGED",
+          "title": "fix: quote $ARGUMENTS in cancel, result, and status commands"
+        },
+        {
+          "closedAt": "2026-04-08T21:28:45Z",
+          "mergedAt": "2026-04-08T21:28:45Z",
+          "number": 169,
+          "state": "MERGED",
+          "title": "fix: declare model in codex-rescue agent frontmatter"
+        }
+      ],
+      "case_study_candidate": true
+    },
+    "deanpeters/Product-Manager-Skills": {
+      "status": "contributed",
+      "score": 89,
+      "strategy": "batched",
+      "security": "CLEAR",
+      "pipeline_prs": [
+        7,
+        8
+      ],
+      "prs": [
+        {
+          "closedAt": null,
+          "mergedAt": null,
+          "number": 7,
+          "state": "OPEN",
+          "title": "security: add input length guard to run-pm.sh"
+        },
+        {
+          "closedAt": null,
+          "mergedAt": null,
+          "number": 8,
+          "state": "OPEN",
+          "title": "security: validate adapter names before dynamic source in add-a-skill.sh"
+        }
+      ]
+    }
+  },
+  "metadata": {
+    "last_discovery": null,
+    "total_discovered": 0,
+    "total_audited": 0,
+    "total_contributed": 0
+  }
+}

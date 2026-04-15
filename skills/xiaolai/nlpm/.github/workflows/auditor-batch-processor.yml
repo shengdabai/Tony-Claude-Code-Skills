@@ -1,0 +1,136 @@
+name: Batch Processor
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+  workflow_dispatch:
+    inputs:
+      batch_size:
+        description: 'Max repos to audit per batch'
+        required: false
+        default: '5'
+      dry_run:
+        description: 'Dry run (log actions but do not label)'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: nlpm-batch-processor
+  cancel-in-progress: false
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          persist-credentials: false
+
+      - name: Batch processor
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BATCH_SIZE: ${{ inputs.batch_size || '5' }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+        run: |
+          echo "=== NLPM Batch Processor ==="
+          echo "Batch size: $BATCH_SIZE | Dry run: $DRY_RUN"
+          echo ""
+
+          # ---------------------------------------------------------------
+          # Phase 1: Promote audit-complete → contribute-approved
+          # (Process completed audits FIRST so contribute runs in parallel
+          #  with the new audits we'll kick off in Phase 2)
+          # ---------------------------------------------------------------
+          echo "--- Phase 1: Promote completed audits to contribution ---"
+          PROMOTED=0
+
+          # Use process substitution to avoid subshell counter issue
+          while IFS=$'\t' read -r ISSUE_NUM TITLE; do
+            REPO=$(echo "$TITLE" | sed 's/Audit candidate: //')
+            SECURITY=$(jq -r --arg name "$REPO" '.repos[$name].security // "UNKNOWN"' auditor/registry/repos.json)
+
+            if [ "$SECURITY" = "BLOCKED" ]; then
+              echo "  SKIP #$ISSUE_NUM ($REPO): security BLOCKED"
+            elif [ "$SECURITY" = "CLEAR" ] || [ "$SECURITY" = "REVIEW" ]; then
+              echo "  PROMOTE #$ISSUE_NUM ($REPO): security=$SECURITY → contribute-approved"
+              if [ "$DRY_RUN" != "true" ]; then
+                gh issue edit "$ISSUE_NUM" --add-label "contribute-approved" 2>/dev/null || true
+              fi
+              PROMOTED=$((PROMOTED + 1))
+            else
+              echo "  SKIP #$ISSUE_NUM ($REPO): security=$SECURITY (unknown/not audited)"
+            fi
+          done < <(gh issue list --label "audit-complete" --state open --json number,title,labels \
+            --jq '.[] | select(.labels | map(.name) | (contains(["security-blocked"]) | not) and (contains(["contribute-approved"]) | not) and (contains(["prs-submitted"]) | not)) | "\(.number)\t\(.title)"' \
+            2>/dev/null)
+
+          echo "Promoted: $PROMOTED issues to contribute-approved"
+          echo ""
+
+          # ---------------------------------------------------------------
+          # Phase 2: Pick next batch of candidates → audit-ready
+          # ---------------------------------------------------------------
+          echo "--- Phase 2: Pick next audit batch ---"
+
+          # Count currently running audits (don't overwhelm)
+          RUNNING=$(gh run list --workflow=auditor-audit.yml --status in_progress --json databaseId --jq 'length' 2>/dev/null || echo 0)
+          echo "Currently running audits: $RUNNING"
+
+          # Reduce batch size if audits are already running
+          AVAILABLE=$((BATCH_SIZE - RUNNING))
+          if [ "$AVAILABLE" -le 0 ]; then
+            echo "Already $RUNNING audits running (batch size $BATCH_SIZE). Skipping this cycle."
+            exit 0
+          fi
+          echo "Will pick up to $AVAILABLE new repos"
+
+          # Get candidates sorted by issue number (oldest first = FIFO)
+          PICKED=0
+          while read -r ISSUE_NUM; do
+            [ "$PICKED" -ge "$AVAILABLE" ] && break
+
+            TITLE=$(gh issue view "$ISSUE_NUM" --json title --jq '.title' 2>/dev/null)
+            REPO=$(echo "$TITLE" | sed 's/Audit candidate: //')
+
+            # Skip if already in registry (already audited in a previous run)
+            STATUS=$(jq -r --arg name "$REPO" '.repos[$name].status // "none"' auditor/registry/repos.json)
+            if [ "$STATUS" != "none" ]; then
+              echo "  SKIP #$ISSUE_NUM ($REPO): already in registry (status=$STATUS)"
+              if [ "$DRY_RUN" != "true" ]; then
+                gh issue close "$ISSUE_NUM" --comment "Already processed (status: $STATUS). Closing duplicate." 2>/dev/null || true
+              fi
+              continue
+            fi
+
+            echo "  PICK #$ISSUE_NUM ($REPO) → audit-ready"
+            if [ "$DRY_RUN" != "true" ]; then
+              gh issue edit "$ISSUE_NUM" --add-label "audit-ready" --remove-label "audit-candidate" 2>/dev/null || true
+            fi
+            PICKED=$((PICKED + 1))
+          done < <(gh issue list --label "audit-candidate" --state open --json number,title \
+            --jq 'sort_by(.number) | .[].number' 2>/dev/null)
+
+          echo "Picked: $PICKED repos for audit"
+          echo ""
+
+          # ---------------------------------------------------------------
+          # Summary
+          # ---------------------------------------------------------------
+          echo "--- Summary ---"
+          TOTAL_CANDIDATES=$(gh issue list --label "audit-candidate" --state open --json number --jq 'length' 2>/dev/null || echo "?")
+          TOTAL_AUDITING=$(gh issue list --label "audit-ready" --state open --json number --jq 'length' 2>/dev/null || echo "?")
+          TOTAL_AUDITED=$(gh issue list --label "audit-complete" --state open --json number --jq 'length' 2>/dev/null || echo "?")
+          TOTAL_CONTRIBUTING=$(gh issue list --label "contribute-approved" --state open --json number --jq 'length' 2>/dev/null || echo "?")
+          TOTAL_DONE=$(gh issue list --label "prs-submitted" --state open --json number --jq 'length' 2>/dev/null || echo "?")
+
+          echo "Pipeline state:"
+          echo "  audit-candidate:     $TOTAL_CANDIDATES"
+          echo "  audit-ready:         $TOTAL_AUDITING"
+          echo "  audit-complete:      $TOTAL_AUDITED"
+          echo "  contribute-approved: $TOTAL_CONTRIBUTING"
+          echo "  prs-submitted:       $TOTAL_DONE"
