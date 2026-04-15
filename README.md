@@ -114,6 +114,7 @@ A curated collection of **Claude Code skills and MCP servers** configured for pr
 | **import-to-obsidian** | Custom | Save web content to Obsidian vault with auto-classification and tagging |
 | **limit-continue-work** | Custom | Limit continuation in conversations to prevent context overflow |
 | **bb-browser** | Custom | Web scraping via real browser with user login state, form filling, data extraction |
+| **galaxy-ui** | Auto | 3,800+ Uiverse UI components — buttons, cards, loaders, inputs, toggles, forms, checkboxes, patterns, radio buttons, notifications, tooltips |
 
 #### Built-in (Claude Code)
 
