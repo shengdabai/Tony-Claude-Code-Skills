@@ -1,0 +1,16 @@
+#
+# ~/.bash_profile
+#
+
+[[ -f ~/.bashrc ]] && . ~/.bashrc
+
+# Auto-start Sway from TTY1
+if [ -z "$WAYLAND_DISPLAY" ] && [ -z "$DISPLAY" ] && [ "$XDG_VTNR" = "1" ]; then
+	# Not WSL
+	if [ -z "$WSL_DISTRO_NAME" ] && [ -z "$WSLENV" ]; then
+		# Sway is installed
+		if command -v sway >/dev/null 2>&1; then
+			exec sway
+		fi
+	fi
+fi

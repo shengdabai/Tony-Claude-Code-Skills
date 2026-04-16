@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//home/rghamilton3/.config/nvim/**)",
+      "WebFetch(domain:github.com)",
+      "Bash(magick:*)",
+      "Bash(echo:*)",
+      "Bash(paste:*)",
+      "Read(//home/rghamilton3/.config/wezterm/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

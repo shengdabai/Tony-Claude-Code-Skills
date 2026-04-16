@@ -1,0 +1,70 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Swaylock Configuration
+# Location: ~/.config/swaylock/config
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Behavior
+daemonize
+ignore-empty-password
+show-failed-attempts
+show-keyboard-layout
+
+# Tokyo Night Storm Colors
+color=1a1b26
+
+# Inside circle (where password indicator shows)
+inside-color=1f233500
+inside-clear-color=7dcfff33
+inside-caps-lock-color=e0af6833
+inside-ver-color=7aa2f733
+inside-wrong-color=f7768e33
+
+# Ring around circle
+ring-color=7aa2f7
+ring-clear-color=7dcfff
+ring-caps-lock-color=e0af68
+ring-ver-color=bb9af7
+ring-wrong-color=f7768e
+
+# Line between ring and inside
+line-color=00000000
+line-clear-color=00000000
+line-caps-lock-color=00000000
+line-ver-color=00000000
+line-wrong-color=00000000
+
+# Separator (line between ring and inside when inactive)
+separator-color=00000000
+
+# Text
+text-color=c0caf5
+text-clear-color=7dcfff
+text-caps-lock-color=e0af68
+text-ver-color=bb9af7
+text-wrong-color=f7768e
+
+# Key highlight
+key-hl-color=9ece6a
+bs-hl-color=f7768e
+caps-lock-bs-hl-color=f7768e
+caps-lock-key-hl-color=e0af68
+
+# Layout text
+layout-bg-color=00000000
+layout-border-color=00000000
+layout-text-color=565f89
+
+# Indicator
+indicator-radius=100
+indicator-thickness=10
+indicator-caps-lock
+
+# Font
+font=FiraCode Nerd Font
+font-size=24
+
+# Effect (requires swaylock-effects)
+# Uncomment these if using swaylock-effects
+# effect-blur=10x5
+# effect-vignette=0.5:0.5
+# screenshots

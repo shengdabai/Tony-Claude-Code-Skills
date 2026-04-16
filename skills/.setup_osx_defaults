@@ -1,0 +1,156 @@
+#!/usr/bin/env bash
+
+# Close any open System Preferences panes, to prevent them from overriding
+# settings we’re about to change
+osascript -e 'tell application "System Preferences" to quit'
+
+# Ask for the administrator password upfront
+sudo -v
+
+# Keep-alive: update existing `sudo` time stamp until `.macos` has finished
+while true; do
+  sudo -n true
+  sleep 60
+  kill -0 "$$" || exit
+done 2>/dev/null &
+
+#######################################
+
+# 一般
+
+## サイドバーのアイコンサイズ => 小
+defaults write NSGlobalDomain NSTableViewDefaultSizeMode -int 1
+
+## 書類を閉じるときに変更内容を保持するかどうかを確認 => checked
+defaults write NSGlobalDomain NSCloseAlwaysConfirmsChanges -bool true
+
+## アプリケーションを終了するときにウィンドウを閉じる => unchecked
+defaults write NSGlobalDomain NSQuitAlwaysKeepsWindows -bool true
+
+# デスクトップとスクリーンセーバー
+
+## スクリーンセーバー開始までの時間 => 開始しない
+defaults -currentHost write com.apple.screensaver idleTime -int 0
+
+# Dock
+
+## Dockサイズ
+defaults write com.apple.dock tilesize -int 38
+
+## Dockが表示/非表示になる時間を0.15秒にする
+defaults write com.apple.dock autohide-time-modifier -float 0.15
+
+## Dockの自動表示/非表示
+defaults write com.apple.dock autohide -bool true
+
+## ウィンドウタイトルバーのダブルクリックで => しまう
+defaults write -g AppleActionOnDoubleClick -string "Minimize"
+
+## Dockマウスを画面端に持っていってからDockが表示されるまでの待ち時間を0秒にする
+defaults write com.apple.dock autohide-delay -float 0
+
+# Mission Control
+
+## 最新の使用状況に基づいて操作スペースを自動的に並べ替える
+defaults write com.apple.dock mru-spaces -bool false
+
+## ホットコーナー
+defaults write com.apple.dock wvous-bl-corner -int 3
+defaults write com.apple.dock wvous-bl-modifier -int 0
+defaults write com.apple.dock wvous-br-corner -int 10
+defaults write com.apple.dock wvous-br-modifier -int 0
+defaults write com.apple.dock wvous-tl-corner -int 2
+defaults write com.apple.dock wvous-tl-modifier -int 0
+defaults write com.apple.dock wvous-tr-corner -int 4
+defaults write com.apple.dock wvous-tr-modifier -int 0
+
+# 言語と地域
+
+## 優先する言語
+defaults write NSGlobalDomain AppleLanguages -array "ja-JP" "en-JP"
+
+# キーボード
+
+## Fnキーを標準のファンクションキーとして使用
+defaults write NSGlobalDomain com.apple.keyboard.fnState -bool true
+## キーリピート高速化
+defaults write NSGlobalDomain KeyRepeat -int 1
+defaults write NSGlobalDomain InitialKeyRepeat -int 13
+## 英数字リピートができるようにする（特殊文字候補をdisableにする）　https://macos-defaults.com/keyboard/applepressandholdenabled.html
+defaults write NSGlobalDomain "ApplePressAndHoldEnabled" -bool "false"
+## 文頭を自動的に大文字にする => unchecked
+defaults write NSGlobalDomain NSAutomaticCapitalizationEnabled -bool false
+## スペースバーを２回押してピリオド挿入 => unchecked
+defaults write NSGlobalDomain NSAutomaticPeriodSubstitutionEnabled -bool false
+
+# トラックパッド
+
+## 副ボタンのクリック => 右下隅
+defaults write com.apple.AppleMultitouchTrackpad TrackpadCornerSecondaryClick -int 2
+defaults write com.apple.AppleMultitouchTrackpad TrackpadRightClick -bool false
+defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadCornerSecondaryClick -int 2
+defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadRightClick -bool false
+defaults -currentHost write NSGlobalDomain com.apple.trackpad.trackpadCornerClickBehavior -int 1
+defaults -currentHost write NSGlobalDomain com.apple.trackpad.enableSecondaryClick -bool false
+
+## タップでクリック
+defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool true
+defaults -currentHost write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
+defaults write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
+
+## クリック感 => 弱い
+defaults write com.apple.AppleMultitouchTrackpad FirstClickThreshold -int 0
+defaults write com.apple.AppleMultitouchTrackpad SecondClickThreshold -int 0
+defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad FirstClickThreshold -int 0
+defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad SecondClickThreshold -int 0
+
+## 軌跡の速さ
+defaults write -g com.apple.trackpad.scaling 1
+
+## スクロールの方向: ナチュラル => 指の方向にスクロール
+defaults write -g com.apple.swipescrolldirection -bool false
+
+## フルスクリーンアプリケーション間をスワイプ => 4本指で左右にスワイプ
+defaults write com.apple.AppleMultitouchTrackpad TrackpadThreeFingerHorizSwipeGesture -int 0
+defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadThreeFingerHorizSwipeGesture -int 0
+defaults -currentHost write NSGlobalDomain com.apple.trackpad.threeFingerHorizSwipeGesture -int 0
+
+## Mission Control => disable
+defaults write com.apple.dock showMissionControlGestureEnabled -bool false
+
+#######################################
+# Others
+#######################################
+
+# Finder
+
+## ファイルを開くときのアニメーションを無効
+defaults write com.apple.finder DisableAllAnimations -boolean true
+
+## ファイル拡張子を表示
+defaults write NSGlobalDomain AppleShowAllExtensions -bool true
+
+## ステータスバーを表示
+defaults write com.apple.finder ShowStatusBar -bool true
+
+## タブバーを表示
+defaults write com.apple.finder ShowTabView -bool true
+
+## パスバーを表示
+defaults write com.apple.finder ShowPathbar -bool true
+
+## Display full POSIX path as Finder window title
+defaults write com.apple.finder _FXShowPosixPathInTitle -bool true
+
+## Avoid creating .DS_Store files on network or USB volumes
+defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
+defaults write com.apple.desktopservices DSDontWriteUSBStores -bool true
+
+## remove the quarantine attribute for after catalina support
+## ref: https://github.com/sindresorhus/quick-look-plugins
+xattr -r ~/Library/QuickLook
+xattr -d -r com.apple.quarantine ~/Library/QuickLook
+
+#######################################
+
+echo "Done. Note that some of these changes require a logout/restart to take effect."

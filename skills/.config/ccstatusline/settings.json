@@ -1,0 +1,111 @@
+{
+  "version": 3,
+  "lines": [
+    [
+      {
+        "id": "bbb4de9a-0c33-4ac7-ac0a-53eb07309554",
+        "type": "custom-command",
+        "backgroundColor": "bgCyan",
+        "commandPath": "bun run ~/dotfiles/node-scripts/src/claude-code-duration.ts",
+        "preserveColors": false
+      },
+      {
+        "id": "b398c911-dd06-4b28-8fb8-1a6ab34325d1",
+        "type": "custom-text",
+        "backgroundColor": "bgBlue",
+        "customText": "󰔟 ",
+        "merge": "no-padding"
+      },
+      {
+        "id": "818fa4ae-8337-4e68-a0c3-3f7ac1f8ce19",
+        "type": "block-timer",
+        "backgroundColor": "bgBrightWhite",
+        "rawValue": true,
+        "metadata": {
+          "display": "time"
+        }
+      },
+      {
+        "id": "04a72e98-fd60-4d46-8484-38ecadf3503f",
+        "type": "context-percentage-usable"
+      },
+      {
+        "id": "097a6dc6-3ac2-46fa-bcc0-7958e9c5a35a",
+        "type": "tokens-total"
+      }
+    ],
+    [
+      {
+        "id": "7c840bd7-d044-43f4-bfda-ba6421c7550c",
+        "type": "custom-command",
+        "commandPath": "bunx ccusage statusline",
+        "preserveColors": true,
+        "timeout": 5000
+      }
+    ],
+    [
+      {
+        "id": "22b434c8-eaf9-4abb-bad7-cd75f5f50f5d",
+        "type": "current-working-dir",
+        "rawValue": true,
+        "metadata": {
+          "segments": "3"
+        }
+      },
+      {
+        "id": "eb8011e2-e173-40a2-9161-fd4f0f6ad9e3",
+        "type": "custom-text",
+        "backgroundColor": "bgYellow",
+        "customText": " ",
+        "merge": "no-padding"
+      },
+      {
+        "id": "244ef4c5-6f01-4840-b970-96f088ae1158",
+        "type": "git-worktree",
+        "backgroundColor": "bgMagenta",
+        "rawValue": true
+      },
+      {
+        "id": "74774803-63ad-48b5-8d00-d0a9c76665ac",
+        "type": "custom-text",
+        "backgroundColor": "bgBrightWhite",
+        "customText": "\uf418 ",
+        "merge": "no-padding"
+      },
+      {
+        "id": "0ad18ceb-92ec-4901-bca2-471c6559ca27",
+        "type": "git-branch",
+        "rawValue": true
+      },
+      {
+        "id": "636a7e17-c343-4f7a-8815-e1bc1768009b",
+        "type": "git-changes",
+        "backgroundColor": "bgWhite",
+        "metadata": {
+          "hideNoGit": "false"
+        }
+      }
+    ]
+  ],
+  "flexMode": "full-minus-40",
+  "compactThreshold": 60,
+  "colorLevel": 3,
+  "defaultPadding": " ",
+  "inheritSeparatorColors": true,
+  "globalBold": true,
+  "powerline": {
+    "enabled": true,
+    "separators": [
+      ""
+    ],
+    "separatorInvertBackground": [
+      false
+    ],
+    "startCaps": [],
+    "endCaps": [
+      ""
+    ],
+    "theme": "nord",
+    "autoAlign": false
+  }
+}

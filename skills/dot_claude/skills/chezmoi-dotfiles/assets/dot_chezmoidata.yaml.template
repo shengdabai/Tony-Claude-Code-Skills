@@ -1,0 +1,205 @@
+# chezmoi template data configuration
+# This file provides custom variables for template rendering
+# Location: ~/.config/chezmoi/chezmoi.yaml
+#
+# SECURITY WARNING:
+# - If this file contains secrets, DO NOT commit it to git
+# - Add chezmoi.yaml to .gitignore in your source directory
+# - Consider using age encryption for sensitive values instead
+
+data:
+  # ============================================================================
+  # PERSONAL INFORMATION
+  # ============================================================================
+  name: "Your Full Name"
+  username: "yourusername"
+
+  email:
+    personal: "you@personal.com"
+    work: "you@company.com"
+
+  # ============================================================================
+  # MACHINE CONFIGURATION
+  # ============================================================================
+  machine:
+    type: "personal"  # Options: personal, work, server
+    role: "desktop"   # Options: desktop, laptop, server
+    location: "home"  # Options: home, office, remote
+
+  # ============================================================================
+  # GIT CONFIGURATION
+  # ============================================================================
+  git:
+    name: "Your Full Name"
+    # Email will be conditional based on machine.type
+    signing_key:
+      personal: "YOUR_PERSONAL_GPG_KEY_ID"
+      work: "YOUR_WORK_GPG_KEY_ID"
+
+  github:
+    username: "yourusername"
+
+  # ============================================================================
+  # EDITOR PREFERENCES
+  # ============================================================================
+  editor: "nvim"  # Options: vim, nvim, code, emacs, nano
+  visual: "nvim"
+
+  # ============================================================================
+  # DEVELOPMENT TOOLS
+  # ============================================================================
+  dev:
+    python:
+      enabled: true
+      version: "3.11"
+
+    node:
+      enabled: true
+      version: "20"
+
+    rust:
+      enabled: false
+
+    go:
+      enabled: false
+
+  # ============================================================================
+  # SHELL CONFIGURATION
+  # ============================================================================
+  shell:
+    default: "zsh"  # Options: bash, zsh, fish
+    theme: "powerlevel10k"
+
+  # ============================================================================
+  # CUSTOM ALIASES
+  # ============================================================================
+  aliases:
+    lg: "lazygit"
+    dc: "docker compose"
+    k: "kubectl"
+    tf: "terraform"
+    vim: "nvim"
+
+  # ============================================================================
+  # WORK-SPECIFIC CONFIGURATION
+  # ============================================================================
+  work:
+    # Only used when machine.type == "work"
+    company: "Company Name"
+    vpn_config: "/opt/vpn/config"
+    proxy:
+      http: "http://proxy.company.com:8080"
+      https: "http://proxy.company.com:8080"
+      no_proxy: "localhost,127.0.0.1,.company.com"
+
+    tools_path: "/opt/company/tools/bin"
+    environment: "production"
+
+    git:
+      email: "you@company.com"
+      signing_key: "WORK_GPG_KEY_ID"
+
+  # ============================================================================
+  # HOMELAB / PERSONAL SERVERS
+  # ============================================================================
+  homelab:
+    enabled: false
+    domain: "home.local"
+    servers:
+      - name: "nas"
+        ip: "192.168.1.100"
+        ssh_key: "ssh-ed25519 AAAA..."
+      - name: "pi"
+        ip: "192.168.1.101"
+        ssh_key: "ssh-ed25519 BBBB..."
+
+  # ============================================================================
+  # CLOUD PROVIDER CONFIGURATION
+  # ============================================================================
+  cloud:
+    aws:
+      enabled: false
+      default_region: "us-east-1"
+      profile:
+        personal: "default"
+        work: "work-profile"
+
+    gcp:
+      enabled: false
+      project:
+        personal: "my-personal-project"
+        work: "company-project"
+
+  # ============================================================================
+  # SSH CONFIGURATION
+  # ============================================================================
+  ssh:
+    key_type: "ed25519"  # Recommended modern key type
+    keys:
+      personal: "~/.ssh/id_ed25519"
+      work: "~/.ssh/id_ed25519_work"
+      homelab: "~/.ssh/id_ed25519_homelab"
+
+  # ============================================================================
+  # TERMINAL EMULATOR
+  # ============================================================================
+  terminal:
+    emulator: "alacritty"  # Options: alacritty, kitty, wezterm, iterm2
+    font:
+      family: "JetBrains Mono"
+      size: 13
+    theme: "dracula"
+
+  # ============================================================================
+  # PATHS
+  # ============================================================================
+  paths:
+    workspace: "~/workspace"
+    projects: "~/projects"
+    dotfiles: "~/.local/share/chezmoi"
+
+  # ============================================================================
+  # FEATURES / TOGGLES
+  # ============================================================================
+  features:
+    # Enable/disable specific configurations
+    enable_docker: true
+    enable_kubernetes: false
+    enable_ansible: false
+    enable_terraform: false
+
+    # UI preferences
+    enable_gui_apps: true
+    minimal_shell: false
+
+# ============================================================================
+# AGE ENCRYPTION CONFIGURATION
+# ============================================================================
+# Uncomment and configure if using age encryption for secrets
+#
+# encryption: "age"
+# age:
+#   identity: "~/.config/chezmoi/key.txt"
+#   recipient: "age1..."  # Your public key from key.txt
+
+# ============================================================================
+# USAGE IN TEMPLATES
+# ============================================================================
+# Access these values in .tmpl files:
+#
+#   {{ .name }}
+#   {{ .email.personal }}
+#   {{ .machine.type }}
+#   {{ if eq .machine.type "work" }}{{ .work.company }}{{ end }}
+#   {{ range .aliases }}{{ . }}{{ end }}
+#
+# Built-in chezmoi variables:
+#
+#   {{ .chezmoi.hostname }}
+#   {{ .chezmoi.os }}          # linux, darwin, windows
+#   {{ .chezmoi.arch }}        # amd64, arm64
+#   {{ .chezmoi.username }}
+#   {{ .chezmoi.homeDir }}
+#   {{ .chezmoi.osRelease.id }} # ubuntu, arch, fedora (Linux only)
+#
+# See references/template-examples.md for comprehensive examples

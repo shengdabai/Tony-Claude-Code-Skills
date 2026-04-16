@@ -8,7 +8,7 @@ description: |
   run anytime. Use when: "explore designs", "show me options", "design variants",
   "visual brainstorm", or "I don't like how this looks".
   Proactively suggest when the user describes a UI feature but hasn't seen
-  what it could look like. (gstack)
+  what it could look like.
 allowed-tools:
   - Bash
   - Read
@@ -28,7 +28,8 @@ _UPD=$(~/.claude/skills/gstack/bin/gstack-update-check 2>/dev/null || .claude/sk
 mkdir -p ~/.gstack/sessions
 touch ~/.gstack/sessions/"$PPID"
 _SESSIONS=$(find ~/.gstack/sessions -mmin -120 -type f 2>/dev/null | wc -l | tr -d ' ')
-find ~/.gstack/sessions -mmin +120 -type f -exec rm {} + 2>/dev/null || true
+find ~/.gstack/sessions -mmin +120 -type f -delete 2>/dev/null || true
+_CONTRIB=$(~/.claude/skills/gstack/bin/gstack-config get gstack_contributor 2>/dev/null || true)
 _PROACTIVE=$(~/.claude/skills/gstack/bin/gstack-config get proactive 2>/dev/null || echo "true")
 _PROACTIVE_PROMPTED=$([ -f ~/.gstack/.proactive-prompted ] && echo "yes" || echo "no")
 _BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
@@ -49,9 +50,7 @@ _SESSION_ID="$$-$(date +%s)"
 echo "TELEMETRY: ${_TEL:-off}"
 echo "TEL_PROMPTED: $_TEL_PROMPTED"
 mkdir -p ~/.gstack/analytics
-if [ "$_TEL" != "off" ]; then
 echo '{"skill":"design-shotgun","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'","repo":"'$(basename "$(git rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null || echo "unknown")'"}'  >> ~/.gstack/analytics/skill-usage.jsonl 2>/dev/null || true
-fi
 # zsh-compatible: use find instead of glob to avoid NOMATCH error
 for _PF in $(find ~/.gstack/analytics -maxdepth 1 -name '.pending-*' 2>/dev/null); do
   if [ -f "$_PF" ]; then
@@ -68,32 +67,9 @@ _LEARN_FILE="${GSTACK_HOME:-$HOME/.gstack}/projects/${SLUG:-unknown}/learnings.j
 if [ -f "$_LEARN_FILE" ]; then
   _LEARN_COUNT=$(wc -l < "$_LEARN_FILE" 2>/dev/null | tr -d ' ')
   echo "LEARNINGS: $_LEARN_COUNT entries loaded"
-  if [ "$_LEARN_COUNT" -gt 5 ] 2>/dev/null; then
-    ~/.claude/skills/gstack/bin/gstack-learnings-search --limit 3 2>/dev/null || true
-  fi
 else
   echo "LEARNINGS: 0"
 fi
-# Session timeline: record skill start (local-only, never sent anywhere)
-~/.claude/skills/gstack/bin/gstack-timeline-log '{"skill":"design-shotgun","event":"started","branch":"'"$_BRANCH"'","session":"'"$_SESSION_ID"'"}' 2>/dev/null &
-# Check if CLAUDE.md has routing rules
-_HAS_ROUTING="no"
-if [ -f CLAUDE.md ] && grep -q "## Skill routing" CLAUDE.md 2>/dev/null; then
-  _HAS_ROUTING="yes"
-fi
-_ROUTING_DECLINED=$(~/.claude/skills/gstack/bin/gstack-config get routing_declined 2>/dev/null || echo "false")
-echo "HAS_ROUTING: $_HAS_ROUTING"
-echo "ROUTING_DECLINED: $_ROUTING_DECLINED"
-# Vendoring deprecation: detect if CWD has a vendored gstack copy
-_VENDORED="no"
-if [ -d ".claude/skills/gstack" ] && [ ! -L ".claude/skills/gstack" ]; then
-  if [ -f ".claude/skills/gstack/VERSION" ] || [ -d ".claude/skills/gstack/.git" ]; then
-    _VENDORED="yes"
-  fi
-fi
-echo "VENDORED_GSTACK: $_VENDORED"
-# Detect spawned session (OpenClaw or other orchestrator)
-[ -n "$OPENCLAW_SESSION" ] && echo "SPAWNED_SESSION: true" || true
 ```
 
 If `PROACTIVE` is `"false"`, do not proactively suggest gstack skills AND do not
@@ -175,90 +151,6 @@ touch ~/.gstack/.proactive-prompted
 
 This only happens once. If `PROACTIVE_PROMPTED` is `yes`, skip this entirely.
 
-If `HAS_ROUTING` is `no` AND `ROUTING_DECLINED` is `false` AND `PROACTIVE_PROMPTED` is `yes`:
-Check if a CLAUDE.md file exists in the project root. If it does not exist, create it.
-
-Use AskUserQuestion:
-
-> gstack works best when your project's CLAUDE.md includes skill routing rules.
-> This tells Claude to use specialized workflows (like /ship, /investigate, /qa)
-> instead of answering directly. It's a one-time addition, about 15 lines.
-
-Options:
-- A) Add routing rules to CLAUDE.md (recommended)
-- B) No thanks, I'll invoke skills manually
-
-If A: Append this section to the end of CLAUDE.md:
-
-```markdown
-
-## Skill routing
-
-When the user's request matches an available skill, ALWAYS invoke it using the Skill
-tool as your FIRST action. Do NOT answer directly, do NOT use other tools first.
-The skill has specialized workflows that produce better results than ad-hoc answers.
-
-Key routing rules:
-- Product ideas, "is this worth building", brainstorming → invoke office-hours
-- Bugs, errors, "why is this broken", 500 errors → invoke investigate
-- Ship, deploy, push, create PR → invoke ship
-- QA, test the site, find bugs → invoke qa
-- Code review, check my diff → invoke review
-- Update docs after shipping → invoke document-release
-- Weekly retro → invoke retro
-- Design system, brand → invoke design-consultation
-- Visual audit, design polish → invoke design-review
-- Architecture review → invoke plan-eng-review
-- Save progress, checkpoint, resume → invoke checkpoint
-- Code quality, health check → invoke health
-```
-
-Then commit the change: `git add CLAUDE.md && git commit -m "chore: add gstack skill routing rules to CLAUDE.md"`
-
-If B: run `~/.claude/skills/gstack/bin/gstack-config set routing_declined true`
-Say "No problem. You can add routing rules later by running `gstack-config set routing_declined false` and re-running any skill."
-
-This only happens once per project. If `HAS_ROUTING` is `yes` or `ROUTING_DECLINED` is `true`, skip this entirely.
-
-If `VENDORED_GSTACK` is `yes`: This project has a vendored copy of gstack at
-`.claude/skills/gstack/`. Vendoring is deprecated. We will not keep vendored copies
-up to date, so this project's gstack will fall behind.
-
-Use AskUserQuestion (one-time per project, check for `~/.gstack/.vendoring-warned-$SLUG` marker):
-
-> This project has gstack vendored in `.claude/skills/gstack/`. Vendoring is deprecated.
-> We won't keep this copy up to date, so you'll fall behind on new features and fixes.
->
-> Want to migrate to team mode? It takes about 30 seconds.
-
-Options:
-- A) Yes, migrate to team mode now
-- B) No, I'll handle it myself
-
-If A:
-1. Run `git rm -r .claude/skills/gstack/`
-2. Run `echo '.claude/skills/gstack/' >> .gitignore`
-3. Run `~/.claude/skills/gstack/bin/gstack-team-init required` (or `optional`)
-4. Run `git add .claude/ .gitignore CLAUDE.md && git commit -m "chore: migrate gstack from vendored to team mode"`
-5. Tell the user: "Done. Each developer now runs: `cd ~/.claude/skills/gstack && ./setup --team`"
-
-If B: say "OK, you're on your own to keep the vendored copy up to date."
-
-Always run (regardless of choice):
-```bash
-eval "$(~/.claude/skills/gstack/bin/gstack-slug 2>/dev/null)" 2>/dev/null || true
-touch ~/.gstack/.vendoring-warned-${SLUG:-unknown}
-```
-
-This only happens once per project. If the marker file exists, skip entirely.
-
-If `SPAWNED_SESSION` is `"true"`, you are running inside a session spawned by an
-AI orchestrator (e.g., OpenClaw). In spawned sessions:
-- Do NOT use AskUserQuestion for interactive prompts. Auto-choose the recommended option.
-- Do NOT run upgrade checks, telemetry prompts, routing injection, or lake intro.
-- Focus on completing the task and reporting results via prose output.
-- End with a completion report: what shipped, decisions made, anything uncertain.
-
 ## Voice
 
 You are GStack, an open source AI builder framework shaped by Garry Tan's product, startup, and engineering judgment. Encode how he thinks, not his biography.
@@ -305,51 +197,6 @@ Avoid filler, throat-clearing, generic optimism, founder cosplay, and unsupporte
 
 **Final test:** does this sound like a real cross-functional builder who wants to help someone make something people want, ship it, and make it actually work?
 
-## Context Recovery
-
-After compaction or at session start, check for recent project artifacts.
-This ensures decisions, plans, and progress survive context window compaction.
-
-```bash
-eval "$(~/.claude/skills/gstack/bin/gstack-slug 2>/dev/null)"
-_PROJ="${GSTACK_HOME:-$HOME/.gstack}/projects/${SLUG:-unknown}"
-if [ -d "$_PROJ" ]; then
-  echo "--- RECENT ARTIFACTS ---"
-  # Last 3 artifacts across ceo-plans/ and checkpoints/
-  find "$_PROJ/ceo-plans" "$_PROJ/checkpoints" -type f -name "*.md" 2>/dev/null | xargs ls -t 2>/dev/null | head -3
-  # Reviews for this branch
-  [ -f "$_PROJ/${_BRANCH}-reviews.jsonl" ] && echo "REVIEWS: $(wc -l < "$_PROJ/${_BRANCH}-reviews.jsonl" | tr -d ' ') entries"
-  # Timeline summary (last 5 events)
-  [ -f "$_PROJ/timeline.jsonl" ] && tail -5 "$_PROJ/timeline.jsonl"
-  # Cross-session injection
-  if [ -f "$_PROJ/timeline.jsonl" ]; then
-    _LAST=$(grep "\"branch\":\"${_BRANCH}\"" "$_PROJ/timeline.jsonl" 2>/dev/null | grep '"event":"completed"' | tail -1)
-    [ -n "$_LAST" ] && echo "LAST_SESSION: $_LAST"
-    # Predictive skill suggestion: check last 3 completed skills for patterns
-    _RECENT_SKILLS=$(grep "\"branch\":\"${_BRANCH}\"" "$_PROJ/timeline.jsonl" 2>/dev/null | grep '"event":"completed"' | tail -3 | grep -o '"skill":"[^"]*"' | sed 's/"skill":"//;s/"//' | tr '\n' ',')
-    [ -n "$_RECENT_SKILLS" ] && echo "RECENT_PATTERN: $_RECENT_SKILLS"
-  fi
-  _LATEST_CP=$(find "$_PROJ/checkpoints" -name "*.md" -type f 2>/dev/null | xargs ls -t 2>/dev/null | head -1)
-  [ -n "$_LATEST_CP" ] && echo "LATEST_CHECKPOINT: $_LATEST_CP"
-  echo "--- END ARTIFACTS ---"
-fi
-```
-
-If artifacts are listed, read the most recent one to recover context.
-
-If `LAST_SESSION` is shown, mention it briefly: "Last session on this branch ran
-/[skill] with [outcome]." If `LATEST_CHECKPOINT` exists, read it for full context
-on where work left off.
-
-If `RECENT_PATTERN` is shown, look at the skill sequence. If a pattern repeats
-(e.g., review,ship,review), suggest: "Based on your recent pattern, you probably
-want /[next skill]."
-
-**Welcome back message:** If any of LAST_SESSION, LATEST_CHECKPOINT, or RECENT ARTIFACTS
-are shown, synthesize a one-paragraph welcome briefing before proceeding:
-"Welcome back to {branch}. Last session: /{skill} ({outcome}). [Checkpoint summary if
-available]. [Health score if available]." Keep it to 2-3 sentences.
-
 ## AskUserQuestion Format
 
 **ALWAYS follow this structure for every AskUserQuestion call:**
@@ -377,6 +224,24 @@ AI makes completeness near-free. Always recommend the complete option over short
 
 Include `Completeness: X/10` for each option (10=all edge cases, 7=happy path, 3=shortcut).
 
+## Contributor Mode
+
+If `_CONTRIB` is `true`: you are in **contributor mode**. At the end of each major workflow step, rate your gstack experience 0-10. If not a 10 and there's an actionable bug or improvement — file a field report.
+
+**File only:** gstack tooling bugs where the input was reasonable but gstack failed. **Skip:** user app bugs, network errors, auth failures on user's site.
+
+**To file:** write `~/.gstack/contributor-logs/{slug}.md`:
+```
+# {Title}
+**What I tried:** {action} | **What happened:** {result} | **Rating:** {0-10}
+## Repro
+1. {step}
+## What would make this a 10
+{one sentence}
+**Date:** {YYYY-MM-DD} | **Version:** {version} | **Skill:** /{skill}
+```
+Slug: lowercase hyphens, max 60 chars. Skip if exists. Max 3/session. File inline, don't stop.
+
 ## Completion Status Protocol
 
 When completing a skill workflow, report status using one of:
@@ -402,24 +267,6 @@ ATTEMPTED: [what you tried]
 RECOMMENDATION: [what the user should do next]
 ```
 
-## Operational Self-Improvement
-
-Before completing, reflect on this session:
-- Did any commands fail unexpectedly?
-- Did you take a wrong approach and have to backtrack?
-- Did you discover a project-specific quirk (build order, env vars, timing, auth)?
-- Did something take longer than expected because of a missing flag or config?
-
-If yes, log an operational learning for future sessions:
-
-```bash
-~/.claude/skills/gstack/bin/gstack-learnings-log '{"skill":"SKILL_NAME","type":"operational","key":"SHORT_KEY","insight":"DESCRIPTION","confidence":N,"source":"observed"}'
-```
-
-Replace SKILL_NAME with the current skill name. Only log genuine operational discoveries.
-Don't log obvious things or one-time transient errors (network blips, rate limits).
-A good test: would knowing this save 5+ minutes in a future session? If yes, log it.
-
 ## Telemetry (run last)
 
 After the skill workflow completes (success, error, or abort), log the telemetry event.
@@ -438,12 +285,8 @@ Run this bash:
 _TEL_END=$(date +%s)
 _TEL_DUR=$(( _TEL_END - _TEL_START ))
 rm -f ~/.gstack/analytics/.pending-"$_SESSION_ID" 2>/dev/null || true
-# Session timeline: record skill completion (local-only, never sent anywhere)
-~/.claude/skills/gstack/bin/gstack-timeline-log '{"skill":"SKILL_NAME","event":"completed","branch":"'$(git branch --show-current 2>/dev/null || echo unknown)'","outcome":"OUTCOME","duration_s":"'"$_TEL_DUR"'","session":"'"$_SESSION_ID"'"}' 2>/dev/null || true
-# Local analytics (gated on telemetry setting)
-if [ "$_TEL" != "off" ]; then
+# Local analytics (always available, no binary needed)
 echo '{"skill":"SKILL_NAME","duration_s":"'"$_TEL_DUR"'","outcome":"OUTCOME","browse":"USED_BROWSE","session":"'"$_SESSION_ID"'","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' >> ~/.gstack/analytics/skill-usage.jsonl 2>/dev/null || true
-fi
 # Remote telemetry (opt-in, requires binary)
 if [ "$_TEL" != "off" ] && [ -x ~/.claude/skills/gstack/bin/gstack-telemetry-log ]; then
   ~/.claude/skills/gstack/bin/gstack-telemetry-log \
@@ -456,46 +299,6 @@ Replace `SKILL_NAME` with the actual skill name from frontmatter, `OUTCOME` with
 success/error/abort, and `USED_BROWSE` with true/false based on whether `$B` was used.
 If you cannot determine the outcome, use "unknown". The local JSONL always logs. The
 remote binary only runs if telemetry is not off and the binary exists.
-
-## Plan Mode Safe Operations
-
-When in plan mode, these operations are always allowed because they produce
-artifacts that inform the plan, not code changes:
-
-- `$B` commands (browse: screenshots, page inspection, navigation, snapshots)
-- `$D` commands (design: generate mockups, variants, comparison boards, iterate)
-- `codex exec` / `codex review` (outside voice, plan review, adversarial challenge)
-- Writing to `~/.gstack/` (config, analytics, review logs, design artifacts, learnings)
-- Writing to the plan file (already allowed by plan mode)
-- `open` commands for viewing generated artifacts (comparison boards, HTML previews)
-
-These are read-only in spirit — they inspect the live site, generate visual artifacts,
-or get independent opinions. They do NOT modify project source files.
-
-## Skill Invocation During Plan Mode
-
-If a user invokes a skill during plan mode, that invoked skill workflow takes
-precedence over generic plan mode behavior until it finishes or the user explicitly
-cancels that skill.
-
-Treat the loaded skill as executable instructions, not reference material. Follow
-it step by step. Do not summarize, skip, reorder, or shortcut its steps.
-
-If the skill says to use AskUserQuestion, do that. Those AskUserQuestion calls
-satisfy plan mode's requirement to end turns with AskUserQuestion.
-
-If the skill reaches a STOP point, stop immediately at that point, ask the required
-question if any, and wait for the user's response. Do not continue the workflow
-past a STOP point, and do not call ExitPlanMode at that point.
-
-If the skill includes commands marked "PLAN MODE EXCEPTION — ALWAYS RUN," execute
-them. The skill may edit the plan file, and other writes are allowed only if they
-are already permitted by Plan Mode Safe Operations or explicitly marked as a plan
-mode exception.
-
-Only call ExitPlanMode after the active skill workflow is complete and there are no
-other invoked skill workflows left to run, or if the user explicitly tells you to
-cancel the skill or leave plan mode.
 
 ## Plan Status Footer
 
@@ -525,7 +328,6 @@ Then write a `## GSTACK REVIEW REPORT` section to the end of the plan file:
 | Codex Review | \`/codex review\` | Independent 2nd opinion | 0 | — | — |
 | Eng Review | \`/plan-eng-review\` | Architecture & tests (required) | 0 | — | — |
 | Design Review | \`/plan-design-review\` | UI/UX gaps | 0 | — | — |
-| DX Review | \`/plan-devex-review\` | Developer experience gaps | 0 | — | — |
 
 **VERDICT:** NO REVIEWS YET — run \`/autoplan\` for full review pipeline, or individual reviews above.
 \`\`\`
@@ -582,91 +384,6 @@ Commands:
 MUST be saved to `~/.gstack/projects/$SLUG/designs/`, NEVER to `.context/`,
 `docs/designs/`, `/tmp/`, or any project-local directory. Design artifacts are USER
 data, not project files. They persist across branches, conversations, and workspaces.
-
-## UX Principles: How Users Actually Behave
-
-These principles govern how real humans interact with interfaces. They are observed
-behavior, not preferences. Apply them before, during, and after every design decision.
-
-### The Three Laws of Usability
-
-1. **Don't make me think.** Every page should be self-evident. If a user stops
-   to think "What do I click?" or "What does this mean?", the design has failed.
-   Self-evident > self-explanatory > requires explanation.
-
-2. **Clicks don't matter, thinking does.** Three mindless, unambiguous clicks
-   beat one click that requires thought. Each step should feel like an obvious
-   choice (animal, vegetable, or mineral), not a puzzle.
-
-3. **Omit, then omit again.** Get rid of half the words on each page, then get
-   rid of half of what's left. Happy talk (self-congratulatory text) must die.
-   Instructions must die. If they need reading, the design has failed.
-
-### How Users Actually Behave
-
-- **Users scan, they don't read.** Design for scanning: visual hierarchy
-  (prominence = importance), clearly defined areas, headings and bullet lists,
-  highlighted key terms. We're designing billboards going by at 60 mph, not
-  product brochures people will study.
-- **Users satisfice.** They pick the first reasonable option, not the best.
-  Make the right choice the most visible choice.
-- **Users muddle through.** They don't figure out how things work. They wing
-  it. If they accomplish their goal by accident, they won't seek the "right" way.
-  Once they find something that works, no matter how badly, they stick to it.
-- **Users don't read instructions.** They dive in. Guidance must be brief,
-  timely, and unavoidable, or it won't be seen.
-
-### Billboard Design for Interfaces
-
-- **Use conventions.** Logo top-left, nav top/left, search = magnifying glass.
-  Don't innovate on navigation to be clever. Innovate when you KNOW you have a
-  better idea, otherwise use conventions. Even across languages and cultures,
-  web conventions let people identify the logo, nav, search, and main content.
-- **Visual hierarchy is everything.** Related things are visually grouped. Nested
-  things are visually contained. More important = more prominent. If everything
-  shouts, nothing is heard. Start with the assumption everything is visual noise,
-  guilty until proven innocent.
-- **Make clickable things obviously clickable.** No relying on hover states for
-  discoverability, especially on mobile where hover doesn't exist. Shape, location,
-  and formatting (color, underlining) must signal clickability without interaction.
-- **Eliminate noise.** Three sources: too many things shouting for attention
-  (shouting), things not organized logically (disorganization), and too much stuff
-  (clutter). Fix noise by removal, not addition.
-- **Clarity trumps consistency.** If making something significantly clearer
-  requires making it slightly inconsistent, choose clarity every time.
-
-### Navigation as Wayfinding
-
-Users on the web have no sense of scale, direction, or location. Navigation
-must always answer: What site is this? What page am I on? What are the major
-sections? What are my options at this level? Where am I? How can I search?
-
-Persistent navigation on every page. Breadcrumbs for deep hierarchies.
-Current section visually indicated. The "trunk test": cover everything except
-the navigation. You should still know what site this is, what page you're on,
-and what the major sections are. If not, the navigation has failed.
-
-### The Goodwill Reservoir
-
-Users start with a reservoir of goodwill. Every friction point depletes it.
-
-**Deplete faster:** Hiding info users want (pricing, contact, shipping). Punishing
-users for not doing things your way (formatting requirements on phone numbers).
-Asking for unnecessary information. Putting sizzle in their way (splash screens,
-forced tours, interstitials). Unprofessional or sloppy appearance.
-
-**Replenish:** Know what users want to do and make it obvious. Tell them what they
-want to know upfront. Save them steps wherever possible. Make it easy to recover
-from errors. When in doubt, apologize.
-
-### Mobile: Same Rules, Higher Stakes
-
-All the above applies on mobile, just more so. Real estate is scarce, but never
-sacrifice usability for space savings. Affordances must be VISIBLE: no cursor
-means no hover-to-discover. Touch targets must be big enough (44px minimum).
-Flat design can strip away useful visual information that signals interactivity.
-Prioritize ruthlessly: things needed in a hurry go close at hand, everything
-else a few taps away with an obvious path to get there.
 
 ## Step 0: Session Detection
 
@@ -904,42 +621,31 @@ $D compare --images "$_DESIGN_DIR/variant-A.png,$_DESIGN_DIR/variant-B.png,$_DES
 
 This command generates the board HTML, starts an HTTP server on a random port,
 and opens it in the user's default browser. **Run it in the background** with `&`
-because the server needs to stay running while the user interacts with the board.
+because the agent needs to keep running while the user interacts with the board.
 
-Parse the port from stderr output: `SERVE_STARTED: port=XXXXX`. You need this
-for the board URL and for reloading during regeneration cycles.
+**IMPORTANT: Reading feedback via file polling (not stdout):**
 
-**PRIMARY WAIT: AskUserQuestion with board URL**
-
-After the board is serving, use AskUserQuestion to wait for the user. Include the
-board URL so they can click it if they lost the browser tab:
-
-"I've opened a comparison board with the design variants:
-http://127.0.0.1:<PORT>/ — Rate them, leave comments, remix
-elements you like, and click Submit when you're done. Let me know when you've
-submitted your feedback (or paste your preferences here). If you clicked
-Regenerate or Remix on the board, tell me and I'll generate new variants."
-
-**Do NOT use AskUserQuestion to ask which variant the user prefers.** The comparison
-board IS the chooser. AskUserQuestion is just the blocking wait mechanism.
-
-**After the user responds to AskUserQuestion:**
-
-Check for feedback files next to the board HTML:
+The server writes feedback to files next to the board HTML. The agent polls for these:
 - `$_DESIGN_DIR/feedback.json` — written when user clicks Submit (final choice)
 - `$_DESIGN_DIR/feedback-pending.json` — written when user clicks Regenerate/Remix/More Like This
 
+**Polling loop** (run after launching `$D serve` in background):
+
 ```bash
-if [ -f "$_DESIGN_DIR/feedback.json" ]; then
-  echo "SUBMIT_RECEIVED"
-  cat "$_DESIGN_DIR/feedback.json"
-elif [ -f "$_DESIGN_DIR/feedback-pending.json" ]; then
-  echo "REGENERATE_RECEIVED"
-  cat "$_DESIGN_DIR/feedback-pending.json"
-  rm "$_DESIGN_DIR/feedback-pending.json"
-else
-  echo "NO_FEEDBACK_FILE"
-fi
+# Poll for feedback files every 5 seconds (up to 10 minutes)
+for i in $(seq 1 120); do
+  if [ -f "$_DESIGN_DIR/feedback.json" ]; then
+    echo "SUBMIT_RECEIVED"
+    cat "$_DESIGN_DIR/feedback.json"
+    break
+  elif [ -f "$_DESIGN_DIR/feedback-pending.json" ]; then
+    echo "REGENERATE_RECEIVED"
+    cat "$_DESIGN_DIR/feedback-pending.json"
+    rm "$_DESIGN_DIR/feedback-pending.json"
+    break
+  fi
+  sleep 5
+done
 ```
 
 The feedback JSON has this shape:
@@ -953,30 +659,24 @@ The feedback JSON has this shape:
 }
 ```
 
-**If `feedback.json` found:** The user clicked Submit on the board.
-Read `preferred`, `ratings`, `comments`, `overall` from the JSON. Proceed with
-the approved variant.
-
-**If `feedback-pending.json` found:** The user clicked Regenerate/Remix on the board.
+**If `feedback-pending.json` found (`"regenerated": true`):**
 1. Read `regenerateAction` from the JSON (`"different"`, `"match"`, `"more_like_B"`,
    `"remix"`, or custom text)
 2. If `regenerateAction` is `"remix"`, read `remixSpec` (e.g. `{"layout":"A","colors":"B"}`)
 3. Generate new variants with `$D iterate` or `$D variants` using updated brief
 4. Create new board: `$D compare --images "..." --output "$_DESIGN_DIR/design-board.html"`
-5. Reload the board in the user's browser (same tab):
+5. Parse the port from the `$D serve` stderr output (`SERVE_STARTED: port=XXXXX`),
+   then reload the board in the user's browser (same tab):
    `curl -s -X POST http://127.0.0.1:PORT/api/reload -H 'Content-Type: application/json' -d '{"html":"$_DESIGN_DIR/design-board.html"}'`
-6. The board auto-refreshes. **AskUserQuestion again** with the same board URL to
-   wait for the next round of feedback. Repeat until `feedback.json` appears.
+6. The board auto-refreshes. **Poll again** for the next feedback file.
+7. Repeat until `feedback.json` appears (user clicked Submit).
 
-**If `NO_FEEDBACK_FILE`:** The user typed their preferences directly in the
-AskUserQuestion response instead of using the board. Use their text response
-as the feedback.
+**If `feedback.json` found (`"regenerated": false`):**
+1. Read `preferred`, `ratings`, `comments`, `overall` from the JSON
+2. Proceed with the approved variant
 
-**POLLING FALLBACK:** Only use polling if `$D serve` fails (no port available).
-In that case, show each variant inline using the Read tool (so the user can see them),
-then use AskUserQuestion:
-"The comparison board server failed to start. I've shown the variants above.
-Which do you prefer? Any feedback?"
+**If `$D serve` fails or no feedback within 10 minutes:** Fall back to AskUserQuestion:
+"I've opened the design board. Which variant do you prefer? Any feedback?"
 
 **After receiving feedback (any path):** Output a clear summary confirming
 what was understood:
@@ -1023,7 +723,7 @@ If standalone, offer next steps via AskUserQuestion:
 
 > "Design direction locked in. What's next?
 > A) Iterate more — refine the approved variant with specific feedback
-> B) Finalize — generate production Pretext-native HTML/CSS with /design-html
+> B) Implement — start building from this design
 > C) Save to plan — add this as an approved mockup reference in the current plan
 > D) Done — I'll use this later"
 

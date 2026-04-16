@@ -1,0 +1,215 @@
+{{- /* Chezmoi Configuration - Multi-Platform Template */ -}}
+{{- /* Supports: Windows, WSL2 (Ubuntu), Arch Desktop (KDE), Arch Laptop (Sway) */ -}}
+
+{{- /* ═══════════════════════════════════════════════════════════════════ */ -}}
+{{- /* PLATFORM DETECTION */ -}}
+{{- /* ═══════════════════════════════════════════════════════════════════ */ -}}
+
+{{- $isWindows := eq .chezmoi.os "windows" -}}
+{{- $isLinux := eq .chezmoi.os "linux" -}}
+{{- $isMacOS := eq .chezmoi.os "darwin" -}}
+{{- $isWSL := and $isLinux (env "WSL_DISTRO_NAME" | not | not) -}}
+
+{{- /* Detect Linux distribution */ -}}
+{{- $distroID := "" -}}
+{{- if $isLinux -}}
+{{-   if hasKey .chezmoi.osRelease "id" -}}
+{{-     $distroID = .chezmoi.osRelease.id -}}
+{{-   end -}}
+{{- end -}}
+{{- $isArch := eq $distroID "arch" -}}
+{{- $isUbuntu := eq $distroID "ubuntu" -}}
+
+{{- /* Detect desktop environment / window manager */ -}}
+{{- $desktopSession := env "XDG_CURRENT_DESKTOP" | lower -}}
+{{- $sessionType := env "XDG_SESSION_TYPE" | lower -}}
+{{- $isWayland := eq $sessionType "wayland" -}}
+{{- $isX11 := eq $sessionType "x11" -}}
+{{- $isKDE := contains "kde" $desktopSession -}}
+{{- $isSway := contains "sway" $desktopSession -}}
+
+{{- /* Machine role detection based on hostname */ -}}
+{{- $hostname := .chezmoi.hostname -}}
+{{- $machineRole := "desktop" -}}
+{{- $machineType := "personal" -}}
+
+{{- /* Customize these hostname patterns for your machines */ -}}
+{{- if or (contains "laptop" $hostname) (contains "mobile" $hostname) (contains "thinkpad" $hostname) -}}
+{{-   $machineRole = "laptop" -}}
+{{- else if or (contains "server" $hostname) (contains "srv" $hostname) -}}
+{{-   $machineRole = "server" -}}
+{{- end -}}
+
+{{- if or (contains "work" $hostname) (contains "corp" $hostname) -}}
+{{-   $machineType = "work" -}}
+{{- end -}}
+
+{{- /* Composite platform identifier */ -}}
+{{- $platform := "unknown" -}}
+{{- if $isWindows -}}
+{{-   $platform = "windows" -}}
+{{- else if $isWSL -}}
+{{-   $platform = "wsl2" -}}
+{{- else if and $isArch $isSway -}}
+{{-   $platform = "arch-sway" -}}
+{{- else if and $isArch $isKDE -}}
+{{-   $platform = "arch-kde" -}}
+{{- else if $isArch -}}
+{{-   $platform = "arch" -}}
+{{- else if $isUbuntu -}}
+{{-   $platform = "ubuntu" -}}
+{{- else if $isMacOS -}}
+{{-   $platform = "macos" -}}
+{{- else if $isLinux -}}
+{{-   $platform = "linux" -}}
+{{- end -}}
+
+data:
+  # ═══════════════════════════════════════════════════════════════════
+  # PLATFORM FLAGS (auto-detected)
+  # ═══════════════════════════════════════════════════════════════════
+  platform:
+    id: {{ $platform | quote }}
+    is_windows: {{ $isWindows }}
+    is_linux: {{ $isLinux }}
+    is_macos: {{ $isMacOS }}
+    is_wsl: {{ $isWSL }}
+    is_arch: {{ $isArch }}
+    is_ubuntu: {{ $isUbuntu }}
+    is_wayland: {{ $isWayland }}
+    is_x11: {{ $isX11 }}
+    is_kde: {{ $isKDE }}
+    is_sway: {{ $isSway }}
+
+  # ═══════════════════════════════════════════════════════════════════
+  # MACHINE CONFIGURATION
+  # ═══════════════════════════════════════════════════════════════════
+  machine:
+    type: {{ $machineType | quote }}
+    role: {{ $machineRole | quote }}
+    hostname: {{ $hostname | quote }}
+
+  # ═══════════════════════════════════════════════════════════════════
+  # SHELL CONFIGURATION
+  # ═══════════════════════════════════════════════════════════════════
+  shell:
+    editor: "nvim"
+    term: "xterm-256color"
+    gpg_tty: true
+    default: "fish"
+
+  # ═══════════════════════════════════════════════════════════════════
+  # CLIPBOARD COMMAND (platform-specific)
+  # ═══════════════════════════════════════════════════════════════════
+  clipboard:
+{{- if $isWSL }}
+    copy: "clip.exe"
+    paste: "powershell.exe -command Get-Clipboard"
+{{- else if $isWayland }}
+    copy: "wl-copy"
+    paste: "wl-paste"
+{{- else if $isX11 }}
+    copy: "xclip -selection clipboard"
+    paste: "xclip -selection clipboard -o"
+{{- else if $isMacOS }}
+    copy: "pbcopy"
+    paste: "pbpaste"
+{{- else if $isWindows }}
+    copy: "clip.exe"
+    paste: "powershell.exe -command Get-Clipboard"
+{{- else }}
+    copy: "xclip -selection clipboard"
+    paste: "xclip -selection clipboard -o"
+{{- end }}
+
+  # ═══════════════════════════════════════════════════════════════════
+  # BUILD TOOLS
+  # ═══════════════════════════════════════════════════════════════════
+  build:
+    use_ccache: {{ not $isWindows }}
+    cmake_parallel: true
+
+  # ═══════════════════════════════════════════════════════════════════
+  # PATHS (platform-specific)
+  # ═══════════════════════════════════════════════════════════════════
+  paths:
+    pnpm_home: "{{ .chezmoi.homeDir }}/.local/share/pnpm"
+    add_paths:
+      - "{{ .chezmoi.homeDir }}/.local/bin"
+      - "{{ .chezmoi.homeDir }}/bin"
+      - "{{ .chezmoi.homeDir }}/go/bin"
+      - "{{ .chezmoi.homeDir }}/.cargo/bin"
+{{- if not $isWindows }}
+    claude: "{{ .chezmoi.homeDir }}/.claude/local/claude"
+    esp_idf: "{{ .chezmoi.homeDir }}/workspace/sdks/esp/esp-idf/export.fish"
+{{- else }}
+    claude: "claude"
+    esp_idf: ""
+{{- end }}
+
+  # ═══════════════════════════════════════════════════════════════════
+  # SSH CONFIGURATION
+  # ═══════════════════════════════════════════════════════════════════
+  ssh:
+    keys:
+      - "git"
+      - "homelab"
+{{- if eq $machineType "work" }}
+      - "work"
+{{- end }}
+
+  # Remote desktop configuration (for laptop → desktop SSH)
+  # Enabled on thin-client machines (laptop, WSL2, Windows)
+  # Disabled on the desktop itself (it IS the remote target)
+  remote:
+    enabled: {{ and (or (eq $machineRole "laptop") $isWSL $isWindows) (not (and $isArch $isKDE)) }}
+    desktop_host: "desktop"
+    desktop_ip: "192.168.1.100"
+    desktop_user: "{{ .chezmoi.username }}"
+
+  # ═══════════════════════════════════════════════════════════════════
+  # FZF COLOR SCHEME (Tokyo Night Storm)
+  # ═══════════════════════════════════════════════════════════════════
+  fzf:
+  colors:
+    bg_plus: "#2e3c64"
+    bg: "#24283b"
+    spinner: "#7dcfff"
+    hl: "#f7768e"
+    fg: "#c0caf5"
+    header: "#7dcfff"
+    info: "#bb9af7"
+    pointer: "#7dcfff"
+    marker: "#9ece6a"
+    fg_plus: "#c0caf5"
+    prompt: "#bb9af7"
+    hl_plus: "#f7768e"
+    selected_bg: "#364a82"
+    border: "#7aa2f7"
+    label: "#e0af68"
+
+  # ═══════════════════════════════════════════════════════════════════
+  # TERMINAL / THEME
+  # ═══════════════════════════════════════════════════════════════════
+  terminal:
+    font_family: "FiraCode Nerd Font"
+    font_size: {{ if eq $machineRole "laptop" }}12{{ else }}13{{ end }}
+    theme: "tokyo-night-storm"
+
+  # ═══════════════════════════════════════════════════════════════════
+  # API KEYS (from environment - NEVER hardcode)
+  # ═══════════════════════════════════════════════════════════════════
+  api:
+    github_token: {{ env "GITHUB_TOKEN" | default "" | quote }}
+    openai_key: {{ env "OPENAI_API_KEY" | default "" | quote }}
+    anthropic_key: {{ env "ANTHROPIC_API_KEY" | default "" | quote }}
+    tivaly_key: {{ env "TIVALY_API_KEY" | default "" | quote }}
+    context7_key: {{ env "UPSTASH_API_KEY" | default "" | quote }}
+    gemini_key: {{ env "GEMINI_API_KEY" | default "" | quote }}
+
+  # ═══════════════════════════════════════════════════════════════════
+  # DATABASE URLS (from environment - NEVER hardcode)
+  # ═══════════════════════════════════════════════════════════════════
+  database:
+    postgres_url: {{ env "DATABASE_URL" | default "" | quote }}
+    redis_url: {{ env "REDIS_URL" | default "" | quote }}

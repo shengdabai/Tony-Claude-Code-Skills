@@ -1,0 +1,370 @@
+{
+  "env": {
+    "CLAUDE_CODE_DISABLE_TELEMETRY": "1",
+    "CLAUDE_CODE_DISABLE_TERMINAL_TITLE": "1",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "DISABLE_TELEMETRY": "1",
+    "DO_NOT_TRACK": "1",
+    "RTK_TELEMETRY_DISABLED": "1"
+  },
+  "permissions": {
+    "defaultMode": "auto"
+  },
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "source $HOME/.config/ntfy/.env && curl -s -d \"🔔 需要回复: $CLAUDE_NOTIFICATION_MESSAGE\" \"ntfy.sh/$NTFY_CLAUDE_TOPIC\"",
+            "timeout": 2
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -x \"$HOME/.vibe-island/bin/vibe-island-bridge\" ] && \"$HOME/.vibe-island/bin/vibe-island-bridge\" --source claude || exit 0"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -x \"$HOME/.vibe-island/bin/vibe-island-bridge\" ] && \"$HOME/.vibe-island/bin/vibe-island-bridge\" --source claude || exit 0",
+            "timeout": 86400
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|MultiEdit|Agent|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/tonysheng/.nvm/versions/node/v24.14.0/bin/node \"/Users/tonysheng/.claude/hooks/gsd-context-monitor.js\"",
+            "timeout": 3
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/tonysheng/.claude/hooks/read-cache-invalidate.sh",
+            "timeout": 1
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -x \"$HOME/.vibe-island/bin/vibe-island-bridge\" ] && \"$HOME/.vibe-island/bin/vibe-island-bridge\" --source claude || exit 0"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "rm -rf /tmp/claude-read-cache-${TERM_SESSION_ID:-default} 2>/dev/null; exit 0",
+            "timeout": 1
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -x \"$HOME/.vibe-island/bin/vibe-island-bridge\" ] && \"$HOME/.vibe-island/bin/vibe-island-bridge\" --source claude || exit 0"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/tonysheng/.claude/hooks/rtk-rewrite.sh",
+            "timeout": 3
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/tonysheng/.claude/hooks/read-cache.sh",
+            "timeout": 2
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/tonysheng/.nvm/versions/node/v24.14.0/bin/node \"/Users/tonysheng/.claude/hooks/gsd-prompt-guard.js\"",
+            "timeout": 2
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -x \"$HOME/.vibe-island/bin/vibe-island-bridge\" ] && \"$HOME/.vibe-island/bin/vibe-island-bridge\" --source claude || exit 0"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -x \"$HOME/.vibe-island/bin/vibe-island-bridge\" ] && \"$HOME/.vibe-island/bin/vibe-island-bridge\" --source claude || exit 0",
+            "timeout": 1
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/tonysheng/.nvm/versions/node/v24.14.0/bin/node \"/Users/tonysheng/.claude/hooks/gsd-check-update.js\"",
+            "timeout": 2
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -x \"$HOME/.vibe-island/bin/vibe-island-bridge\" ] && \"$HOME/.vibe-island/bin/vibe-island-bridge\" --source claude || exit 0",
+            "timeout": 1
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/tonysheng/.claude/hooks/sync-skills-to-github.sh",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "source $HOME/.config/ntfy/.env && curl -s -d '✅ 任务完成' \"ntfy.sh/$NTFY_CLAUDE_TOPIC\"",
+            "timeout": 2
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -x \"$HOME/.vibe-island/bin/vibe-island-bridge\" ] && \"$HOME/.vibe-island/bin/vibe-island-bridge\" --source claude || exit 0",
+            "timeout": 1
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/tonysheng/.nvm/versions/node/v24.14.0/bin/node /Users/tonysheng/.claude/hud/cost-aggregator.mjs",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -x \"$HOME/.vibe-island/bin/vibe-island-bridge\" ] && \"$HOME/.vibe-island/bin/vibe-island-bridge\" --source claude || exit 0"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -x \"$HOME/.vibe-island/bin/vibe-island-bridge\" ] && \"$HOME/.vibe-island/bin/vibe-island-bridge\" --source claude || exit 0"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -x \"$HOME/.vibe-island/bin/vibe-island-bridge\" ] && \"$HOME/.vibe-island/bin/vibe-island-bridge\" --source claude || exit 0",
+            "timeout": 1
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "/Users/tonysheng/.nvm/versions/node/v24.14.0/bin/node $HOME/.claude/hud/omc-hud.mjs"
+  },
+  "enabledPlugins": {
+    "claude-hud@claude-hud": true,
+    "impeccable@impeccable": true,
+    "superpowers@claude-plugins-official": true,
+    "oh-my-claudecode@omc": true
+  },
+  "extraKnownMarketplaces": {
+    "claude-hud": {
+      "source": {
+        "source": "github",
+        "repo": "jarrodwatts/claude-hud"
+      },
+      "autoUpdate": true
+    },
+    "claude-plugins-official": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins-official"
+      },
+      "autoUpdate": true
+    },
+    "impeccable": {
+      "source": {
+        "source": "github",
+        "repo": "pbakaus/impeccable"
+      },
+      "autoUpdate": true
+    },
+    "omc": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/Yeachan-Heo/oh-my-claudecode.git"
+      },
+      "autoUpdate": true
+    }
+  },
+  "language": "chinese",
+  "alwaysThinkingEnabled": false,
+  "effortLevel": "high",
+  "autoUpdatesChannel": "latest",
+  "autoDreamEnabled": true,
+  "skipDangerousModePermissionPrompt": true,
+  "mcpServers": {
+    "airmcp": {
+      "args": [
+        "/Users/tonysheng/.nvm/versions/node/v24.14.0/lib/node_modules/airmcp/dist/index.js"
+      ],
+      "command": "/Users/tonysheng/.nvm/versions/node/v24.14.0/bin/node",
+      "type": "stdio"
+    },
+    "context7": {
+      "args": [
+        "/Users/tonysheng/.nvm/versions/node/v24.14.0/lib/node_modules/@upstash/context7-mcp/dist/index.js"
+      ],
+      "command": "/Users/tonysheng/.nvm/versions/node/v24.14.0/bin/node",
+      "type": "stdio"
+    },
+    "exa": {
+      "args": [
+        "/Users/tonysheng/.config/exa-mcp/start.sh"
+      ],
+      "command": "/bin/bash",
+      "type": "stdio"
+    },
+    "firecrawl": {
+      "args": [
+        "/Users/tonysheng/.nvm/versions/node/v24.14.0/lib/node_modules/firecrawl-mcp/dist/index.js"
+      ],
+      "command": "/Users/tonysheng/.nvm/versions/node/v24.14.0/bin/node",
+      "type": "stdio"
+    },
+    "getnote": {
+      "args": [
+        "/Users/tonysheng/.claude/getnote-mcp/start.sh"
+      ],
+      "command": "/bin/bash",
+      "type": "stdio"
+    },
+    "github": {
+      "args": [
+        "/Users/tonysheng/.config/github-mcp/start.sh"
+      ],
+      "command": "/bin/bash",
+      "type": "stdio"
+    },
+    "lark": {
+      "args": [
+        "/Users/tonysheng/.config/lark-mcp/start.sh"
+      ],
+      "command": "/bin/bash",
+      "type": "stdio"
+    },
+    "notebooklm": {
+      "args": [
+        "/Users/tonysheng/.nvm/versions/node/v24.14.0/lib/node_modules/notebooklm-mcp/dist/index.js"
+      ],
+      "command": "/Users/tonysheng/.nvm/versions/node/v24.14.0/bin/node",
+      "type": "stdio"
+    },
+    "playwright": {
+      "args": [
+        "/Users/tonysheng/.nvm/versions/node/v24.14.0/lib/node_modules/@playwright/mcp/cli.js"
+      ],
+      "command": "/Users/tonysheng/.nvm/versions/node/v24.14.0/bin/node",
+      "type": "stdio"
+    }
+  },
+  "omcHud": {
+    "elements": {
+      "maxOutputLines": 3,
+      "rateLimits": true,
+      "gitStatus": false,
+      "sessionHealth": false,
+      "showCallCounts": false,
+      "showTokens": false,
+      "useBars": false
+    },
+    "rateLimitsProvider": {
+      "command": "/Users/tonysheng/.nvm/versions/node/v24.14.0/bin/node /Users/tonysheng/.claude/hud/cost-provider.mjs",
+      "timeoutMs": 2000,
+      "type": "custom"
+    }
+  },
+  "remoteControlAtStartup": true
+}

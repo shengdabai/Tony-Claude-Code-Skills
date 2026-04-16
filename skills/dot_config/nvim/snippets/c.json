@@ -1,0 +1,38 @@
+{
+	"cFS Telemetry Message": {
+		"scope": "c,cpp",
+		"prefix": "tlm_t",
+		"body": [
+			"/**",
+			" * @brief ${1:Telemetry message description}",
+			" *",
+			" * ${2:Detailed description of the telemetry message purpose and contents}",
+			" */",
+			"typedef struct {",
+			"    CFE_MSG_TelemetryHeader_t TlmHeader;  /**< cFS telemetry header */",
+			"    ",
+			"    ${3:uint8_t  Field1;                 /**< Field description */}",
+			"    ",
+			"} ${4:MESSAGE_NAME_TLM_T};"
+		],
+		"description": "cFS telemetry message structure with Doxygen comments"
+	},
+	"cFS Command Message": {
+		"scope": "c,cpp",
+		"prefix": "cmd_t",
+		"body": [
+			"/**",
+			" * @brief ${1:Command message description}",
+			" *",
+			" * ${2:Detailed description of the command message purpose and parameters}",
+			" */",
+			"typedef struct {",
+			"    CFE_MSG_CommandHeader_t CmdHeader;  /**< cFS command header */",
+			"    ",
+			"    ${3:uint8_t  Parameter1;            /**< Parameter description */}",
+			"    ",
+			"} ${4:MESSAGE_NAME_CMD_T};"
+		],
+		"description": "cFS command message structure with Doxygen comments"
+	}
+}
