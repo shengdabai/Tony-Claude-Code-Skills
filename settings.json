@@ -247,7 +247,15 @@
     "claude-hud@claude-hud": true,
     "impeccable@impeccable": true,
     "superpowers@claude-plugins-official": true,
-    "oh-my-claudecode@omc": true
+    "oh-my-claudecode@omc": true,
+    "codex-toolkit@xiaolai": true,
+    "tdd-guardian@xiaolai": true,
+    "echo-sleuth@xiaolai": true,
+    "loc-guardian@xiaolai": true,
+    "grill@xiaolai": true,
+    "docs-guardian@xiaolai": true,
+    "nlpm@xiaolai": true,
+    "awful@xiaolai": true
   },
   "extraKnownMarketplaces": {
     "claude-hud": {
@@ -277,6 +285,12 @@
         "url": "https://github.com/Yeachan-Heo/oh-my-claudecode.git"
       },
       "autoUpdate": true
+    },
+    "xiaolai": {
+      "source": {
+        "source": "github",
+        "repo": "xiaolai/claude-plugin-marketplace"
+      }
     }
   },
   "language": "chinese",
