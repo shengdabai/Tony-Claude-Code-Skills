@@ -1,0 +1,122 @@
+{{- /* Platform-specific file ignoring */ -}}
+
+# ═══════════════════════════════════════════════════════════════════
+# ALWAYS IGNORE (all platforms)
+# ═══════════════════════════════════════════════════════════════════
+README.md
+LICENSE
+.git/
+.gitignore
+scripts/
+*.bak
+*~
+\#*\#
+.DS_Store
+
+# Security - never track these
+**/.env
+**/.env.*
+**/credentials
+**/secrets
+**/*.pem
+**/*.key
+**/*secret*
+**/*password*
+
+# ═══════════════════════════════════════════════════════════════════
+# WINDOWS-SPECIFIC
+# ═══════════════════════════════════════════════════════════════════
+{{- if ne .chezmoi.os "windows" }}
+# Ignore Windows-only files on non-Windows
+AppData/
+.wslconfig
+{{- end }}
+
+{{- if eq .chezmoi.os "windows" }}
+# Ignore Linux-only files on Windows
+.local/
+.config/mimeapps.list
+.config/yazi/
+{{- end }}
+
+# ═══════════════════════════════════════════════════════════════════
+# LINUX-SPECIFIC
+# ═══════════════════════════════════════════════════════════════════
+{{- if ne .chezmoi.os "linux" }}
+# Ignore Linux-only files on non-Linux
+.config/sway/
+.config/waybar/
+.config/rofi/
+.config/dunst/
+.config/i3/
+.config/polybar/
+{{- end }}
+
+# ═══════════════════════════════════════════════════════════════════
+# SWAY-SPECIFIC (Arch laptop)
+# ═══════════════════════════════════════════════════════════════════
+{{- if not .platform.is_sway }}
+# Ignore Sway configs on non-Sway systems
+.config/sway/
+.config/waybar/
+.config/swaylock/
+.config/mako/
+# Ignore manual theme configs (KDE/GNOME handle this)
+.config/gtk-3.0/
+.config/gtk-4.0/
+.config/qt5ct/
+.config/qt6ct/
+.config/environment.d/theme.conf
+{{- end }}
+
+# ═══════════════════════════════════════════════════════════════════
+# KDE-SPECIFIC (Arch desktop)
+# ═══════════════════════════════════════════════════════════════════
+{{- if not .platform.is_kde }}
+# Ignore KDE configs on non-KDE systems
+.config/kde*/
+.config/plasma*/
+.local/share/plasma/
+{{- end }}
+
+# ═══════════════════════════════════════════════════════════════════
+# WSL2-SPECIFIC
+# ═══════════════════════════════════════════════════════════════════
+{{- if not .platform.is_wsl }}
+# Ignore WSL-specific files on native systems
+.wslconfig
+{{- end }}
+
+# ═══════════════════════════════════════════════════════════════════
+# MACOS-SPECIFIC
+# ═══════════════════════════════════════════════════════════════════
+{{- if ne .chezmoi.os "darwin" }}
+# Ignore macOS-only files on non-macOS
+Library/
+.config/karabiner/
+.hammerspoon/
+{{- end }}
+
+# ═══════════════════════════════════════════════════════════════════
+# SERVER-SPECIFIC
+# ═══════════════════════════════════════════════════════════════════
+{{- if ne .machine.role "server" }}
+# These are only for servers
+.config/systemd/
+{{- end }}
+
+{{- if eq .machine.role "server" }}
+# Servers don't need GUI configs
+.config/wezterm/
+.config/alacritty/
+.config/kitty/
+{{- end }}
+
+# ═══════════════════════════════════════════════════════════════════
+# WORK-SPECIFIC
+# ═══════════════════════════════════════════════════════════════════
+{{- if ne .machine.type "work" }}
+# Ignore work configs on personal machines
+.config/work/
+.ssh/config.d/work
+{{- end }}

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://raw.githubusercontent.com/folke/neoconf.nvim/main/schemas/neoconf.json",
+  "lspconfig": {
+    "pyright": {
+      "settings": {
+        "python": {
+          "analysis": {
+            "typeCheckingMode": "basic",
+            "autoSearchPaths": true,
+            "useLibraryCodeForTypes": true,
+            "diagnosticMode": "workspace"
+          }
+        }
+      }
+    }
+  },
+  "commands": {
+    "PythonRun": {
+      "description": "Run Python CLI",
+      "command": "15split | terminal python -m cli"
+    },
+    "PythonTest": {
+      "description": "Run Python tests",
+      "command": "15split | terminal pytest -v"
+    },
+    "PythonInstall": {
+      "description": "Install in development mode",
+      "command": "15split | terminal pip install -e ."
+    }
+  }
+}
