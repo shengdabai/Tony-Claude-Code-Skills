@@ -1,0 +1,6 @@
+font-family = "BlexMono Nerd Font Mono"
+font-family = "Osaka"
+font-size = 28
+quick-terminal-animation-duration = 0
+keybind = shift+enter=text:\n
+keybind = global:ctrl+escape=toggle_quick_terminal

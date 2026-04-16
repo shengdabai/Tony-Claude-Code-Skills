@@ -1,0 +1,78 @@
+function fish_greeting
+end
+
+if test -f ~/.config/fish/env.fish
+    source ~/.config/fish/env.fish
+end
+
+if test -f /home/linuxbrew/.linuxbrew/bin/brew
+    /home/linuxbrew/.linuxbrew/bin/brew shellenv | source
+end
+fish_add_path /home/rghamilton3/.local/bin
+fish_add_path /home/rghamilton3/.cargo/bin
+fish_add_path /home/rghamilton3/.claude/local/
+fish_add_path /snap/bin
+
+set -gx PNPM_HOME /home/rghamilton3/.local/share/pnpm
+if not string match -q -- $PNPM_HOME $PATH
+  fish_add_path "$PNPM_HOME"
+end
+
+set -gx TERM xterm-256color
+set -gx EDITOR nvim
+set -gx GPG_TTY (tty)
+set -gx CMAKE_BUILD_PARALLEL_LEVEL (nproc)
+
+if status is-interactive
+    # atuin needs update for fish
+    # atuin init fish | source
+    mise activate fish | source
+else
+    mise activate fish --shims | source
+end
+
+set -gx FZF_DEFAULT_COMMAND 'rg --files --no-ignore-vcs --hidden'
+set -gx FZF_DEFAULT_OPTS "\
+--color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8 \
+--color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc \
+--color=marker:#b4befe,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8 \
+--color=selected-bg:#45475a \
+--color=border:#89b4fa,label:#f9e2af"
+fzf --fish | source
+
+zoxide init --cmd cd fish | source
+
+if status is-login
+    ssh-add ~/.ssh/git
+    ssh-add ~/.ssh/homelab
+end
+
+alias hx="helix"
+alias vim="nvim"
+alias n="nvim"
+alias v="nvim"
+alias cat="bat"
+alias claude="/home/rghamilton3/.claude/local/claude"
+abbr -a -- pn pnpm
+abbr -a -- pa 'pnpm add'
+abbr -a -- pd 'pnpm dlx'
+abbr -a -- pi 'pnpm install'
+abbr -a -- n nvim
+abbr -a -- gp 'git push'
+abbr -a -- gpa 'git push -u origin --all'
+abbr -a -- gs 'git status'
+abbr -a -- gcm 'git commit -m'
+abbr -a -- gco 'git checkout'
+abbr -a -- gcom 'git checkout main'
+abbr -a -- gcob 'git checkout -b'
+abbr -a -- gaa 'git add -A'
+abbr -a -- gap 'git add -p'
+abbr -a -- efish 'chezmoi edit --apply ~/.config/fish/config.fish'
+abbr -a -- cmcd 'chezmoi cd'
+abbr -a -- cma 'chezmoi add'
+abbr -a -- cmap 'chezmoi apply'
+abbr -a -- cme 'chezmoi edit'
+abbr -a -- cmea 'chezmoi edit --apply'
+abbr -a -- lg lazygit
+
+mise activate fish | source

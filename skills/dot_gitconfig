@@ -1,0 +1,16 @@
+[user]
+	name = Robert Hamilton
+	email = robert@rghsoftware.com
+	signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIPvboDj18Z3PAt14Qo6H/g4nzgKekC8RIccfeFKwi5E
+[init]
+	defaultBranch = main
+[gpg]
+	format = ssh
+[commit]
+	gpgSign = true
+[tag]
+	gpgSign = true
+[gpg "ssh"]
+	allowedSignersFile = /home/rghamilton3/.ssh/allowed_signers
+[core]
+	autocrlf = false

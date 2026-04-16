@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/folke/neoconf.nvim/main/schemas/neoconf.json",
+  "lspconfig": {
+    "pyright": {
+      "settings": {
+        "python": {
+          "analysis": {
+            "extraPaths": [
+              "/home/rghamilton3/.local/share/nvim/micropython-stubs/stubs/micropython-v1_22_0-esp32-ESP32_GENERIC"
+            ],
+            "typeCheckingMode": "off",
+            "diagnosticSeverityOverrides": {
+              "reportMissingImports": "none",
+              "reportMissingModuleSource": "none",
+              "reportUndefinedVariable": "warning"
+            }
+          }
+        }
+      }
+    }
+  },
+  "neodev": {
+    "enabled": false
+  }
+}

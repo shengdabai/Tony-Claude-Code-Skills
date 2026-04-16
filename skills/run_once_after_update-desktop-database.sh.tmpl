@@ -1,0 +1,32 @@
+#!/bin/bash
+# run_once_after_update-desktop-database.sh.tmpl
+# Updates the desktop database and MIME cache after adding yazi.desktop
+# Only runs on Linux systems
+
+{{- if .platform.is_linux }}
+
+echo "📁 Updating desktop database for yazi..."
+
+# Update desktop database
+if command -v update-desktop-database &>/dev/null; then
+    update-desktop-database ~/.local/share/applications/ 2>/dev/null
+    echo "✅ Desktop database updated"
+fi
+
+# Update MIME database
+if command -v update-mime-database &>/dev/null; then
+    update-mime-database ~/.local/share/mime/ 2>/dev/null
+    echo "✅ MIME database updated"
+fi
+
+# Set yazi as default via xdg-mime (belt and suspenders)
+if command -v xdg-mime &>/dev/null; then
+    xdg-mime default yazi.desktop inode/directory
+    echo "✅ xdg-mime default set"
+fi
+
+echo "🎉 Yazi configured as default file manager"
+
+{{- else }}
+echo "Skipping desktop database update (not on Linux)"
+{{- end }}

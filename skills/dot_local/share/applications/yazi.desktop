@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Yazi
+Comment=Blazing fast terminal file manager
+Icon=system-file-manager
+Exec=yazi %u
+Terminal=true
+Categories=System;FileTools;FileManager;
+MimeType=inode/directory;
+Keywords=File;Manager;Browser;Explorer;

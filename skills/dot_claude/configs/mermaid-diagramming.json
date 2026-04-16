@@ -1,0 +1,17 @@
+{
+  "name": "mermaid-diagramming",
+  "description": "Create diagrams and visualizations using Mermaid syntax. Use when working with flowcharts, sequence diagrams, Gantt charts, class diagrams, state diagrams, pie charts, and other diagram types supported by Mermaid.",
+  "base_url": "https://mermaid.js.org/",
+  "selectors": {
+    "main_content": ".VPDoc .content, article, main",
+    "title": "h1",
+    "code_blocks": "pre code, .language-mermaid"
+  },
+  "url_patterns": {
+    "include": [],
+    "exclude": ["/community/", "/ecosystem/"]
+  },
+  "categories": {},
+  "rate_limit": 0.5,
+  "max_pages": 50
+}
