@@ -1,0 +1,17 @@
+{
+  "name": "surrealdb-dart",
+  "description": "SurrealDB Dart/Flutter SDK API documentation from pub.dev",
+  "base_url": "https://pub.dev/documentation/surrealdb/latest",
+  "selectors": {
+    "main_content": "article",
+    "title": "h1",
+    "code_blocks": "pre code"
+  },
+  "url_patterns": {
+    "include": [],
+    "exclude": []
+  },
+  "categories": {},
+  "rate_limit": 0.5,
+  "max_pages": null
+}

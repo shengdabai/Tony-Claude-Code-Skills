@@ -1,0 +1,5 @@
+.git
+go
+.local
+node_modules
+cargo

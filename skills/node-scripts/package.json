@@ -1,0 +1,16 @@
+{
+  "name": "node-scripts",
+  "private": true,
+  "scripts": {
+    "lint": "bunx --bun biome lint --write ./src",
+    "format": "bunx --bun biome format --write ./src",
+    "check": "bunx --bun biome check --write ./src"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.2.2",
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

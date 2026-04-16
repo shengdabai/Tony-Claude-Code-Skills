@@ -1,0 +1,30 @@
+# pack-refs with: peeled fully-peeled sorted 
+d0806ba5af48b138cbbf60ac83fe406b70377176 refs/remotes/origin/claude/review-opencode-01SLLYuR1pGuGhqsEKtjjCJK
+76c53cde5b279ce9805336cf8554867e9662d152 refs/remotes/origin/dev
+22f57e7cb0f1928d0e76fa03026e6efffaeefea3 refs/remotes/origin/enable-codex
+113d18ec28c8a4b6226f40d4a218990d8b9aed50 refs/remotes/origin/f/codex
+f600f969f5cccd975ff07d0768ad72b124c7e781 refs/remotes/origin/feature/opencode-support
+9eefffc5417a8ee7096e646e573e82ebb64c41c3 refs/remotes/origin/feature/skills-repo-separation
+2ea4f36b0f4603479db98d975baffb9253ed18af refs/remotes/origin/improve-skills-from-feedback
+80643c26040437740d4a185ed5693d365ca3aeec refs/remotes/origin/main
+803ce11b5d8ca5009822fb610b7cbb816d72df19 refs/remotes/origin/personal-superpowers
+d39bfd6748af8729234895da6a10d914bca53a1f refs/remotes/origin/wip-gemini-cli
+e26094cae1a75d9fcb9043867924233c6ad40c26 refs/tags/v3.1.0
+^0bc5a5989d8cf140e9f671af14c76f6a6e6fae79
+14827acb4ecd50a8e25a57bf6f95a928de12e92b refs/tags/v3.2.2
+^17bbc2b130f817f7b2e8aade82284b5887864c51
+19e2997334eef29d0b4ab3c40a4bc124d200d1fb refs/tags/v3.2.3
+31fd7642854d6d3dfd65959fcefabe71ccee86d9 refs/tags/v3.3.1
+b187e75a1ee46f54247b6720ed49a47bdcc7eb2f refs/tags/v3.4.1
+aa6c26749a005f766b3fb26fc94c22dc55f61e6f refs/tags/v3.5.0
+^94089bdce57c7df7c0c8bdbc94aa204e360f6e17
+1bd0a319ff44e5138060cd4babb391f93455a533 refs/tags/v3.5.1
+^9a01a0dcc1a95bde0ffdb9af6d87236b40156a30
+e21e2f1c4f86e6fb1060ab7cd14d4d41e1ce0bcb refs/tags/v3.6.0
+^a0c1e73a1d016b3967f2fa107db995ded9dcbf29
+2901305418fb2e615f46b80a1e13a5aa0dd2ab0f refs/tags/v3.6.1
+^8462c20cce0ca37ff747d80fde4697fd45a98189
+50cdef8aff1cd8b2e605ce786de5af8a13a7022e refs/tags/v3.6.2
+^154d664373569a83289684d7b01742a82cca4eaf
+1d3b055f175127777e18361119bd1fba4c231d5c refs/tags/v4.0.0
+^95c6e1633630a1462679cf1284b95ec458a27a8e

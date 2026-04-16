@@ -1,0 +1,19 @@
+[tools]
+node = "24"
+"npm:corepack" = "latest"
+bun = "latest"
+ruby = "3.2"
+go = "latest"
+uv = "latest"
+age = "latest"
+sops = "latest"
+
+[settings]
+experimental = true
+
+[env]
+SOPS_AGE_KEY_FILE = "{{config_root}}/.config/mise/age.txt"
+# !DO NOT COMMIT THIS FILE TO GIT!
+# Load my secret env from the file to this config file and redacts the values
+_.file = { path = "~/dotfiles/.env.enc.json", redact = true }
+
