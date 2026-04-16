@@ -110,7 +110,10 @@ A curated collection of **Claude Code skills and MCP servers** configured for pr
 | **twitter** | Custom | Twitter/X integration |
 | **web-scraper** | Custom | Advanced web scraping with anti-detection |
 | **xiaolai** | `/xiaolai` | Xiaolai's Claude tools — Agent SDK + NLPM (Natural-Language Programming Manager) |
+| **follow-builders** | `/ai` | AI builders digest — monitors top AI builders on X and YouTube podcasts | [zarazhangrui/follow-builders](https://github.com/zarazhangrui/follow-builders) |
+| **frontend-slides** | Presentation | Animation-rich HTML presentations from scratch or PPT conversion | [zarazhangrui/frontend-slides](https://github.com/zarazhangrui/frontend-slides) |
 | **youtube** | Custom | YouTube video processing and analysis |
+| **import-to-obsidian** | Custom | Save web content to Obsidian vault with auto-classification and tagging |
 | **import-to-obsidian** | Custom | Save web content to Obsidian vault with auto-classification and tagging |
 | **limit-continue-work** | Custom | Limit continuation in conversations to prevent context overflow |
 | **bb-browser** | Custom | Web scraping via real browser with user login state, form filling, data extraction |
@@ -304,6 +307,8 @@ Individual skills retain their original licenses. Custom skills in this repo are
 | **twitter** | 自定义 | Twitter/X 集成 |
 | **web-scraper** | 自定义 | 高级网页爬取（反检测） |
 | **xiaolai** | `/xiaolai` | 李笑来 Claude 工具集 — Agent SDK + NLPM 自然语言编程管理器 |
+| **follow-builders** | `/ai` | AI Builder 资讯摘要 — 追踪 X 和 YouTube 播客上的顶级 AI 建设者 | [zarazhangrui/follow-builders](https://github.com/zarazhangrui/follow-builders) |
+| **frontend-slides** | 演示文稿 | 从零创建动画丰富的 HTML 演示文稿，或转换 PPT 为网页 | [zarazhangrui/frontend-slides](https://github.com/zarazhangrui/frontend-slides) |
 | **youtube** | 自定义 | YouTube 视频处理与分析 |
 | **import-to-obsidian** | 自定义 | 网页内容保存到 Obsidian，自动分类+标签 |
 | **limit-continue-work** | 自定义 | 限制对话续传，防止上下文溢出 |
