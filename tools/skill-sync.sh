@@ -6,9 +6,11 @@
 
 set -e
 
-SKILLS_DIR="$HOME/.claude/skills"
-REPO_DIR="$HOME/Tony-Claude-Code-Skills"
-SYNC_MARKER_DIR="$HOME/.claude/.sync-markers"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+CLAUDE_DIR="${CLAUDE_DIR:-$HOME/.claude}"
+SKILLS_DIR="$CLAUDE_DIR/skills"
+SYNC_MARKER_DIR="$CLAUDE_DIR/.sync-markers"
 
 # 颜色
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
@@ -47,53 +49,14 @@ needs_sync() {
 
 # 更新 README.md 中的技能列表
 update_readme() {
-    local readme="$REPO_DIR/README.md"
+    local generator="$REPO_DIR/tools/generate-readme.js"
 
-    # 检查是否有 Skills 部分
-    if ! grep -q "## Skills" "$readme"; then
-        log_warn "README.md 中没有找到 Skills 部分，跳过更新"
+    if [ ! -f "$generator" ]; then
+        log_warn "README 生成器不存在，跳过更新"
         return
     fi
 
-    # 生成新的技能列表
-    local skills_list="\n### 自定义 Skills\n\n"
-
-    for skill_dir in "$SKILLS_DIR"/*/; do
-        [ -L "$skill_dir" ] && continue
-        [ -f "$skill_dir/SKILL.md" ] || continue
-
-        local skill_name=$(basename "$skill_dir")
-        local info=$(get_skill_info "$skill_dir")
-        local name=$(echo "$info" | cut -d'|' -f1)
-        local desc=$(echo "$info" | cut -d'|' -f2)
-
-        skills_list+="- **$name** - $desc\n"
-    done
-
-    # 使用临时文件更新 README
-    local temp_readme=$(mktemp)
-
-    # 读取 README 并替换 Skills 部分
-    awk '
-        BEGIN { in_skills=0; printed=0 }
-        /^## Skills/ {
-            print;
-            in_skills=1;
-            if (!printed) {
-                print ""
-                print "### 自定义 Skills"
-                print ""
-                system("for d in ~/.claude/skills/*/; do [ -L \"$d\" ] \&\& continue; [ -f \"$d/SKILL.md\" ] || continue; name=$(basename \"$d\"); desc=$(grep -v \"^#\" \"$d/SKILL.md\" 2>/dev/null | grep -v \"^$\" | head -1 | cut -c1-60); echo \"- **$name** - $desc\"; done")
-                printed=1
-            }
-            next
-        }
-        /^## / { in_skills=0 }
-        in_skills { next }
-        { print }
-    ' "$readme" > "$temp_readme"
-
-    mv "$temp_readme" "$readme"
+    node "$generator"
     log_ok "README.md 已更新"
 }
 

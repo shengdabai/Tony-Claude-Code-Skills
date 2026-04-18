@@ -7,9 +7,10 @@
 
 set -e
 
-SKILLS_DIR="$HOME/.claude/skills"
-REPO_DIR="$HOME/Tony-Claude-Code-Skills"
-CLAUDE_DIR="$HOME/.claude"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+CLAUDE_DIR="${CLAUDE_DIR:-$HOME/.claude}"
+SKILLS_DIR="$CLAUDE_DIR/skills"
 SYNC_MARKER_DIR="$HOME/.claude/.sync-markers"
 
 # 颜色
@@ -247,39 +248,13 @@ sync_other_configs() {
 # 更新主 README
 update_main_readme() {
     log_highlight "📝 更新 README..."
+    local generator="$REPO_DIR/tools/generate-readme.js"
 
-    local readme="$REPO_DIR/README.md"
-    local temp=$(mktemp)
-
-    # 生成技能列表
-    local skills_list=""
-    for skill_dir in "$SKILLS_DIR"/*/; do
-        [ -L "$skill_dir" ] && continue
-        [ -f "$skill_dir/SKILL.md" ] || continue
-        local name=$(basename "$skill_dir")
-        local desc=$(grep -v "^#" "$skill_dir/SKILL.md" 2>/dev/null | grep -v "^$" | grep -v "^---" | head -1 | cut -c1-60)
-        skills_list="${skills_list}- **$name** - $desc\n"
-    done
-
-    # 更新 README 中的技能部分
-    if [ -f "$readme" ]; then
-        awk -v skills="$skills_list" '
-            BEGIN { in_skills=0; printed=0 }
-            /^## Skills/ {
-                print;
-                print "";
-                print skills;
-                printed=1;
-                in_skills=1;
-                next;
-            }
-            /^## / { in_skills=0 }
-            in_skills { next }
-            { print }
-        ' "$readme" > "$temp" 2>/dev/null || cp "$readme" "$temp"
-
-        mv "$temp" "$readme"
+    if [ -f "$generator" ]; then
+        node "$generator"
         log_ok "  ✓ README 已更新"
+    else
+        log_warn "  README 生成器不存在，跳过 README 更新"
     fi
 }
 

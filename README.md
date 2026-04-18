@@ -1,338 +1,145 @@
-# Tony's Claude Code Skills & MCP Collection
+# Tony's Claude Code Skills & Codex Workflow Collection
 
-[中文版](#中文版) | [English](#english-version)
+[English](#english) | [中文](#中文)
 
----
+> This README is generated from the repository contents. The skill index below is always built from `skills/`, so newly synced skills can be browsed directly from the README.
+>
+> 这个 README 根据仓库内容自动生成。下面的技能索引直接来自 `skills/` 目录，因此每次同步后的技能都能在 README 中直接查看。
 
-## English Version
+## English
 
-A curated collection of **Claude Code skills and MCP servers** configured for production use. This repo documents every tool, skill, and integration that powers my daily AI-assisted development workflow.
+This repository mirrors my day-to-day AI workflow assets for Claude Code and Codex.
 
----
+- `skills/` stores the published skill folders that I sync from my local setup.
+- `config/` stores sanitized configuration snapshots such as MCP settings and hooks.
+- `tools/` stores the sync helpers that copy local skills into the repo and regenerate this README.
 
-### MCP Servers
+### Why This README Stays Accurate
 
-| Name | Description | Source |
-|------|-------------|--------|
-| **context7** | Up-to-date library documentation lookup | [upstash/context7-mcp](https://github.com/upstash/context7-mcp) |
-| **firecrawl** | Web scraping and crawling with clean content extraction | [mendableai/firecrawl-mcp-server](https://github.com/mendableai/firecrawl-mcp-server) |
-| **exa** | AI-powered web search and answer engine | [exa-labs/exa-mcp-server](https://github.com/exa-labs/exa-mcp-server) |
-| **github** | Full GitHub API access (repos, issues, PRs, etc.) | [github/github-mcp-server](https://github.com/github/github-mcp-server) |
-| **playwright** | Browser automation and web page interaction | [playwright-ai/mcp-server](https://github.com/anthropics/anthropic-cookbook/tree/main/mcp/playwright) |
-| **getnote** | Access to GetNote knowledge base (292 Chinese teaching notes from 200h recordings) | Custom — [github.com/tony/getnote-mcp](https://github.com/tony/getnote-mcp) |
-| **gbrain** | GBrain AI inference server | Custom — [garrytan/gbrain](https://github.com/garrytan/gbrain) |
-| **notebooklm** | Google NotebookLM integration for audio notebooks | Custom npm package (`notebooklm-mcp`) |
-| **lark** | Lark (Feishu) CLI integration — IM, docs, sheets, calendar | [lark-mcp](https://github.com/nicepkg/lark-mcp) |
-| **airmcp** | AI MCP server for additional AI tool integrations | [airmcp](https://github.com/nicepkg/airmcp) |
+- The skill index is generated from the actual repository directories, not maintained by hand.
+- Running `bash tools/config-sync.sh` or `bash tools/skill-sync.sh` regenerates the README after syncing files.
+- That means whatever is pushed under `skills/` is also visible here for quick browsing.
 
----
+### Repository Snapshot
 
-### Skills
+- Total skill folders: **73**
+- MCP servers in sanitized config: **10**
+- Main sync command: `bash tools/config-sync.sh`
 
-#### Core Workflow
+## 中文
 
-| Skill | Command | Description | Source |
-|-------|---------|-------------|--------|
-| **gstack** | `/gstack` | Multi-mode workflow orchestration: CEO reviews, engineering reviews, design audits, QA testing, shipping pipeline | [garrytan/gstack](https://github.com/garrytan/gstack) |
-| **omc-reference** | `/oh-my-claudecode:*` | Oh-My-ClaudeCode agent catalog, team pipeline routing, commit protocol, skills registry | [ultraworkers/claw-code](https://github.com/ultraworkers/claw-code) |
-| **review** | `/review` | Code review with severity-rated feedback, logic defect detection, SOLID principle checks | [gstack](https://github.com/garrytan/gstack) |
-| **ship** | `/ship` | One-click release/deploy pipeline with PR creation and verification | [gstack](https://github.com/garrytan/gstack) |
-| **qa** | `/qa` | Automated QA testing with browser and auto-fix | [gstack](https://github.com/garrytan/gstack) |
-| **qa-only** | `/qa-only` | QA testing, report only (no auto-fix) | [gstack](https://github.com/garrytan/gstack) |
-| **investigate** | `/investigate` | Bug investigation using scientific method with evidence tracking | [gstack](https://github.com/garrytan/gstack) |
-| **retro** | `/retro` | Weekly retrospective review of work progress | [gstack](https://github.com/garrytan/gstack) |
-| **document-release** | `/document-release` | Auto-update documentation after shipping | [gstack](https://github.com/garrytan/gstack) |
-| **setup-browser-cookies** | `/setup-browser-cookies` | Configure browser cookies for web-based tools | [gstack](https://github.com/garrytan/gstack) |
-| **browse** | `/browse` | Web browsing via browser automation | [gstack](https://github.com/garrytan/gstack) |
+这个仓库用于镜像我日常在 Claude Code 和 Codex 中使用的 AI 工作流资产。
 
-#### Code Quality & Architecture
+- `skills/` 保存从本地环境同步出来并发布到仓库的技能目录。
+- `config/` 保存已经脱敏的配置快照，例如 MCP 设置和 hooks。
+- `tools/` 保存同步脚本，以及生成本 README 的辅助工具。
 
-| Skill | Command | Description | Source |
-|-------|---------|-------------|--------|
-| **plan-ceo-review** | `/plan-ceo-review` | Product-minded review of feature ideas with CEO-level perspective | [gstack](https://github.com/garrytan/gstack) |
-| **plan-eng-review** | `/plan-eng-review` | Engineering architecture review for technical decisions | [gstack](https://github.com/garrytan/gstack) |
-| **plan-design-review** | `/plan-design-review` | Design audit with 7-dimension scoring | [gstack](https://github.com/garrytan/gstack) |
-| **plan-devex-review** | `/plan-devex-review` | Developer experience review | [gstack](https://github.com/garrytan/gstack) |
-| **health** | `/health` | Code quality health check | [gstack](https://github.com/garrytan/gstack) |
-| **checkpoint** | `/checkpoint` | Save progress, checkpoint, resume | [gstack](https://github.com/garrytan/gstack) |
-| **careful** | `/careful` | Careful, methodical execution mode | [gstack](https://github.com/garrytan/gstack) |
-| **guard** | `/guard` | Safety guard for risky operations | [gstack](https://github.com/garrytan/gstack) |
-| **freeze** | `/freeze` | Freeze current state | [gstack](https://github.com/garrytan/gstack) |
-| **unfreeze** | `/unfreeze` | Unfreeze state | [gstack](https://github.com/garrytan/gstack) |
-| **verification-gate** | `/verify` | Read-only verification pass to validate completion claims | [gstack](https://github.com/garrytan/gstack) |
+### 为什么 README 能保持同步
 
-#### Design (Impeccable)
+- 技能索引是根据仓库里真实存在的目录自动生成的，不再手工维护。
+- 运行 `bash tools/config-sync.sh` 或 `bash tools/skill-sync.sh` 时，会在同步后自动重建 README。
+- 这样只要新的技能被推送到 `skills/`，README 里也会同步出现，便于查看和检索。
 
-| Skill | Command | Description | Source |
-|-------|---------|-------------|--------|
-| **design-consultation** | `/design-consultation` | Build design systems from scratch, create DESIGN.md | [gstack](https://github.com/garrytan/gstack) |
-| **design-review** | `/design-review` | Visual QA with screenshot → fix → verify loop | [gstack](https://github.com/garrytan/gstack) |
-| **design-shotgun** | `/design-shotgun` | Explore multiple design variants with comparison board | [gstack](https://github.com/garrytan/gstack) |
-| **design-html** | `/design-html` | Implement designs as native Pretext HTML | [gstack](https://github.com/garrytan/gstack) |
+### 仓库快照
 
-#### OMC (Oh-My-ClaudeCode)
+- 技能目录总数：**73**
+- 已脱敏配置中的 MCP 服务器数量：**10**
+- 主要同步命令：`bash tools/config-sync.sh`
 
-| Skill | Command | Description | Source |
-|-------|---------|-------------|--------|
-| **autopilot** | `/autopilot` | Autonomous execution mode | [ultraworkers/claw-code](https://github.com/ultraworkers/claw-code) |
-| **ultrawork** | `/ultrawork` | High-throughput iterative mode | [ultraworkers/claw-code](https://github.com/ultraworkers/claw-code) |
-| **ralplan** | `/ralplan` | Strategic planning with interview workflow | [ultraworkers/claw-code](https://github.com/ultraworkers/claw-code) |
-| **ccg** | `/ccg` | Claude Code Guide agent | [ultraworkers/claw-code](https://github.com/ultraworkers/claw-code) |
-| **deep-interview** | `/deep-interview` | Deep interview mode for requirements analysis | [ultraworkers/claw-code](https://github.com/ultraworkers/claw-code) |
-| **ultraqa** | `/ultraqa` | Enhanced QA testing | [ultraworkers/claw-code](https://github.com/ultraworkers/claw-code) |
-| **team** | `/team` | Multi-agent team orchestration | [ultraworkers/claw-code](https://github.com/ultraworkers/claw-code) |
-| **omc-setup** | `/oh-my-claudecode:setup` | Setup OMC | [ultraworkers/claw-code](https://github.com/ultraworkers/claw-code) |
+## Skill Index / 技能索引
 
-#### Custom / Personal Skills
+Auto-generated from `skills/`. Descriptions are extracted from each skill's own documentation when available.
 
-| Skill | Command | Description |
-|-------|---------|-------------|
-| **agent-builder** | Custom | Agent builder for autonomous AI agent creation |
-| **architecture-diagram** | Custom | Create professional architecture diagrams as standalone HTML with SVG |
-| **code-to-course** | Custom | Turn codebases into interactive HTML courses (bilingual CN/EN) |
-| **darwin-skill** | Custom | Autonomous skill optimizer — evaluates, hill-climbs, validates SKILL.md files |
-| **dream-memory** | Custom | Consolidate logs/sessions into durable topic memories, prune stale entries |
-| **fireworks-tech-graph** | Custom | Tech stack dependency graph visualization |
-| **fit-coach** | `/fit-coach` | Professional fitness coach — nutrition planning + adaptive training |
-| **json-canvas** | Custom | Create/edit Obsidian JSON Canvas files (.canvas) with nodes, edges, groups |
-| **kairos-lite** | Custom | Lightweight background check mode with scheduled checks and sleep intervals |
-| **llm-council** | Custom | Multi-model council for decision making |
-| **memory-extractor** | Custom | Extract durable memories from conversations into categorized files |
-| **obsidian-bases** | Custom | Create/edit Obsidian Bases (.base) with views, filters, formulas |
-| **obsidian-cli** | Custom | CLI interaction with Obsidian vaults — notes, tasks, plugins |
-| **obsidian-markdown** | Custom | Obsidian Flavored Markdown — wikilinks, embeds, callouts, properties |
-| **planning-with-files** | Custom | File-based task planning (Manus-style) — creates task_plan.md, findings.md, progress.md |
-| **remote-control** | Custom | Sync terminal Claude Code session to mobile/browser Claude app |
-| **rename** | Custom | Rename/refactor operations |
-| **risk-guard** | Custom | Risk analysis and mitigation for code changes |
-| **structured-context-compressor** | Custom | Compress long agent conversations into nine-part continuation summaries |
-| **swarm-coordinator** | Custom | Coordinate multiple agents — research, synthesis, implementation, verification |
-| **twitter** | Custom | Twitter/X integration |
-| **web-scraper** | Custom | Advanced web scraping with anti-detection |
-| **xiaolai** | `/xiaolai` | Xiaolai's Claude tools — Agent SDK + NLPM (Natural-Language Programming Manager) |
-| **follow-builders** | `/ai` | AI builders digest — monitors top AI builders on X and YouTube podcasts | [zarazhangrui/follow-builders](https://github.com/zarazhangrui/follow-builders) |
-| **frontend-slides** | Presentation | Animation-rich HTML presentations from scratch or PPT conversion | [zarazhangrui/frontend-slides](https://github.com/zarazhangrui/frontend-slides) |
-| **youtube** | Custom | YouTube video processing and analysis |
-| **import-to-obsidian** | Custom | Save web content to Obsidian vault with auto-classification and tagging |
-| **import-to-obsidian** | Custom | Save web content to Obsidian vault with auto-classification and tagging |
-| **limit-continue-work** | Custom | Limit continuation in conversations to prevent context overflow |
-| **bb-browser** | Custom | Web scraping via real browser with user login state, form filling, data extraction |
-| **galaxy-ui** | Auto | 3,800+ Uiverse UI components — buttons, cards, loaders, inputs, toggles, forms, checkboxes, patterns, radio buttons, notifications, tooltips |
+根据 `skills/` 自动生成。描述优先取自每个技能自身的文档。
 
-#### Built-in (Claude Code)
+| Skill | Description | Folder |
+| --- | --- | --- |
+| [`agent-builder`](skills/agent-builder/) | Design and build AI agents for any domain. Use when users: (1) ask to "create an agent", "build an assistant", or "design an AI system" (2) want to understand agent architecture,... | [Open](skills/agent-builder/) |
+| [`architecture-diagram`](skills/architecture-diagram/) | Create professional, dark-themed architecture diagrams as standalone HTML files with SVG graphics. Use when the user asks for system architecture diagrams, infrastructure diagrams... | [Open](skills/architecture-diagram/) |
+| [`auto-browser`](skills/auto-browser/) | 自动智能网页内容获取工具，根据URL特征智能选择最佳工具组合。 | [Open](skills/auto-browser/) |
+| [`autoplan`](skills/autoplan/) | Auto-review pipeline — reads the full CEO, design, eng, and DX review skills from disk and runs them sequentially with auto-decisions using 6 decision principles. Surfaces taste d... | [Open](skills/autoplan/) |
+| [`autoresearch`](skills/autoresearch/) | Autonomous ML research agent inspired by Karpathy's autoresearch. Given a training codebase, the agent runs continuous experimentation loops: modify model code, train for 5 minute... | [Open](skills/autoresearch/) |
+| [`bb-browser`](skills/bb-browser/) | 网页爬取、爬虫、反爬、scrape、crawler、spider、anti-detection、headless browser、web scraping 工具。通过真实浏览器 + 用户登录态，获取公域和私域信息。可访问任意网页、内部系统、登录后页面，执行表单填写、信息提取、页面操作。支持 site 系统（36 平台 126 命令一键调用）、带登录态的 f... | [Open](skills/bb-browser/) |
+| [`benchmark`](skills/benchmark/) | Performance regression detection using the browse daemon. Establishes baselines for page load times, Core Web Vitals, and resource sizes. Compares before/after on every PR. Tracks... | [Open](skills/benchmark/) |
+| [`browse`](skills/browse/) | Fast headless browser for QA testing and site dogfooding. Navigate any URL, interact with elements, verify page state, diff before/after actions, take annotated screenshots, check... | [Open](skills/browse/) |
+| [`canary`](skills/canary/) | Post-deploy canary monitoring. Watches the live app for console errors, performance regressions, and page failures using the browse daemon. Takes periodic screenshots, compares ag... | [Open](skills/canary/) |
+| [`careful`](skills/careful/) | Safety guardrails for destructive commands. Warns before rm -rf, DROP TABLE, force-push, git reset --hard, kubectl delete, and similar destructive operations. User can override ea... | [Open](skills/careful/) |
+| [`checkpoint`](skills/checkpoint/) | Save and resume working state checkpoints. Captures git state, decisions made, and remaining work so you can pick up exactly where you left off — even across Conductor workspace h... | [Open](skills/checkpoint/) |
+| [`code-to-course`](skills/code-to-course/) | Turn any codebase into a beautiful, interactive single-page HTML course with bilingual (Chinese/English) support. Use this skill whenever someone wants to create an interactive co... | [Open](skills/code-to-course/) |
+| [`codex`](skills/codex/) | OpenAI Codex CLI wrapper — three modes. Code review: independent diff review via codex review with pass/fail gate. Challenge: adversarial mode that tries to break your code. Consu... | [Open](skills/codex/) |
+| [`connect-chrome`](skills/connect-chrome/) | Launch GStack Browser — AI-controlled Chromium with the sidebar extension baked in. Opens a visible browser window where you can watch every action in real time. The sidebar shows... | [Open](skills/connect-chrome/) |
+| [`cso`](skills/cso/) | Chief Security Officer mode. Infrastructure-first security audit: secrets archaeology, dependency supply chain, CI/CD pipeline security, LLM/AI security, skill supply chain scanni... | [Open](skills/cso/) |
+| [`darwin-skill`](skills/darwin-skill/) | Autonomous skill optimizer inspired by Karpathy's autoresearch. Evaluates SKILL.md files using an 8-dimension rubric (structure + effectiveness), runs hill-climbing with git versi... | [Open](skills/darwin-skill/) |
+| [`defuddle`](skills/defuddle/) | Extract clean markdown content from web pages using Defuddle CLI, removing clutter and navigation to save tokens. Use instead of WebFetch when the user provides a URL to read or a... | [Open](skills/defuddle/) |
+| [`design-consultation`](skills/design-consultation/) | Design consultation: understands your product, researches the landscape, proposes a complete design system (aesthetic, typography, color, layout, spacing, motion), and generates f... | [Open](skills/design-consultation/) |
+| [`design-html`](skills/design-html/) | Design finalization: generates production-quality Pretext-native HTML/CSS. Works with approved mockups from /design-shotgun, CEO plans from /plan-ceo-review, design review context... | [Open](skills/design-html/) |
+| [`design-review`](skills/design-review/) | Designer's eye QA: finds visual inconsistency, spacing issues, hierarchy problems, AI slop patterns, and slow interactions — then fixes them. Iteratively fixes issues in source co... | [Open](skills/design-review/) |
+| [`design-shotgun`](skills/design-shotgun/) | Design shotgun: generate multiple AI design variants, open a comparison board, collect structured feedback, and iterate. Standalone design exploration you can run anytime. Use whe... | [Open](skills/design-shotgun/) |
+| [`devex-review`](skills/devex-review/) | Live developer experience audit. Uses the browse tool to actually TEST the developer experience: navigates docs, tries the getting started flow, times TTHW, screenshots error mess... | [Open](skills/devex-review/) |
+| [`document-release`](skills/document-release/) | Post-ship documentation update. Reads all project docs, cross-references the diff, updates README/ARCHITECTURE/CONTRIBUTING/CLAUDE.md to match what shipped, polishes CHANGELOG voi... | [Open](skills/document-release/) |
+| [`dream-memory`](skills/dream-memory/) | Consolidate recent logs, sessions, and existing memory files into durable topic memories, normalize dates, prune stale entries, and keep MEMORY.md short enough for prompt use. | [Open](skills/dream-memory/) |
+| [`fireworks-tech-graph`](skills/fireworks-tech-graph/) | Use when the user wants to create any technical diagram - architecture, data flow, flowchart, sequence, agent/memory, or concept map - and export as SVG+PNG. Trigger on: "画图" "帮我画... | [Open](skills/fireworks-tech-graph/) |
+| [`fit-coach`](skills/fit-coach/) | Professional fitness coach combining nutrition planning and adaptive training. Use when users mention fitness, workout, gym, exercise, diet, meal plan, weight loss, muscle gain, b... | [Open](skills/fit-coach/) |
+| [`freeze`](skills/freeze/) | Restrict file edits to a specific directory for the session. Blocks Edit and Write outside the allowed path. Use when debugging to prevent accidentally "fixing" unrelated code, or... | [Open](skills/freeze/) |
+| [`galaxy-ui`](skills/galaxy-ui/) | Browse and retrieve UI components from Uiverse Galaxy — 3,800+ HTML/CSS components including buttons, cards, inputs, loaders, checkboxes, toggles, tooltips, notifications, forms,... | [Open](skills/galaxy-ui/) |
+| [`gstack`](skills/gstack/) | Fast headless browser for QA testing and site dogfooding. Navigate pages, interact with elements, verify state, diff before/after, take annotated screenshots, test responsive layo... | [Open](skills/gstack/) |
+| [`gstack-upgrade`](skills/gstack-upgrade/) | Upgrade gstack to the latest version. Detects global vs vendored install, runs the upgrade, and shows what's new. Use when asked to "upgrade gstack", "update gstack", or "get late... | [Open](skills/gstack-upgrade/) |
+| [`guard`](skills/guard/) | Full safety mode: destructive command warnings + directory-scoped edits. Combines /careful (warns before rm -rf, DROP TABLE, force-push, etc.) with /freeze (blocks edits outside a... | [Open](skills/guard/) |
+| [`health`](skills/health/) | Code quality dashboard. Wraps existing project tools (type checker, linter, test runner, dead code detector, shell linter), computes a weighted composite 0-10 score, and tracks tr... | [Open](skills/health/) |
+| [`history`](skills/history/) | Browse Claude Code conversation history. List past sessions with concise summaries, view full conversations, and search across all sessions. | [Open](skills/history/) |
+| [`import-to-obsidian`](skills/import-to-obsidian/) | Use when user wants to save web content, articles, videos, or any URL to Obsidian vault. Auto-triggers on keywords like "obsidian", "import", "clip", "save to vault", "知识库", "收藏".... | [Open](skills/import-to-obsidian/) |
+| [`investigate`](skills/investigate/) | Systematic debugging with root cause investigation. Four phases: investigate, analyze, hypothesize, implement. Iron Law: no fixes without root cause. Use when asked to "debug this... | [Open](skills/investigate/) |
+| [`json-canvas`](skills/json-canvas/) | Create and edit JSON Canvas files (.canvas) with nodes, edges, groups, and connections. Use when working with .canvas files, creating visual canvases, mind maps, flowcharts, or wh... | [Open](skills/json-canvas/) |
+| [`kairos-lite`](skills/kairos-lite/) | Build a lightweight proactive mode with scheduled checks, sleep intervals, concise user briefs, and expiry safeguards so an agent can work in the background without becoming an un... | [Open](skills/kairos-lite/) |
+| [`land-and-deploy`](skills/land-and-deploy/) | Land and deploy workflow. Merges the PR, waits for CI and deploy, verifies production health via canary checks. Takes over after /ship creates the PR. Use when: "merge", "land", "... | [Open](skills/land-and-deploy/) |
+| [`learn`](skills/learn/) | Manage project learnings. Review, search, prune, and export what gstack has learned across sessions. Use when asked to "what have we learned", "show learnings", "prune stale learn... | [Open](skills/learn/) |
+| [`limit-continue-work`](skills/limit-continue-work/) | 当 Claude Code 遇到 5 小时用量限制（rate limit）时，自动等待用量重置并继续执行之前的任务。 保存任务快照 + 使用 CronCreate 原生定时任务 + 自动恢复执行。 Use when: "limit continue", "auto continue", "等限制重置", "自动继续", "用量限制后继续", "设置限制后自... | [Open](skills/limit-continue-work/) |
+| [`llm-council`](skills/llm-council/) | LLM Council — Karpathy 式多模型议会。5 个 AI 顾问并行回答问题， 匿名互评打分，主席综合最佳答案。触发：/llm-council, /council, "开会讨论", "council", "议会模式" | [Open](skills/llm-council/) |
+| [`logo-generator`](skills/logo-generator/) | Generate professional SVG logos and high-end showcase images. Use when the user wants to: (1) Create a logo or icon for their product/brand, (2) Generate logo design concepts base... | [Open](skills/logo-generator/) |
+| [`memory-extractor`](skills/memory-extractor/) | Extract durable memories from recent conversation turns into user, feedback, project, and reference categories while avoiding stale code-state facts. | [Open](skills/memory-extractor/) |
+| [`obsidian-bases`](skills/obsidian-bases/) | Create and edit Obsidian Bases (.base files) with views, filters, formulas, and summaries. Use when working with .base files, creating database-like views of notes, or when the us... | [Open](skills/obsidian-bases/) |
+| [`obsidian-cli`](skills/obsidian-cli/) | Interact with Obsidian vaults using the Obsidian CLI to read, create, search, and manage notes, tasks, properties, and more. Also supports plugin and theme development with comman... | [Open](skills/obsidian-cli/) |
+| [`obsidian-markdown`](skills/obsidian-markdown/) | Create and edit Obsidian Flavored Markdown with wikilinks, embeds, callouts, properties, and other Obsidian-specific syntax. Use when working with .md files in Obsidian, or when t... | [Open](skills/obsidian-markdown/) |
+| [`office-hours`](skills/office-hours/) | YC Office Hours — two modes. Startup mode: six forcing questions that expose demand reality, status quo, desperate specificity, narrowest wedge, observation, and future-fit. Build... | [Open](skills/office-hours/) |
+| [`omc-reference`](skills/omc-reference/) | OMC agent catalog, available tools, team pipeline routing, commit protocol, and skills registry. Auto-loads when delegating to agents, using OMC tools, orchestrating teams, making... | [Open](skills/omc-reference/) |
+| [`open-gstack-browser`](skills/open-gstack-browser/) | Launch GStack Browser — AI-controlled Chromium with the sidebar extension baked in. Opens a visible browser window where you can watch every action in real time. The sidebar shows... | [Open](skills/open-gstack-browser/) |
+| [`pair-agent`](skills/pair-agent/) | Pair a remote AI agent with your browser. One command generates a setup key and prints instructions the other agent can follow to connect. Works with OpenClaw, Hermes, Codex, Curs... | [Open](skills/pair-agent/) |
+| [`plan-ceo-review`](skills/plan-ceo-review/) | CEO/founder-mode plan review. Rethink the problem, find the 10-star product, challenge premises, expand scope when it creates a better product. Four modes: SCOPE EXPANSION (dream... | [Open](skills/plan-ceo-review/) |
+| [`plan-design-review`](skills/plan-design-review/) | Designer's eye plan review — interactive, like CEO and Eng review. Rates each design dimension 0-10, explains what would make it a 10, then fixes the plan to get there. Works in p... | [Open](skills/plan-design-review/) |
+| [`plan-devex-review`](skills/plan-devex-review/) | Interactive developer experience plan review. Explores developer personas, benchmarks against competitors, designs magical moments, and traces friction points before scoring. Thre... | [Open](skills/plan-devex-review/) |
+| [`plan-eng-review`](skills/plan-eng-review/) | Eng manager-mode plan review. Lock in the execution plan — architecture, data flow, diagrams, edge cases, test coverage, performance. Walks through issues interactively with opini... | [Open](skills/plan-eng-review/) |
+| [`planning-with-files`](skills/planning-with-files/) | Implements Manus-style file-based planning to organize and track progress on complex tasks. Creates task_plan.md, findings.md, and progress.md. Use when asked to plan out, break d... | [Open](skills/planning-with-files/) |
+| [`qa`](skills/qa/) | Systematically QA test a web application and fix bugs found. Runs QA testing, then iteratively fixes bugs in source code, committing each fix atomically and re-verifying. Use when... | [Open](skills/qa/) |
+| [`qa-only`](skills/qa-only/) | Report-only QA testing. Systematically tests a web application and produces a structured report with health score, screenshots, and repro steps — but never fixes anything. Use whe... | [Open](skills/qa-only/) |
+| [`remote-control`](skills/remote-control/) | Claude Code 官方远程控制 — 将终端 Claude Code 会话同步到手机/浏览器 Claude app。当用户说"远程控制"、"remote control"、"手机同步"、"手机连接"、"远程连接"等时触发。 | [Open](skills/remote-control/) |
+| [`rename`](skills/rename/) | 重命名当前终端标签页。用法：/rename <名称> 设置后在整个会话中保持不变，不会被任何操作覆盖。 | [Open](skills/rename/) |
+| [`retro`](skills/retro/) | Weekly engineering retrospective. Analyzes commit history, work patterns, and code quality metrics with persistent history and trend tracking. Team-aware: breaks down per-person c... | [Open](skills/retro/) |
+| [`review`](skills/review/) | Pre-landing PR review. Analyzes diff against the base branch for SQL safety, LLM trust boundary violations, conditional side effects, and other structural issues. Use when asked t... | [Open](skills/review/) |
+| [`risk-guard`](skills/risk-guard/) | Account ban risk monitor for Claude Code. Detects dangerous usage patterns that could trigger rate limiting, account suspension, or banning. Auto-triggers on session start. Manual... | [Open](skills/risk-guard/) |
+| [`setup-browser-cookies`](skills/setup-browser-cookies/) | Import cookies from your real Chromium browser into the headless browse session. Opens an interactive picker UI where you select which cookie domains to import. Use before QA test... | [Open](skills/setup-browser-cookies/) |
+| [`setup-deploy`](skills/setup-deploy/) | Configure deployment settings for /land-and-deploy. Detects your deploy platform (Fly.io, Render, Vercel, Netlify, Heroku, GitHub Actions, custom), production URL, health check en... | [Open](skills/setup-deploy/) |
+| [`ship`](skills/ship/) | Ship workflow: detect + merge base branch, run tests, review diff, bump VERSION, update CHANGELOG, commit, push, create PR. Use when asked to "ship", "deploy", "push to main", "cr... | [Open](skills/ship/) |
+| [`structured-context-compressor`](skills/structured-context-compressor/) | Compress a long agent conversation into a nine-part continuation summary that preserves request, files, errors, user messages, current work, and the next aligned step. | [Open](skills/structured-context-compressor/) |
+| [`swarm-coordinator`](skills/swarm-coordinator/) | Coordinate multiple agents by splitting work into research, synthesis, implementation, and verification, assigning ownership, and keeping the coordinator focused on integration ra... | [Open](skills/swarm-coordinator/) |
+| [`twitter`](skills/twitter/) | Launch the X/Twitter Poster Agent to auto-create and publish tweets. Use when: user types /twitter, /x, wants to post tweets, create threads, write X content, or manage Twitter po... | [Open](skills/twitter/) |
+| [`unfreeze`](skills/unfreeze/) | Clear the freeze boundary set by /freeze, allowing edits to all directories again. Use when you want to widen edit scope without ending the session. Use when asked to "unfreeze",... | [Open](skills/unfreeze/) |
+| [`verification-gate`](skills/verification-gate/) | Run a read-only verification pass after implementation to check whether completion claims are real, validation actually ran, and obvious edge cases or regressions were missed. | [Open](skills/verification-gate/) |
+| [`web-scraper`](skills/web-scraper/) | 智能三级降级网页内容提取。当用户发送 URL 链接并要求提取/阅读/总结网页内容时自动触发。 触发场景：用户发送任何 http/https URL 并期望获取其内容（非 GitHub PR/Issue，非搜索请求）。 例如："读取这篇文章"、"帮我看看这个链接"、"总结这个网页"、直接发 URL。 | [Open](skills/web-scraper/) |
+| [`xiaolai`](skills/xiaolai/) | Xiaolai's Claude tools collection. Use when user types /xiaolai. Routes to: (1) claude-agent-sdk — Agent SDK reference for building autonomous AI agents, or (2) nlpm — Natural-Lan... | [Open](skills/xiaolai/) |
+| [`youtube`](skills/youtube/) | Launch the YouTube Creator Agent to auto-generate videos. Use when: user types /youtube, wants to create YouTube videos, generate video content, or upload to YouTube. Keywords: yo... | [Open](skills/youtube/) |
 
-36 built-in skills from Claude Code: `algorithmic-art`, `brand-guidelines`, `canvas-design`, `claude-api`, `do`, `doc-coauthoring`, `docx`, `frontend-design`, `internal-comms`, `make-plan`, `mama`, `mcp-builder`, `mem-search`, `p7`, `p9`, `p10`, `pdf`, `pptx`, `pro`, `pua`, `pua-en`, `pua-ja`, `pua-loop`, `shot`, `skill-creator`, `slack-gif-creator`, `smart-explore`, `smux`, `template-skill`, `theme-factory`, `timeline-report`, `web-access`, `web-artifacts-builder`, `webapp-testing`, `xlsx`, `yes`
+## Sync Workflow / 同步方式
 
-#### GStack Additional
+1. Update or add skills in the local Claude Code setup.
+2. Run `bash tools/config-sync.sh` to sync skills, sanitized configs, and regenerate the README.
+3. Review the diff, commit, and push.
 
-| Skill | Command | Description | Source |
-|-------|---------|-------------|--------|
-| **gstack-upgrade** | `/gstack-upgrade` | Upgrade gstack to latest version | [gstack](https://github.com/garrytan/gstack) |
-| **learn** | `/learn` | Learn from past patterns | [gstack](https://github.com/garrytan/gstack) |
-| **open-gstack-browser** | Custom | Open gstack browser session | [gstack](https://github.com/garrytan/gstack) |
-| **pair-agent** | Custom | Pair programming agent | [gstack](https://github.com/garrytan/gstack) |
-| **canary** | Custom | Canary testing | [gstack](https://github.com/garrytan/gstack) |
-| **devex-review** | Custom | Developer experience review | [gstack](https://github.com/garrytan/gstack) |
-| **office-hours** | Custom | Office hours review | [gstack](https://github.com/garrytan/gstack) |
-| **codex** | Custom | Codex CLI integration | [gstack](https://github.com/garrytan/gstack) |
-| **connect-chrome** | Custom | Connect to Chrome browser | [gstack](https://github.com/garrytan/gstack) |
-| **cso** | Custom | CSO (Chief Security Officer) mode | [gstack](https://github.com/garrytan/gstack) |
-| **defuddle** | Custom | Clean markdown content extraction | [gstack](https://github.com/garrytan/gstack) |
-| **history** | Custom | Session history management | [gstack](https://github.com/garrytan/gstack) |
-| **benchmark** | Custom | Benchmarking mode | [gstack](https://github.com/garrytan/gstack) |
-| **autoplan** | Custom | Auto planning mode | [gstack](https://github.com/garrytan/gstack) |
-| **autoresearch** | Custom | Autonomous ML research agent | [gstack](https://github.com/garrytan/gstack) |
-| **setup-deploy** | Custom | Setup and deploy | [gstack](https://github.com/garrytan/gstack) |
-| **land-and-deploy** | Custom | Land and deploy workflow | [gstack](https://github.com/garrytan/gstack) |
+1. 在本地 Claude Code 环境中新增或更新技能。
+2. 运行 `bash tools/config-sync.sh`，同步 skills、脱敏配置，并重新生成 README。
+3. 检查 diff 后提交并推送。
 
----
+## License / 许可证
 
-### File Structure
+Individual skills may retain their own upstream licenses. Repository-level scripts and documentation in this repo follow the repository license.
 
-```
-Tony-Claude-Code-Skills/
-├── README.md              # This file (bilingual)
-├── skills/
-│   ├── agent-builder/     # Custom skill files
-│   ├── architecture-diagram/
-│   ├── code-to-course/
-│   ├── darwin-skill/
-│   ├── dream-memory/
-│   ├── fit-coach/
-│   ├── json-canvas/
-│   ├── kairos-lite/
-│   ├── llm-council/
-│   ├── memory-extractor/
-│   ├── obsidian-bases/
-│   ├── obsidian-cli/
-│   ├── obsidian-markdown/
-│   ├── planning-with-files/
-│   ├── remote-control/
-│   ├── rename/
-│   ├── risk-guard/
-│   ├── structured-context-compressor/
-│   ├── swarm-coordinator/
-│   ├── twitter/
-│   ├── web-scraper/
-│   ├── xiaolai/
-│   └── youtube/
-├── mcp-servers/
-│   └── README.md          # MCP server configurations
-└── .gitignore
-```
-
----
-
-### Usage
-
-1. Clone or download this repository
-2. Browse the `skills/` directory for custom skill definitions
-3. Check `mcp-servers/` for MCP server configurations
-4. External skills reference their GitHub source repos (linked above)
-5. Install skills by copying directories to `~/.claude/skills/`
-6. Install MCP servers by adding configs to `~/.claude/settings.json`
-
-### Contributing
-
-If you find a skill useful or want to improve one — **issues and PRs welcome**. This collection grows through community feedback.
-
-### License
-
-Individual skills retain their original licenses. Custom skills in this repo are MIT licensed.
-
----
-
-## 中文版
-
-精心整理的 **Claude Code 技能和 MCP 服务器集合**，用于日常 AI 辅助开发工作流。
-
----
-
-### MCP 服务器
-
-| 名称 | 说明 | 来源 |
-|------|------|------|
-| **context7** | 实时查询最新库文档 | [upstash/context7-mcp](https://github.com/upstash/context7-mcp) |
-| **firecrawl** | 网页爬取与内容提取 | [mendableai/firecrawl-mcp-server](https://github.com/mendableai/firecrawl-mcp-server) |
-| **exa** | AI 驱动的搜索引擎 | [exa-labs/exa-mcp-server](https://github.com/exa-labs/exa-mcp-server) |
-| **github** | 完整 GitHub API 访问 | [github/github-mcp-server](https://github.com/github/github-mcp-server) |
-| **playwright** | 浏览器自动化 | [Playwright MCP](https://github.com/anthropics/anthropic-cookbook/tree/main/mcp/playwright) |
-| **getnote** | GetNote 知识库（292 条中文教学笔记） | 自定义 — [github.com/tony/getnote-mcp](https://github.com/tony/getnote-mcp) |
-| **gbrain** | GBrain AI 推理服务 | 自定义 — [garrytan/gbrain](https://github.com/garrytan/gbrain) |
-| **notebooklm** | Google NotebookLM 音频笔记本集成 | 自定义 npm 包 (`notebooklm-mcp`) |
-| **lark** | 飞书 CLI 集成（IM/文档/表格/日历） | [lark-mcp](https://github.com/nicepkg/lark-mcp) |
-| **airmcp** | AI MCP 服务器 | [airmcp](https://github.com/nicepkg/airmcp) |
-
----
-
-### 技能列表
-
-#### 核心工作流
-
-| 技能 | 命令 | 说明 | 来源 |
-|------|------|------|------|
-| **gstack** | `/gstack` | 多模式工作流编排：产品审视、工程审查、设计审计、QA 测试、发布管线 | [garrytan/gstack](https://github.com/garrytan/gstack) |
-| **omc-reference** | `/oh-my-claudecode:*` | Oh-My-ClaudeCode 代理目录、团队路由、提交协议 | [ultraworkers/claw-code](https://github.com/ultraworkers/claw-code) |
-| **review** | `/review` | 代码审查（严重度分级、逻辑缺陷检测） | [gstack](https://github.com/garrytan/gstack) |
-| **ship** | `/ship` | 一键发布流程（PR 创建+验证） | [gstack](https://github.com/garrytan/gstack) |
-| **qa** | `/qa` | 自动 QA 测试+修复 | [gstack](https://github.com/garrytan/gstack) |
-| **qa-only** | `/qa-only` | QA 测试，只报告不修复 | [gstack](https://github.com/garrytan/gstack) |
-| **investigate** | `/investigate` | 科学方法 bug 调查+证据追踪 | [gstack](https://github.com/garrytan/gstack) |
-| **retro** | `/retro` | 周工作复盘 | [gstack](https://github.com/garrytan/gstack) |
-| **document-release** | `/document-release` | 发布后自动更新文档 | [gstack](https://github.com/garrytan/gstack) |
-| **setup-browser-cookies** | `/setup-browser-cookies` | 配置浏览器 Cookie | [gstack](https://github.com/garrytan/gstack) |
-| **browse** | `/browse` | 浏览器自动化网页浏览 | [gstack](https://github.com/garrytan/gstack) |
-
-#### 代码质量与架构
-
-| 技能 | 命令 | 说明 | 来源 |
-|------|------|------|------|
-| **plan-ceo-review** | `/plan-ceo-review` | 产品思维功能审视 | [gstack](https://github.com/garrytan/gstack) |
-| **plan-eng-review** | `/plan-eng-review` | 工程技术架构审查 | [gstack](https://github.com/garrytan/gstack) |
-| **plan-design-review** | `/plan-design-review` | 7 维评分设计审计 | [gstack](https://github.com/garrytan/gstack) |
-| **plan-devex-review** | `/plan-devex-review` | 开发者体验审查 | [gstack](https://github.com/garrytan/gstack) |
-| **health** | `/health` | 代码健康度检查 | [gstack](https://github.com/garrytan/gstack) |
-| **checkpoint** | `/checkpoint` | 保存进度断点 | [gstack](https://github.com/garrytan/gstack) |
-| **careful** | `/careful` | 审慎执行模式 | [gstack](https://github.com/garrytan/gstack) |
-| **guard** | `/guard` | 高风险操作防护 | [gstack](https://github.com/garrytan/gstack) |
-| **freeze** | `/freeze` | 冻结当前状态 | [gstack](https://github.com/garrytan/gstack) |
-| **unfreeze** | `/unfreeze` | 解冻状态 | [gstack](https://github.com/garrytan/gstack) |
-| **verification-gate** | `/verify` | 只读验证检查 | [gstack](https://github.com/garrytan/gstack) |
-
-#### 设计 (Impeccable)
-
-| 技能 | 命令 | 说明 | 来源 |
-|------|------|------|------|
-| **design-consultation** | `/design-consultation` | 从零建设计系统，创建 DESIGN.md | [gstack](https://github.com/garrytan/gstack) |
-| **design-review** | `/design-review` | 视觉 QA：截图→修复→验证 | [gstack](https://github.com/garrytan/gstack) |
-| **design-shotgun** | `/design-shotgun` | 多设计方案对比探索 | [gstack](https://github.com/garrytan/gstack) |
-| **design-html** | `/design-html` | 设计转原生 HTML | [gstack](https://github.com/garrytan/gstack) |
-
-#### OMC (Oh-My-ClaudeCode)
-
-| 技能 | 命令 | 说明 | 来源 |
-|------|------|------|------|
-| **autopilot** | `/autopilot` | 自主执行模式 | [ultraworkers/claw-code](https://github.com/ultraworkers/claw-code) |
-| **ultrawork** | `/ultrawork` | 高吞吐迭代模式 | [ultraworkers/claw-code](https://github.com/ultraworkers/claw-code) |
-| **ralplan** | `/ralplan` | 战略规划+访谈工作流 | [ultraworkers/claw-code](https://github.com/ultraworkers/claw-code) |
-| **ccg** | `/ccg` | Claude Code 指南代理 | [ultraworkers/claw-code](https://github.com/ultraworkers/claw-code) |
-| **deep-interview** | `/deep-interview` | 深度需求分析访谈 | [ultraworkers/claw-code](https://github.com/ultraworkers/claw-code) |
-| **ultraqa** | `/ultraqa` | 增强型 QA 测试 | [ultraworkers/claw-code](https://github.com/ultraworkers/claw-code) |
-| **team** | `/team` | 多代理团队编排 | [ultraworkers/claw-code](https://github.com/ultraworkers/claw-code) |
-
-#### 自定义/个人技能
-
-| 技能 | 命令 | 说明 |
-|------|------|------|
-| **agent-builder** | 自定义 | 自主 AI 代理构建器 |
-| **architecture-diagram** | 自定义 | 专业架构图（HTML + SVG） |
-| **code-to-course** | 自定义 | 代码转交互式双语课程 |
-| **darwin-skill** | 自定义 | 技能自动优化器 — 评估、爬山、验证 SKILL.md |
-| **dream-memory** | 自定义 | 日志/会话记忆持久化，清理过期条目 |
-| **fireworks-tech-graph** | 自定义 | 技术栈依赖图可视化 |
-| **fit-coach** | `/fit-coach` | 专业健身教练 — 营养规划+自适应训练 |
-| **json-canvas** | 自定义 | Obsidian Canvas 文件编辑（节点/连线/分组） |
-| **kairos-lite** | 自定义 | 轻量后台检查模式 — 定时检查+休眠 |
-| **llm-council** | 自定义 | 多模型决策委员会 |
-| **memory-extractor** | 自定义 | 从对话中提取持久记忆到分类文件 |
-| **obsidian-bases** | 自定义 | Obsidian Bases 编辑（视图/过滤器/公式） |
-| **obsidian-cli** | 自定义 | Obsidian 笔记库 CLI 交互 |
-| **obsidian-markdown** | 自定义 | Obsidian Markdown — 双向链接/嵌入/标注 |
-| **planning-with-files** | 自定义 | 文件化任务规划 — 生成 task_plan.md / findings.md / progress.md |
-| **remote-control** | 自定义 | 终端 Claude Code 同步到手机/浏览器 |
-| **rename** | 自定义 | 重命名/重构操作 |
-| **risk-guard** | 自定义 | 代码变更风险分析 |
-| **structured-context-compressor** | 自定义 | 长对话压缩为九段续接摘要 |
-| **swarm-coordinator** | 自定义 | 多代理协调 — 研究/综合/实现/验证 |
-| **twitter** | 自定义 | Twitter/X 集成 |
-| **web-scraper** | 自定义 | 高级网页爬取（反检测） |
-| **xiaolai** | `/xiaolai` | 李笑来 Claude 工具集 — Agent SDK + NLPM 自然语言编程管理器 |
-| **follow-builders** | `/ai` | AI Builder 资讯摘要 — 追踪 X 和 YouTube 播客上的顶级 AI 建设者 | [zarazhangrui/follow-builders](https://github.com/zarazhangrui/follow-builders) |
-| **frontend-slides** | 演示文稿 | 从零创建动画丰富的 HTML 演示文稿，或转换 PPT 为网页 | [zarazhangrui/frontend-slides](https://github.com/zarazhangrui/frontend-slides) |
-| **youtube** | 自定义 | YouTube 视频处理与分析 |
-| **import-to-obsidian** | 自定义 | 网页内容保存到 Obsidian，自动分类+标签 |
-| **limit-continue-work** | 自定义 | 限制对话续传，防止上下文溢出 |
-| **bb-browser** | 自定义 | 真实浏览器爬虫 — 登录态、表单填写、数据采集 |
-
-#### 内置技能 (Claude Code)
-
-36 个 Claude Code 内置技能：`algorithmic-art`, `brand-guidelines`, `canvas-design`, `claude-api`, `do`, `doc-coauthoring`, `docx`, `frontend-design`, `internal-comms`, `make-plan`, `mama`, `mcp-builder`, `mem-search`, `p7`, `p9`, `p10`, `pdf`, `pptx`, `pro`, `pua`, `pua-en`, `pua-ja`, `pua-loop`, `shot`, `skill-creator`, `slack-gif-creator`, `smart-explore`, `smux`, `template-skill`, `theme-factory`, `timeline-report`, `web-access`, `web-artifacts-builder`, `webapp-testing`, `xlsx`, `yes`
-
----
-
-### 使用方法
-
-1. 克隆或下载本仓库
-2. 浏览 `skills/` 目录查看自定义技能定义
-3. 查看 `mcp-servers/` 了解 MCP 服务器配置
-4. 外部技能参考其 GitHub 源仓库（上方已附链接）
-5. 安装技能：将目录复制到 `~/.claude/skills/`
-6. 安装 MCP 服务器：将配置添加到 `~/.claude/settings.json`
-
-### 反馈与贡献
-
-如果你觉得某个技能有用或想改进它——**欢迎提 Issue 和 PR**。这个集合通过社区反馈不断成长。
-
-### 许可证
-
-各技能保留其原始许可证。本仓库中的自定义技能采用 MIT 许可证。
+各个技能可能保留其上游许可证；本仓库中的脚本与说明文档遵循仓库自身许可证。
