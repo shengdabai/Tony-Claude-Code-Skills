@@ -4,3 +4,14 @@ node_modules/
 .omc/
 local-config/
 claude-home/
+settings.json
+settings.local.json
+.env
+.env.*
+*.key
+*.pem
+config/settings.json
+
+# 浏览器自动化运行时数据 (含加密 key/policy_token), 永远不进仓
+**/browser_state/
+**/browser_profile/
