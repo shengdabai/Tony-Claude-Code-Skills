@@ -1,0 +1,65 @@
+[filter "media"]
+	required = true
+	clean = git media clean %f
+	smudge = git media smudge %f
+[filter "lfs"]
+	required = true
+	process = git-lfs filter-process
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+[core]
+	excludesfile = /Users/1natsu/.gitignore_global
+	editor = code --wait
+	pager = delta
+[interactive]
+	diffFilter = delta --color-only
+[delta]
+	# Based on delta official configs ref:https://dandavison.github.io/delta/delta-configs-used-in-screenshots.html
+	navigate = true  # use n and N to move between diff sections
+	hyperlinks = true
+	line-numbers = true
+	side-by-side = true
+	syntax-theme = Dracula
+	plus-style = syntax "#003800"
+	minus-style = syntax "#3f0001"
+[delta "decorations"]
+	commit-decoration-style = bold yellow box ul
+	file-style = bold yellow ul
+	file-decoration-style = none
+	hunk-header-decoration-style = cyan box ul
+[delta "line-numbers"]
+	line-numbers-left-style = cyan
+	line-numbers-right-style = cyan
+	line-numbers-minus-style = 124
+	line-numbers-plus-style = 28
+[merge]
+	conflictstyle = zdiff3
+[diff]
+	tool = default-difftool
+[difftool "default-difftool"]
+	cmd = code --wait --diff $LOCAL $REMOTE
+# httpsでcloneしたときpushではSSH使うように切り替える
+# [url "git@github.com:"]
+# 	pushinsteadof = https://github.com/
+[credential]
+	helper = osxkeychain
+[gpg]
+	program = gpg
+[user]
+	signingkey = 3CD5E568C9669802
+	email = 1natsu172@users.noreply.github.com
+	name = 1natsu
+[rerere]
+	enabled = true
+[hub]
+	protocol = https
+[pull]
+	ff = only
+[pack]
+	useSparse = true
+[init]
+	defaultBranch = main
+[commit]
+	gpgsign = true
+[fetch]
+	prune = true

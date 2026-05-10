@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"name": "dotfiles-root",
+			"path": "."
+		},
+		{
+			"name": "node-scripts",
+			"path": "./node-scripts"
+		}
+	],
+	"settings": {
+		"biome.requireConfiguration": true
+	}
+}

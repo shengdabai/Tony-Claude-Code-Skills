@@ -1,0 +1,29 @@
+# Agent System Configuration
+
+agents:
+  researcher:
+    model: "gpt-4"
+    temperature: 0.3
+    max_tokens: 1000
+
+  writer:
+    model: "gpt-4"
+    temperature: 0.7
+    max_tokens: 2000
+
+workflows:
+  research_and_write:
+    agents:
+      - researcher
+      - writer
+    max_iterations: 5
+
+observability:
+  enable_logging: true
+  log_level: "INFO"
+  enable_tracing: true
+  track_costs: true
+
+budgets:
+  max_cost_per_workflow: 1.00  # USD
+  alert_threshold: 0.50
