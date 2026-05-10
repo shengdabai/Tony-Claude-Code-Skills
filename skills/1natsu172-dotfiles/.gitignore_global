@@ -1,0 +1,9 @@
+*~
+.DS_Store
+
+# Direnv stuff
+.direnv
+.envrc
+
+# mise stuff
+mise.local.toml

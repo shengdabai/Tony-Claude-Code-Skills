@@ -1,0 +1,38 @@
+{
+  "$schema": "https://raw.githubusercontent.com/folke/neoconf.nvim/main/schemas/neoconf.json",
+  "lspconfig": {
+    "rust_analyzer": {
+      "settings": {
+        "rust-analyzer": {
+          "checkOnSave": {
+            "command": "clippy"
+          },
+          "cargo": {
+            "allFeatures": true
+          },
+          "procMacro": {
+            "enable": true
+          }
+        }
+      }
+    }
+  },
+  "commands": {
+    "CargoRun": {
+      "description": "Run Rust project",
+      "command": "15split | terminal cargo run"
+    },
+    "CargoTest": {
+      "description": "Run Rust tests",
+      "command": "15split | terminal cargo test"
+    },
+    "CargoBuild": {
+      "description": "Build Rust project",
+      "command": "15split | terminal cargo build"
+    },
+    "CargoClippy": {
+      "description": "Run clippy linter",
+      "command": "15split | terminal cargo clippy"
+    }
+  }
+}

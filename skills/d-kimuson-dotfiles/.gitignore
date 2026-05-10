@@ -1,0 +1,16 @@
+.DS_Store
+.localrc
+*-e
+.vscode/configurationCache.log
+.vscode/dryrun.log
+
+.gitconfig-sms
+.gitconfig-local
+
+# gemini
+.claude/settings.local.json
+
+# modular-mcp
+modular-mcp.json
+
+litellm/litellm_config.yaml

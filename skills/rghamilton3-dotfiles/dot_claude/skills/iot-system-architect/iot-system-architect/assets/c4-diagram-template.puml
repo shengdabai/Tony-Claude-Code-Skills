@@ -1,0 +1,262 @@
+@startuml IoT System Architecture
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+' Uncomment for different diagram levels:
+' !include C4_Context.puml
+' !include C4_Component.puml
+
+title IoT System Container Diagram
+
+' Define custom styles for IoT devices
+AddElementTag("device", $bgColor="#8B9DC3", $borderColor="#29427A", $fontColor="#FFFFFF")
+AddElementTag("embedded", $bgColor="#6B7A8F", $borderColor="#434A54", $fontColor="#FFFFFF")
+AddElementTag("broker", $bgColor="#F7931E", $borderColor="#C5670D", $fontColor="#FFFFFF")
+AddElementTag("service", $bgColor="#5BC0DE", $borderColor="#2E6DA4", $fontColor="#FFFFFF")
+AddElementTag("external", $bgColor="#5CB85C", $borderColor="#398439", $fontColor="#FFFFFF")
+
+' Define Persons
+Person(user, "User", "End user interacting with the system")
+
+' System Boundary
+System_Boundary(iot_system, "IoT System") {
+
+    ' Devices
+    Container(presto, "Presto Display", "RP2350 + MicroPython", "Central display with touchscreen interface", $tags="device")
+    Container(tembed, "T-Embed Timer", "ESP32-S3 + Arduino", "Desk timer with display", $tags="embedded")
+    Container(streamdeck, "Stream Deck", "USB Device + Python", "Physical macro controller", $tags="embedded")
+
+    ' Hub
+    Container(jetson, "Jetson Nano", "Ubuntu Linux", "Central intelligence hub", $tags="device")
+
+    ' Services on Hub
+    Container(mqtt_broker, "MQTT Broker", "Mosquitto", "Message broker for pub/sub communication", $tags="broker")
+    Container(api_gateway, "API Gateway", "FastAPI", "REST API for external integrations", $tags="service")
+    Container(ai_service, "AI Service", "Python + TensorFlow", "ML inference for pattern analysis", $tags="service")
+    ContainerDb(database, "Database", "PostgreSQL", "Persistent data storage", $tags="service")
+    ContainerDb(cache, "Cache", "Redis", "In-memory cache", $tags="service")
+}
+
+' External Systems
+System_Ext(android, "Android Phone", "Notification receiver", $tags="external")
+
+' Relationships
+Rel(user, presto, "Interacts with", "Touch")
+Rel(user, tembed, "Views", "Visual")
+Rel(user, streamdeck, "Controls", "Button press")
+
+Rel(presto, mqtt_broker, "Publishes/Subscribes", "MQTT/WiFi")
+Rel(tembed, mqtt_broker, "Publishes/Subscribes", "MQTT/WiFi")
+Rel(streamdeck, api_gateway, "Sends commands", "WebSocket/USB")
+
+Rel(mqtt_broker, ai_service, "Forwards events", "Internal")
+Rel(api_gateway, mqtt_broker, "Publishes commands", "Internal")
+
+Rel(ai_service, database, "Reads/Writes", "SQL")
+Rel(ai_service, cache, "Caches", "Redis protocol")
+Rel(api_gateway, database, "Queries", "SQL")
+
+Rel(presto, android, "Sends notifications", "BLE")
+
+' Notes
+note right of mqtt_broker
+  QoS 1 for important messages
+  Retained messages for state
+  Last Will Testament for presence
+end note
+
+note right of presto
+  Primary UI
+  BLE hub for phone
+  Offline-first design
+end note
+
+@enduml
+
+'==============================================================================
+' SEQUENCE DIAGRAM TEMPLATE
+'==============================================================================
+
+@startuml Timer Start Sequence
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Sequence.puml
+
+title Timer Start Sequence Diagram
+
+participant "User" as user
+participant "Presto\nDisplay" as presto
+participant "MQTT\nBroker" as broker
+participant "T-Embed\nTimer" as tembed
+participant "AI\nService" as ai
+participant "Android\nPhone" as phone
+
+user -> presto: Tap "Start" button
+activate presto
+
+presto -> presto: Update local state
+presto -> broker: PUBLISH\nargus/wrist/display/presto01/state\n{running: true, elapsed: 0}
+activate broker
+
+broker -> tembed: Forward state update
+activate tembed
+tembed -> tembed: Sync local state
+tembed -> tembed: Update display
+deactivate tembed
+
+broker -> ai: Forward state update
+activate ai
+ai -> ai: Log event
+ai -> ai: Analyze patterns
+deactivate ai
+
+presto -> phone: Send BLE notification\n"Timer started"
+activate phone
+phone -> phone: Display notification
+deactivate phone
+
+deactivate broker
+deactivate presto
+
+note over broker
+  QoS 1 ensures delivery
+  Retained flag stores last state
+end note
+
+@enduml
+
+'==============================================================================
+' DEPLOYMENT DIAGRAM TEMPLATE
+'==============================================================================
+
+@startuml IoT System Deployment
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Deployment.puml
+
+title IoT System Deployment Diagram
+
+Deployment_Node(living_room, "Living Room", "Physical Location") {
+    Deployment_Node(presto_hw, "Presto Device", "RP2350 Hardware") {
+        Container(presto_fw, "Firmware", "MicroPython", "Display and BLE hub")
+    }
+}
+
+Deployment_Node(desk, "Desk Area", "Physical Location") {
+    Deployment_Node(tembed_hw, "T-Embed Device", "ESP32-S3 Hardware") {
+        Container(tembed_fw, "Firmware", "Arduino/ESP-IDF", "Timer display")
+    }
+}
+
+Deployment_Node(hub_location, "Server Location", "Physical Location") {
+    Deployment_Node(jetson_hw, "Jetson Nano", "ARM Linux Computer") {
+        Deployment_Node(docker, "Docker", "Container Runtime") {
+            Container(mosquitto, "Mosquitto", "MQTT Broker")
+            Container(api, "FastAPI", "API Service")
+            Container(ai, "AI Service", "ML Inference")
+            Container(postgres, "PostgreSQL", "Database")
+            Container(redis, "Redis", "Cache")
+        }
+    }
+
+    Deployment_Node(streamdeck_hw, "Stream Deck Neo", "USB Device") {
+        Container(streamdeck_app, "Python App", "Control interface")
+    }
+}
+
+Deployment_Node(mobile, "Mobile Device", "Android Phone") {
+    Container(android_app, "Flutter App", "Notification receiver")
+}
+
+' Network connections
+Rel(presto_fw, mosquitto, "MQTT", "WiFi 2.4GHz")
+Rel(tembed_fw, mosquitto, "MQTT", "WiFi 2.4GHz")
+Rel(streamdeck_app, api, "WebSocket", "USB/Ethernet")
+Rel(presto_fw, android_app, "Notifications", "BLE 5.0")
+
+@enduml
+
+'==============================================================================
+' STATE DIAGRAM TEMPLATE
+'==============================================================================
+
+@startuml Timer State Machine
+
+[*] --> Idle
+
+Idle --> Working : start(work_duration)
+Working --> Paused : pause()
+Paused --> Working : resume()
+Working --> Break : complete() [sessions < 4]
+Working --> LongBreak : complete() [sessions >= 4]
+
+Break --> Working : start(work_duration)
+LongBreak --> Idle : complete()
+
+Paused --> Idle : cancel()
+
+state Working {
+    [*] --> Counting
+    Counting --> Notifying : elapsed >= duration
+    Notifying --> [*]
+}
+
+state Break {
+    [*] --> ShortBreak
+    ShortBreak --> [*] : elapsed >= break_duration
+}
+
+state LongBreak {
+    [*] --> ExtendedBreak
+    ExtendedBreak --> [*] : elapsed >= long_break_duration
+}
+
+note right of Working
+  Publishes state updates
+  every second via MQTT
+end note
+
+note right of Break
+  Sends notification
+  when break starts
+end note
+
+@enduml
+
+'==============================================================================
+' COMPONENT DIAGRAM TEMPLATE
+'==============================================================================
+
+@startuml MQTT Broker Components
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title MQTT Broker Component Diagram
+
+Container_Boundary(broker, "MQTT Broker") {
+    Component(listener, "Connection Listener", "TCP/WebSocket", "Accepts client connections")
+    Component(auth, "Authentication", "Plugin", "Validates credentials")
+    Component(acl, "Authorization", "ACL", "Enforces topic permissions")
+    Component(router, "Message Router", "Core", "Routes messages to subscribers")
+    Component(persistence, "Persistence", "Database", "Stores QoS 1/2 messages")
+    Component(retained, "Retained Messages", "In-Memory", "Stores retained messages")
+    Component(lwt, "Last Will", "Manager", "Handles client disconnections")
+}
+
+Component(client_timer, "Timer Client", "MQTT Client", "ESP32 device")
+Component(client_display, "Display Client", "MQTT Client", "RP2350 device")
+ComponentDb(disk, "Disk Storage", "File System", "Persistent storage")
+
+Rel(client_timer, listener, "Connect", "MQTT")
+Rel(client_display, listener, "Connect", "MQTT")
+
+Rel(listener, auth, "Authenticate")
+Rel(listener, acl, "Authorize")
+Rel(listener, router, "Register")
+
+Rel(router, persistence, "Store QoS 1/2")
+Rel(router, retained, "Store retained")
+Rel(router, lwt, "Register LWT")
+
+Rel(persistence, disk, "Write")
+Rel(retained, disk, "Backup")
+
+@enduml

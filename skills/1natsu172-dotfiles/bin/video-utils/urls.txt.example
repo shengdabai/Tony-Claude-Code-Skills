@@ -1,0 +1,6 @@
+# 動画URLを1行ずつ記載
+# '#'で始まる行はコメント（無視される）
+
+# 例: YouTubeの動画
+https://www.youtube.com/watch?v=example1
+#https://www.youtube.com/watch?v=example2

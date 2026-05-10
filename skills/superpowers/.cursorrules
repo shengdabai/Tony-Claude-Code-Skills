@@ -1,0 +1,27 @@
+You have access to the "Superpowers" skills library in this project.
+These skills are located in the `skills/` directory.
+
+# Superpowers Workflow
+When you receive a task, you MUST check if any of the following skills apply.
+If a skill applies, you MUST read the corresponding `SKILL.md` file and follow its instructions.
+
+## Available Skills:
+- **brainstorming** (`skills/brainstorming/SKILL.md`): Use before writing code to refine ideas.
+- **writing-plans** (`skills/writing-plans/SKILL.md`): Use to create implementation plans.
+- **executing-plans** (`skills/executing-plans/SKILL.md`): Use to execute plans.
+- **test-driven-development** (`skills/test-driven-development/SKILL.md`): Use when writing code. Enforces RED-GREEN-REFACTOR.
+- **systematic-debugging** (`skills/systematic-debugging/SKILL.md`): Use when debugging.
+- **verification-before-completion** (`skills/verification-before-completion/SKILL.md`): Use before finishing a task.
+- **subagent-driven-development** (`skills/subagent-driven-development/SKILL.md`): Use for complex tasks.
+- **requesting-code-review** (`skills/requesting-code-review/SKILL.md`): Use to review code.
+- **receiving-code-review** (`skills/receiving-code-review/SKILL.md`): Use when receiving feedback.
+- **using-git-worktrees** (`skills/using-git-worktrees/SKILL.md`): Use for parallel development.
+- **finishing-a-development-branch** (`skills/finishing-a-development-branch/SKILL.md`): Use when completing a feature.
+- **dispatching-parallel-agents** (`skills/dispatching-parallel-agents/SKILL.md`): Use for parallel tasks.
+- **writing-skills** (`skills/writing-skills/SKILL.md`): Use to create new skills.
+- **using-superpowers** (`skills/using-superpowers/SKILL.md`): General guidelines.
+
+# Instructions
+1. Identify if a skill applies.
+2. If yes, READ the `SKILL.md` file for that skill.
+3. Follow the instructions in the skill file.

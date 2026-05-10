@@ -1,0 +1,40 @@
+# Security: Never track credential files
+**/.credentials.json
+**/.credentials
+**/credentials.json
+
+# Chezmoi: Never track local config with sensitive data
+chezmoi.yaml
+.chezmoi.yaml
+
+# Claude Code: Ignore .claude/ in subdirectories (but not ~/.claude/)
+**/.claude/
+
+# Claude Code: Runtime and local state (should not be synced)
+.claude/.claude/settings.local.json
+.claude/debug/
+.claude/file-history/
+.claude/ide/
+.claude/local/
+.claude/output/
+.claude/plugins/
+.claude/projects/
+.claude/session-env/
+.claude/shell-snapshots/
+.claude/statsig/
+.claude/todos/
+
+# Git submodules (managed separately)
+.claude/awesome-claude-code-subagents/.git/
+
+# Temporary and cache files
+**/.DS_Store
+**/Thumbs.db
+**/*~
+**/.*.swp
+
+**/*.add.spl
+
+**/node_modules/
+
+**/*.toml-*

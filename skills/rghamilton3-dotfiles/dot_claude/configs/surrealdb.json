@@ -1,0 +1,17 @@
+{
+  "name": "surrealdb",
+  "description": "Expert guidance for SurrealDB database, SurrealQL query language, Surrealist UI tool, and SDKs for Python, JavaScript, Golang and other languages. Use when working with SurrealDB databases, writing SurrealQL queries, or using SurrealDB SDKs.",
+  "base_url": "https://surrealdb.com/docs",
+  "selectors": {
+    "main_content": "markdown-container",
+    "title": "h1",
+    "code_blocks": "pre code"
+  },
+  "url_patterns": {
+    "include": [],
+    "exclude": []
+  },
+  "categories": {},
+  "rate_limit": 0.5,
+  "max_pages": null
+}

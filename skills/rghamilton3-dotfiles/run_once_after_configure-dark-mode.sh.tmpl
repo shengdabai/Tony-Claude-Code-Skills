@@ -1,0 +1,44 @@
+#!/bin/bash
+# run_once_after_configure-dark-mode.sh.tmpl
+# Sets gsettings/dconf for dark mode preference
+# Only runs on Sway systems
+
+{{- if .platform.is_sway }}
+
+echo "🌙 Configuring dark mode for Sway..."
+
+# Set GNOME/GTK color scheme preference (used by many modern apps)
+if command -v gsettings &>/dev/null; then
+    gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
+    gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita-dark'
+    gsettings set org.gnome.desktop.interface icon-theme 'Adwaita'
+    gsettings set org.gnome.desktop.interface cursor-theme 'Adwaita'
+    echo "✅ gsettings configured"
+else
+    echo "⚠️ gsettings not found - install glib2 for full dark mode support"
+fi
+
+# Configure xdg-desktop-portal-gtk if available
+PORTAL_CONF="${HOME}/.config/xdg-desktop-portal/portals.conf"
+mkdir -p "$(dirname "$PORTAL_CONF")"
+
+if [ ! -f "$PORTAL_CONF" ]; then
+    cat > "$PORTAL_CONF" << 'EOF'
+[preferred]
+default=gtk
+org.freedesktop.impl.portal.Secret=gnome-keyring
+EOF
+    echo "✅ xdg-desktop-portal configured"
+fi
+
+echo "🎉 Dark mode configuration complete!"
+echo ""
+echo "Notes:"
+echo "  - Log out and back in for environment.d changes to take effect"
+echo "  - Install 'qt5ct' and 'adwaita-qt5' for best Qt app theming"
+echo "  - Install 'xdg-desktop-portal-gtk' for Flatpak dark mode support"
+
+{{- else }}
+# Not on Sway - skip dark mode configuration
+echo "Skipping dark mode setup (not on Sway)"
+{{- end }}

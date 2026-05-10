@@ -1,0 +1,315 @@
+# My Dotfiles
+
+Personal dotfiles managed with [chezmoi](https://www.chezmoi.io/).
+
+## 🚀 Quick Start
+
+### First-Time Setup on New Machine
+
+```bash
+# Install chezmoi
+sh -c "$(curl -fsLS get.chezmoi.io)"
+
+# Initialize with your dotfiles
+chezmoi init https://github.com/YOUR_USERNAME/dotfiles.git
+
+# Preview what will be changed
+chezmoi diff
+
+# Apply the dotfiles
+chezmoi apply -v
+```
+
+### Daily Workflow
+
+```bash
+# Edit a dotfile
+chezmoi edit ~/.bashrc
+
+# Preview changes
+chezmoi diff
+
+# Apply changes
+chezmoi apply -v
+
+# Add a new file
+chezmoi add ~/.config/newfile
+
+# Update from remote
+chezmoi update -v
+```
+
+## 📁 Repository Structure
+
+```
+.
+├── .chezmoiignore          # Patterns for files to never track
+├── .chezmoidata.yaml       # Machine-specific template variables (not committed)
+├── README.md               # This file
+├── dot_bashrc              # ~/.bashrc
+├── dot_zshrc.tmpl          # ~/.zshrc (template)
+├── dot_gitconfig.tmpl      # ~/.gitconfig (template)
+├── dot_ssh/
+│   ├── config.tmpl         # ~/.ssh/config (template)
+│   └── encrypted_id_ed25519.age  # Encrypted SSH key
+└── dot_config/
+    ├── nvim/               # Neovim configuration
+    ├── alacritty/          # Terminal configuration
+    └── ...
+```
+
+## 🔐 Security Practices
+
+This repository follows security best practices:
+
+### What's Protected
+
+✅ **Never Committed:**
+- API keys and tokens
+- Passwords and credentials
+- Private SSH/GPG keys (encrypted with age)
+- Cloud provider credentials
+- Browser cookies/sessions
+
+✅ **Safely Managed:**
+- `.chezmoiignore` prevents tracking sensitive files
+- Age encryption for secrets that must be versioned
+- Templates for files mixing public config and secrets
+
+### Encryption
+
+Private keys and credentials are encrypted with [age](https://github.com/FiloSottile/age):
+
+```bash
+# View encrypted file
+chezmoi cat ~/.ssh/id_ed25519
+
+# Edit encrypted file
+chezmoi edit ~/.ssh/id_ed25519
+```
+
+**Age Key Location:** `~/.config/chezmoi/key.txt`
+
+⚠️ **Important:** Back up your age key separately! Without it, encrypted files cannot be decrypted.
+
+## 📝 Templates
+
+Files ending in `.tmpl` use Go templates for machine-specific configuration.
+
+### Available Variables
+
+**Machine Info:**
+```
+{{ .chezmoi.hostname }}     # Machine hostname
+{{ .chezmoi.os }}           # linux, darwin, windows
+{{ .chezmoi.arch }}         # amd64, arm64
+{{ .chezmoi.username }}     # Current user
+```
+
+**Custom Variables** (from `.chezmoidata.yaml`):
+```
+{{ .name }}                 # Your name
+{{ .email.personal }}       # Personal email
+{{ .email.work }}          # Work email
+{{ .machine.type }}        # personal, work, server
+{{ .editor }}              # Preferred editor
+```
+
+### Example Template Usage
+
+**`.gitconfig.tmpl`:**
+```toml
+[user]
+  name = "{{ .git.name }}"
+{{- if eq .machine.type "work" }}
+  email = "{{ .email.work }}"
+{{- else }}
+  email = "{{ .email.personal }}"
+{{- end }}
+```
+
+## 🖥️ Multi-Machine Configuration
+
+Different machines can have different configurations using templates and data variables.
+
+### Machine-Specific Setup
+
+1. **Copy the template:**
+   ```bash
+   cp .chezmoidata.yaml.template ~/.config/chezmoi/chezmoi.yaml
+   ```
+
+2. **Edit for this machine:**
+   ```bash
+   $EDITOR ~/.config/chezmoi/chezmoi.yaml
+   ```
+
+3. **Set machine type:**
+   ```yaml
+   data:
+     machine:
+       type: "work"  # or "personal", "server"
+   ```
+
+4. **Apply configuration:**
+   ```bash
+   chezmoi apply -v
+   ```
+
+### Machine Types
+
+- **personal**: Personal laptop/desktop
+- **work**: Work laptop/desktop
+- **server**: Headless servers
+
+## 🛠️ Managed Configurations
+
+### Shell
+- `~/.bashrc` - Bash configuration
+- `~/.zshrc` - Zsh configuration (primary shell)
+- `~/.profile` - Login shell profile
+
+### Development
+- `~/.gitconfig` - Git configuration
+- `~/.config/nvim/` - Neovim editor
+- Development tool configurations (language-specific)
+
+### Terminal
+- `~/.config/alacritty/` - Alacritty terminal emulator
+- `~/.tmux.conf` - Tmux multiplexer
+
+### SSH
+- `~/.ssh/config` - SSH configuration
+- `~/.ssh/id_ed25519` (encrypted) - SSH private key
+
+## 📦 Adding New Files
+
+### Regular Files
+
+```bash
+# Add a single file
+chezmoi add ~/.bashrc
+
+# Add a directory
+chezmoi add ~/.config/nvim
+```
+
+### Files with Secrets
+
+```bash
+# Add with encryption
+chezmoi add --encrypt ~/.aws/credentials
+
+# Add as template
+chezmoi add --template ~/.gitconfig
+```
+
+### Before Committing
+
+Always scan for secrets:
+
+```bash
+# Run secret scanner
+python3 $(chezmoi source-path)/scripts/check_secrets.py
+
+# Review changes
+chezmoi cd
+git diff
+
+# Commit if safe
+git add .
+git commit -m "Add new configuration"
+git push
+```
+
+## 🔍 Troubleshooting
+
+### File Not Updating
+
+```bash
+# Check if file is managed
+chezmoi managed | grep filename
+
+# Check if it's ignored
+cat $(chezmoi source-path)/.chezmoiignore | grep filename
+
+# View what would change
+chezmoi diff ~/.filename
+
+# Force re-add
+chezmoi add --force ~/.filename
+```
+
+### Template Not Rendering
+
+```bash
+# Check template output
+chezmoi cat ~/.filename
+
+# View available data
+chezmoi data
+
+# Test template expression
+chezmoi execute-template "{{ .variable }}"
+```
+
+### Sync Issues
+
+```bash
+# Check status
+chezmoi status
+
+# Verify files match source
+chezmoi verify
+
+# Force apply from source
+chezmoi apply --force
+```
+
+## 🔄 Keeping Dotfiles Updated
+
+### On Your Primary Machine
+
+```bash
+# Make changes
+chezmoi edit ~/.bashrc
+
+# Apply and test
+chezmoi apply -v
+
+# Commit and push
+chezmoi cd
+git add .
+git commit -m "Update bashrc"
+git push
+```
+
+### On Other Machines
+
+```bash
+# Pull and apply updates
+chezmoi update -v
+```
+
+## 📚 Additional Resources
+
+- [Chezmoi Documentation](https://www.chezmoi.io/)
+- [Age Encryption](https://github.com/FiloSottile/age)
+- [Go Template Syntax](https://pkg.go.dev/text/template)
+
+## 🤝 Contributing
+
+This is a personal dotfiles repository, but feel free to:
+
+- Fork and adapt for your own use
+- Open issues for questions
+- Submit PRs for improvements
+
+## 📄 License
+
+This repository is provided as-is under the [MIT License](LICENSE).
+
+---
+
+**Last Updated:** [Date]
+**Machines Using These Dotfiles:** [Number]
