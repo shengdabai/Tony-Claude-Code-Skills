@@ -1,0 +1,17 @@
+{
+  "name": "mermaid",
+  "description": "Use when creating diagrams, flowcharts, sequence diagrams, Gantt charts, or other visualizations using Mermaid syntax. Covers all diagram types, syntax reference, and configuration options.",
+  "base_url": "https://mermaid.js.org/intro",
+  "selectors": {
+    "main_content": "article",
+    "title": "h1",
+    "code_blocks": "pre code"
+  },
+  "url_patterns": {
+    "include": [],
+    "exclude": []
+  },
+  "categories": {},
+  "rate_limit": 0.5,
+  "max_pages": 300
+}

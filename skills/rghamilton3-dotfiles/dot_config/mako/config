@@ -1,0 +1,89 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Mako Notification Daemon Configuration
+# Location: ~/.config/mako/config
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ───────────────────────────────────────────────────────────────────────────────
+# APPEARANCE - Tokyo Night Storm
+# ───────────────────────────────────────────────────────────────────────────────
+font=FiraCode Nerd Font 11
+background-color=#1f2335ee
+text-color=#c0caf5
+border-color=#7aa2f7
+border-radius=8
+border-size=2
+
+# ───────────────────────────────────────────────────────────────────────────────
+# LAYOUT
+# ───────────────────────────────────────────────────────────────────────────────
+width=350
+height=150
+margin=12
+padding=12
+anchor=top-right
+layer=overlay
+
+# ───────────────────────────────────────────────────────────────────────────────
+# BEHAVIOR
+# ───────────────────────────────────────────────────────────────────────────────
+default-timeout=5000
+ignore-timeout=0
+max-visible=5
+sort=-time
+group-by=app-name
+
+# Icons
+icons=1
+icon-path=/usr/share/icons/Papirus-Dark
+max-icon-size=48
+
+# Actions
+on-button-left=dismiss
+on-button-middle=none
+on-button-right=dismiss-all
+on-touch=dismiss
+
+# ───────────────────────────────────────────────────────────────────────────────
+# URGENCY LEVELS
+# ───────────────────────────────────────────────────────────────────────────────
+[urgency=low]
+border-color=#565f89
+default-timeout=3000
+
+[urgency=normal]
+border-color=#7aa2f7
+default-timeout=5000
+
+[urgency=high]
+border-color=#f7768e
+background-color=#24283bee
+default-timeout=0
+ignore-timeout=1
+
+# ───────────────────────────────────────────────────────────────────────────────
+# APP-SPECIFIC
+# ───────────────────────────────────────────────────────────────────────────────
+[app-name=Spotify]
+border-color=#9ece6a
+
+[app-name=discord]
+border-color=#7dcfff
+
+[app-name=Firefox]
+border-color=#ff9e64
+
+[app-name=thunderbird]
+border-color=#bb9af7
+
+# Volume/brightness OSD style
+[category=volume]
+anchor=top-center
+width=200
+default-timeout=1500
+group-by=category
+
+[category=brightness]
+anchor=top-center
+width=200
+default-timeout=1500
+group-by=category

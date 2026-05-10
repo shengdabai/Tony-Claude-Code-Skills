@@ -1,0 +1,306 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Sway Configuration
+# Location: ~/.config/sway/config
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ───────────────────────────────────────────────────────────────────────────────
+# VARIABLES
+# ───────────────────────────────────────────────────────────────────────────────
+set $mod Mod4
+set $left h
+set $down j
+set $up k
+set $right l
+
+set $term wezterm
+set $menu fuzzel
+set $browser firefox
+
+# ───────────────────────────────────────────────────────────────────────────────
+# OUTPUT CONFIGURATION
+# ───────────────────────────────────────────────────────────────────────────────
+# Run `swaymsg -t get_outputs` to get output names
+# Example: output HDMI-A-1 resolution 1920x1080 position 1920,0
+
+# Wallpaper (solid color fallback, replace with your image)
+output * bg #1a1b26 solid_color
+# output * bg ~/Pictures/wallpaper.png fill
+
+# ───────────────────────────────────────────────────────────────────────────────
+# INPUT CONFIGURATION
+# ───────────────────────────────────────────────────────────────────────────────
+# Run `swaymsg -t get_inputs` for device names
+
+input type:keyboard {
+    xkb_options caps:escape
+    repeat_delay 300
+    repeat_rate 50
+}
+
+input type:touchpad {
+    tap enabled
+    natural_scroll enabled
+    dwt enabled
+    middle_emulation enabled
+}
+
+# ───────────────────────────────────────────────────────────────────────────────
+# APPEARANCE - Tokyo Night Storm
+# ───────────────────────────────────────────────────────────────────────────────
+# class                  border  bg      text    indicator child_border
+client.focused          #7aa2f7 #1a1b26 #c0caf5 #7dcfff   #7aa2f7
+client.focused_inactive #414868 #1a1b26 #565f89 #414868   #414868
+client.unfocused        #24283b #1a1b26 #565f89 #24283b   #24283b
+client.urgent           #f7768e #1a1b26 #c0caf5 #f7768e   #f7768e
+
+# Gaps and borders
+gaps inner 8
+gaps outer 4
+default_border pixel 2
+default_floating_border pixel 2
+smart_borders on
+smart_gaps on
+
+# Font for window titles (not visible with pixel borders, but used in bar)
+font pango:FiraCode Nerd Font 10
+
+# ───────────────────────────────────────────────────────────────────────────────
+# IDLE CONFIGURATION
+# ───────────────────────────────────────────────────────────────────────────────
+exec swayidle -w \
+    timeout 300 'swaylock -f -c 1a1b26' \
+    timeout 600 'swaymsg "output * power off"' \
+    resume 'swaymsg "output * power on"' \
+    before-sleep 'swaylock -f -c 1a1b26'
+
+# ───────────────────────────────────────────────────────────────────────────────
+# KEY BINDINGS - Basics
+# ───────────────────────────────────────────────────────────────────────────────
+# Terminal
+bindsym $mod+Return exec $term
+
+# Launcher
+bindsym $mod+d exec $menu
+bindsym $mod+space exec $menu
+
+# Kill focused window
+bindsym $mod+Shift+q kill
+bindsym $mod+w kill
+
+# Reload config
+bindsym $mod+Shift+c reload
+
+# Exit sway
+bindsym $mod+Shift+e exec swaynag -t warning -m 'Exit sway?' -B 'Yes' 'swaymsg exit'
+
+# Lock screen
+bindsym $mod+Escape exec swaylock -f -c 1a1b26
+
+# Drag/resize with mouse (hold $mod)
+floating_modifier $mod normal
+
+# ───────────────────────────────────────────────────────────────────────────────
+# KEY BINDINGS - Navigation (vim-style hjkl)
+# ───────────────────────────────────────────────────────────────────────────────
+# Move focus
+bindsym $mod+$left focus left
+bindsym $mod+$down focus down
+bindsym $mod+$up focus up
+bindsym $mod+$right focus right
+
+# Arrow keys also work
+bindsym $mod+Left focus left
+bindsym $mod+Down focus down
+bindsym $mod+Up focus up
+bindsym $mod+Right focus right
+
+# Move focused window
+bindsym $mod+Shift+$left move left
+bindsym $mod+Shift+$down move down
+bindsym $mod+Shift+$up move up
+bindsym $mod+Shift+$right move right
+
+bindsym $mod+Shift+Left move left
+bindsym $mod+Shift+Down move down
+bindsym $mod+Shift+Up move up
+bindsym $mod+Shift+Right move right
+
+# ───────────────────────────────────────────────────────────────────────────────
+# KEY BINDINGS - Workspaces
+# ───────────────────────────────────────────────────────────────────────────────
+# Switch to workspace
+bindsym $mod+1 workspace number 1
+bindsym $mod+2 workspace number 2
+bindsym $mod+3 workspace number 3
+bindsym $mod+4 workspace number 4
+bindsym $mod+5 workspace number 5
+bindsym $mod+6 workspace number 6
+bindsym $mod+7 workspace number 7
+bindsym $mod+8 workspace number 8
+bindsym $mod+9 workspace number 9
+bindsym $mod+0 workspace number 10
+
+# Move focused container to workspace
+bindsym $mod+Shift+1 move container to workspace number 1
+bindsym $mod+Shift+2 move container to workspace number 2
+bindsym $mod+Shift+3 move container to workspace number 3
+bindsym $mod+Shift+4 move container to workspace number 4
+bindsym $mod+Shift+5 move container to workspace number 5
+bindsym $mod+Shift+6 move container to workspace number 6
+bindsym $mod+Shift+7 move container to workspace number 7
+bindsym $mod+Shift+8 move container to workspace number 8
+bindsym $mod+Shift+9 move container to workspace number 9
+bindsym $mod+Shift+0 move container to workspace number 10
+
+# Workspace navigation
+bindsym $mod+bracketleft workspace prev
+bindsym $mod+bracketright workspace next
+bindsym $mod+Tab workspace back_and_forth
+
+# ───────────────────────────────────────────────────────────────────────────────
+# KEY BINDINGS - Layout
+# ───────────────────────────────────────────────────────────────────────────────
+# Split direction
+bindsym $mod+backslash splith
+bindsym $mod+minus splitv
+
+# Layout styles
+bindsym $mod+s layout stacking
+bindsym $mod+t layout tabbed
+bindsym $mod+e layout toggle split
+
+# Fullscreen
+bindsym $mod+f fullscreen
+bindsym $mod+z fullscreen
+
+# Toggle floating
+bindsym $mod+Shift+space floating toggle
+
+# Toggle focus between tiling/floating
+bindsym $mod+Alt+space focus mode_toggle
+
+# Focus parent/child
+bindsym $mod+a focus parent
+bindsym $mod+Shift+a focus child
+
+# ───────────────────────────────────────────────────────────────────────────────
+# KEY BINDINGS - Scratchpad
+# ───────────────────────────────────────────────────────────────────────────────
+bindsym $mod+Shift+grave move scratchpad
+bindsym $mod+grave scratchpad show
+
+# ───────────────────────────────────────────────────────────────────────────────
+# KEY BINDINGS - Resize Mode
+# ───────────────────────────────────────────────────────────────────────────────
+mode "resize" {
+    bindsym $left resize shrink width 30px
+    bindsym $down resize grow height 30px
+    bindsym $up resize shrink height 30px
+    bindsym $right resize grow width 30px
+
+    bindsym Left resize shrink width 30px
+    bindsym Down resize grow height 30px
+    bindsym Up resize shrink height 30px
+    bindsym Right resize grow width 30px
+
+    # Fine-grained resize
+    bindsym Shift+$left resize shrink width 10px
+    bindsym Shift+$down resize grow height 10px
+    bindsym Shift+$up resize shrink height 10px
+    bindsym Shift+$right resize grow width 10px
+
+    bindsym Return mode "default"
+    bindsym Escape mode "default"
+    bindsym $mod+r mode "default"
+}
+bindsym $mod+r mode "resize"
+
+# Quick resize without mode
+bindsym $mod+Alt+$left resize shrink width 30px
+bindsym $mod+Alt+$down resize grow height 30px
+bindsym $mod+Alt+$up resize shrink height 30px
+bindsym $mod+Alt+$right resize grow width 30px
+
+# ───────────────────────────────────────────────────────────────────────────────
+# KEY BINDINGS - Media & Hardware
+# ───────────────────────────────────────────────────────────────────────────────
+# Volume (pipewire/pulseaudio)
+bindsym XF86AudioRaiseVolume exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+
+bindsym XF86AudioLowerVolume exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+bindsym XF86AudioMute exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+bindsym XF86AudioMicMute exec wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+
+# Brightness (requires brightnessctl)
+bindsym XF86MonBrightnessUp exec brightnessctl set 5%+
+bindsym XF86MonBrightnessDown exec brightnessctl set 5%-
+
+# Media playback (requires playerctl)
+bindsym XF86AudioPlay exec playerctl play-pause
+bindsym XF86AudioNext exec playerctl next
+bindsym XF86AudioPrev exec playerctl previous
+
+# ───────────────────────────────────────────────────────────────────────────────
+# KEY BINDINGS - Screenshots (grim + slurp)
+# ───────────────────────────────────────────────────────────────────────────────
+# Full screen
+bindsym Print exec grim ~/Pictures/Screenshots/$(date +%Y%m%d_%H%M%S).png && notify-send "Screenshot saved"
+
+# Selection
+bindsym Shift+Print exec grim -g "$(slurp)" ~/Pictures/Screenshots/$(date +%Y%m%d_%H%M%S).png && notify-send "Screenshot saved"
+
+# Selection to clipboard
+bindsym $mod+Shift+s exec grim -g "$(slurp)" - | wl-copy && notify-send "Screenshot copied"
+
+# Current window
+bindsym $mod+Print exec grim -g "$(swaymsg -t get_tree | jq -r '.. | select(.focused?) | .rect | "\(.x),\(.y) \(.width)x\(.height)"')" ~/Pictures/Screenshots/$(date +%Y%m%d_%H%M%S).png && notify-send "Screenshot saved"
+
+# ───────────────────────────────────────────────────────────────────────────────
+# KEY BINDINGS - Quick Launch
+# ───────────────────────────────────────────────────────────────────────────────
+bindsym $mod+b exec $browser
+bindsym $mod+n exec $term -e nvim
+bindsym $mod+y exec $term -e yazi
+
+# ───────────────────────────────────────────────────────────────────────────────
+# WINDOW RULES
+# ───────────────────────────────────────────────────────────────────────────────
+# Float certain windows
+for_window [window_role="pop-up"] floating enable
+for_window [window_role="dialog"] floating enable
+for_window [app_id="pavucontrol"] floating enable
+for_window [app_id="blueman-manager"] floating enable
+for_window [app_id="nm-connection-editor"] floating enable
+for_window [title="File Operation Progress"] floating enable
+for_window [title="Confirm to replace files"] floating enable
+
+# Firefox PiP
+for_window [app_id="firefox" title="Picture-in-Picture"] floating enable, sticky enable
+
+# Inhibit idle for fullscreen
+for_window [class=".*"] inhibit_idle fullscreen
+for_window [app_id=".*"] inhibit_idle fullscreen
+
+# ───────────────────────────────────────────────────────────────────────────────
+# AUTOSTART
+# ───────────────────────────────────────────────────────────────────────────────
+# Status bar
+bar {
+    swaybar_command waybar
+}
+
+# Notification daemon
+exec mako
+
+# Polkit agent (for GUI privilege escalation)
+exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
+
+# Create screenshots directory
+exec mkdir -p ~/Pictures/Screenshots
+
+# Set GTK theme (requires gsettings)
+exec_always gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita-dark'
+exec_always gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
+
+# Include additional config files
+include /etc/sway/config.d/*
+include ~/.config/sway/config.d/*

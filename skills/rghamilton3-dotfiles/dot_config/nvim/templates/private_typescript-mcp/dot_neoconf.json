@@ -1,0 +1,32 @@
+{
+  "$schema": "https://raw.githubusercontent.com/folke/neoconf.nvim/main/schemas/neoconf.json",
+  "lspconfig": {
+    "ts_ls": {
+      "settings": {
+        "typescript": {
+          "inlayHints": {
+            "includeInlayParameterNameHints": "all",
+            "includeInlayFunctionParameterTypeHints": true,
+            "includeInlayVariableTypeHints": true,
+            "includeInlayPropertyDeclarationTypeHints": true,
+            "includeInlayFunctionLikeReturnTypeHints": true
+          }
+        }
+      }
+    }
+  },
+  "commands": {
+    "MCPBuild": {
+      "description": "Build MCP server",
+      "command": "15split | terminal npm run build"
+    },
+    "MCPWatch": {
+      "description": "Watch and rebuild MCP server",
+      "command": "15split | terminal npm run watch"
+    },
+    "MCPInspect": {
+      "description": "Run MCP inspector",
+      "command": "15split | terminal npx @modelcontextprotocol/inspector node build/index.js"
+    }
+  }
+}

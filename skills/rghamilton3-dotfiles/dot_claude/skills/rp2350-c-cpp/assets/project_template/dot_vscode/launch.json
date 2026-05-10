@@ -1,0 +1,38 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Pico Debug (OpenOCD)",
+            "type": "cppdbg",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/build/${workspaceFolderBasename}.elf",
+            "MIMode": "gdb",
+            "miDebuggerPath": "gdb-multiarch",
+            "miDebuggerServerAddress": "localhost:3333",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Load program",
+                    "text": "load"
+                },
+                {
+                    "description": "Reset target",
+                    "text": "monitor reset init"
+                }
+            ],
+            "preLaunchTask": "Build Project",
+            "postDebugTask": "Kill OpenOCD",
+            "linux": {
+                "miDebuggerPath": "gdb-multiarch"
+            },
+            "osx": {
+                "miDebuggerPath": "arm-none-eabi-gdb"
+            }
+        }
+    ]
+}

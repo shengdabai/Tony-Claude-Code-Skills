@@ -1,0 +1,214 @@
+# chezmoi ignore patterns
+# Customize this file based on your specific needs
+# See references/ignore-patterns.md for comprehensive pattern catalog
+
+# ============================================================================
+# SECURITY - NEVER COMMIT THESE (Required)
+# ============================================================================
+
+# Environment files with secrets
+**/.env
+**/.env.*
+!**/.env.template
+!**/.env.example
+!**/.env.sample
+
+# Secret storage
+**/secrets.yaml
+**/secrets.yml
+**/secrets.json
+**/*credentials*
+**/*secret*
+
+# Private keys - SSH
+**/.ssh/id_*
+**/.ssh/*_rsa
+**/.ssh/*_ed25519
+**/.ssh/*_ecdsa
+
+# Private keys - Other
+**/*.key
+**/*.pem
+**/.gnupg/**
+
+# Cloud provider credentials
+**/.aws/credentials
+**/.azure/credentials
+**/.config/gcloud/credentials*
+**/.config/gcloud/**/credentials*
+**/.kube/config
+
+# Docker & Container credentials
+**/.docker/config.json
+
+# Other sensitive files
+**/.netrc
+**/.pgpass
+**/.my.cnf
+
+# ============================================================================
+# CACHE DIRECTORIES
+# ============================================================================
+
+# General cache
+**/.cache/**
+**/cache/**
+
+# Python
+**/__pycache__/**
+**/.pytest_cache/**
+**/.mypy_cache/**
+**/.ruff_cache/**
+**/.hypothesis/**
+
+# Node.js / JavaScript
+**/node_modules/**
+**/.npm/**
+**/.yarn/**
+**/.pnpm-store/**
+**/.next/cache/**
+**/.nuxt/**
+**/.turbo/**
+**/.parcel-cache/**
+
+# Build artifacts
+**/dist/**
+**/build/**
+**/out/**
+**/target/**
+
+# ============================================================================
+# OPERATING SYSTEM FILES
+# ============================================================================
+
+# macOS
+**/.DS_Store
+**/.AppleDouble
+**/.LSOverride
+**/.Spotlight-V100
+**/.Trashes
+**/.fseventsd
+**/.DocumentRevisions-V100
+**/.TemporaryItems
+
+# Windows
+**/Thumbs.db
+**/desktop.ini
+**/$RECYCLE.BIN/**
+
+# Linux
+**/.local/share/Trash/**
+**/.thumbnails/**
+
+# ============================================================================
+# EDITORS AND IDEs
+# ============================================================================
+
+# VS Code
+**/.vscode/**
+# Uncomment to track certain VS Code settings:
+# !**/.vscode/settings.json
+# !**/.vscode/keybindings.json
+
+# JetBrains IDEs
+**/.idea/**
+**/*.iml
+
+# Vim/Neovim
+**/*.swp
+**/*.swo
+**/*~
+**/.vim/swap/**
+**/.vim/backup/**
+**/.local/share/nvim/swap/**
+
+# ============================================================================
+# SHELL AND APPLICATION HISTORY
+# ============================================================================
+
+**/.bash_history
+**/.zsh_history
+**/.python_history
+**/.node_repl_history
+**/.lesshst
+**/.wget-hsts
+**/.sqlite_history
+**/.psql_history
+
+# ============================================================================
+# BROWSER DATA
+# ============================================================================
+
+# Firefox
+**/.mozilla/**/storage/**
+**/.mozilla/**/cache2/**
+
+# Chrome/Chromium
+**/.config/google-chrome/**/Storage/**
+**/.config/google-chrome/**/Cache/**
+**/.config/chromium/**/Storage/**
+**/.config/chromium/**/Cache/**
+
+# ============================================================================
+# LOGS AND TEMPORARY FILES
+# ============================================================================
+
+**/*.log
+**/*.pid
+**/logs/**
+**/*.tmp
+**/*.temp
+**/tmp/**
+**/temp/**
+
+# ============================================================================
+# LANGUAGE-SPECIFIC (Uncomment sections you need)
+# ============================================================================
+
+# Python virtual environments
+**/.venv/**
+**/venv/**
+**/ENV/**
+**/env/**
+
+# # Rust
+# **/target/**
+# **/*.rs.bk
+
+# # Go
+# **/go.sum
+
+# # Ruby
+# **/.bundle/**
+# **/vendor/bundle/**
+
+# # Java
+# **/target/**
+# **/*.class
+
+# ============================================================================
+# APPLICATION-SPECIFIC ADDITIONS
+# ============================================================================
+
+# Add your application-specific ignore patterns here
+# Examples:
+# **/.terraform/**
+# **/.vagrant/**
+# **/.docker/cli-plugins/**
+
+# ============================================================================
+# CUSTOMIZATION TIPS
+# ============================================================================
+#
+# 1. Test your patterns:
+#    chezmoi managed | grep "unwanted-file"
+#
+# 2. To INCLUDE a file in an ignored directory:
+#    **/.config/app/cache/**
+#    !**/.config/app/cache/important.conf
+#
+# 3. Preview what would be managed:
+#    chezmoi add --dry-run --verbose ~/
+#
+# 4. For comprehensive patterns, see:
+#    references/ignore-patterns.md
