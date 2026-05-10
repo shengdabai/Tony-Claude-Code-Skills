@@ -369,11 +369,11 @@ Minimum 0 per category.
 export function generateCoAuthorTrailer(ctx: TemplateContext): string {
   const { getHostConfig } = require('../../hosts/index');
   const hostConfig = getHostConfig(ctx.host);
-  return hostConfig.coAuthorTrailer || 'Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>';
+  return hostConfig.coAuthorTrailer || 'Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>';
 }
 
 export function generateChangelogWorkflow(_ctx: TemplateContext): string {
-  return `## CHANGELOG (auto-generate)
+  return `## Step 13: CHANGELOG (auto-generate)
 
 1. Read \`CHANGELOG.md\` header to know the format.
 
