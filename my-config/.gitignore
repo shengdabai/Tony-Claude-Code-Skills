@@ -1,0 +1,39 @@
+# 个人/本地数据 — 同步到 dotfiles 仓库时排除
+CLAUDE.local.md
+settings.local.json
+.env*
+*.bak
+*.bak.*
+.last-cleanup
+.session-stats.json
+.omc-config.json
+.env.secrets
+
+# 缓存与历史
+cache/
+backups/
+file-history/
+image-cache/
+paste-cache/
+session-env/
+shell-snapshots/
+sessions/
+projects/
+ide/
+debug/
+hud/
+plans/
+mcp-needs-auth-cache.json
+ccusage-*-cache.json
+cost-state.json
+history.jsonl
+
+# 第三方插件 — 由 plugin manager 管理
+plugins/
+.omc/state/
+.omc/logs/
+.omc/research/
+
+# 备份目录
+rules.bak.*
+getnote-mcp.backup-*
