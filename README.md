@@ -109,7 +109,7 @@ Tony-Claude-Code-Skills/
 │   └── mcp-servers/              ← MCP server configs
 ├── opc-methodology/              ← One-person business methodology (CC-BY-NC-SA)
 │   └── skills/       (9)         ← /opc-orchestrator + 8 stage skills
-├── skills/         (372)         ← Curated third-party skills
+├── skills/         (500+)        ← Curated third-party skills (addyosmani, real-engineer, lark-*, afa-*, hyperframes, ...)
 └── NOTICE.md                     ← Attribution & license info / 来源与协议
 ```
 
@@ -130,6 +130,62 @@ Tony-Claude-Code-Skills/
 
 ---
 
+## 🧬 Spec-Driven Trio / 三件套工作流
+
+A **three-layer collaboration** that turns Claude Code into a disciplined SDD engineer. The full rule lives at [`my-config/rules/spec-driven-trio.md`](my-config/rules/spec-driven-trio.md).
+
+| Layer | Tool | Role / 角色 |
+|---|---|---|
+| **Memory & Spec** | [OpenSpec](https://github.com/Fission-AI/OpenSpec) (`/opsx:*`) | Generates `proposal.md` / `specs/` / `design.md` / `tasks.md` artifacts. Spec lives in the repo, not chat history. |
+| **Execution & Discipline** | [Superpowers](https://github.com/obra/superpowers) plugin | brainstorm → plan → TDD → verify-before-completion. Forces evidence over assertions. |
+| **Code Standards** | [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) (23 skills) | Cross-cutting code quality: `api-and-interface-design`, `security-and-hardening`, `code-review-and-quality`, `performance-optimization`, etc. |
+
+### Install all three / 一键三装
+
+```bash
+# 1. OpenSpec (global CLI + /opsx:* slash commands)
+npm install -g @fission-ai/openspec@latest
+
+# 2. Superpowers (Claude Code plugin)
+/plugin install superpowers@superpowers-dev
+
+# 3. addyosmani agent-skills — already vendored in skills/
+#    code-review-and-quality, doubt-driven-development, interview-me,
+#    test-driven-development, using-agent-skills, and 18 more
+```
+
+### How they compose / 如何协同
+
+**Auto-detection:** if a project root contains `openspec/`, SDD mode kicks in automatically. Otherwise the workflow defaults to brainstorm → plan → TDD without forcing spec artifacts.
+
+```
+/opsx:propose <feature>
+    ↓ generates proposal / specs / design / tasks
+[superpowers:brainstorming] → divergent + convergent thinking
+    ↓
+[superpowers:writing-plans] → executable plan
+    ↓
+[agent-skills:api-and-interface-design] → API form review
+    ↓
+/opsx:apply → per-task TDD via [superpowers:test-driven-development]
+    ↓
+[superpowers:verification-before-completion] → evidence, not assertions
+    ↓
+[agent-skills:code-review-and-quality] → multi-axis review
+    ↓
+/opsx:archive → specs land in the canonical store
+```
+
+### Why this trio / 为什么是这三个
+
+- **OpenSpec ≠ code generator** — it produces markdown artifacts; code generation stays with the other two layers
+- **Superpowers ≠ code rules** — it governs *how* to act safely; *what* the code should look like is the third layer
+- **agent-skills ≠ workflow** — it codifies cross-cutting standards (security, perf, API design); flow control is the other two
+
+The three layers stack without overlap. See [`my-config/rules/spec-driven-trio.md`](my-config/rules/spec-driven-trio.md) for the full task-routing table and anti-patterns.
+
+---
+
 ## 🔌 Required External Tools / 需要的外部工具
 
 | Tool | Why | Install |
@@ -138,6 +194,8 @@ Tony-Claude-Code-Skills/
 | [gstack](https://github.com/garrytan/gstack) | Browser automation, QA, deploy | Already vendored in `skills/gstack/` |
 | [gbrain](https://github.com/garrytan/gbrain) | Persistent memory + knowledge graph | `bun install -g github:garrytan/gbrain` |
 | [gitleaks](https://github.com/gitleaks/gitleaks) | Pre-commit secret scan (optional) | `brew install gitleaks` |
+| [OpenSpec](https://github.com/Fission-AI/OpenSpec) | Spec-driven dev (`/opsx:*`, `openspec init`) | `npm i -g @fission-ai/openspec@latest` |
+| [Superpowers](https://github.com/obra/superpowers) | Execution discipline (brainstorm → TDD → verify) | `/plugin install superpowers@superpowers-dev` |
 
 ---
 

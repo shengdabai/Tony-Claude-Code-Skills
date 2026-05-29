@@ -3,7 +3,7 @@
 ## 文字工具
 
 - **飞书 (Lark)**: `lark-cli` — 官方 CLI,覆盖 IM/文档/表格/日历等。需先 `lark-cli config init` + `lark-cli auth login --recommend` 配置凭证
-- **Obsidian**: 本地 Markdown vault,通过文件系统直接操作。MCP 可选安装
+- **Obsidian**: 本地 Markdown vault 在 `~/Documents/<obsidian-vault>`。已配 MCP(`mcp__obsidian`,基于 `obsidian-mcp` npm 包),提供 read/edit/create/delete-note + search-vault + tag 管理,优先用 MCP 工具而非裸文件操作
 - **GetNote**: 已配置 MCP(`mcp__getnote`),200h 教学录音存储于此
 - **NotebookLM**: `nlm` — 社区 CLI,需先 `nlm login` 提取 cookies。支持笔记本/源/音频管理
 
