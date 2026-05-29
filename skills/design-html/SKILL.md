@@ -1,1 +1,0 @@
-/Users/adam/.claude/skills/gstack/design-html/SKILL.md
