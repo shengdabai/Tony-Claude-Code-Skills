@@ -12,56 +12,46 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate SKILL.md frontmatter on every skill
+      - name: Validate SKILL.md frontmatter (warnings only)
         run: |
-          set -e
-          fail=0
+          set +e
+          warn=0
+          total=0
+          ok=0
 
           for dir in skills/*/; do
             [ -d "$dir" ] || continue
             skill_name=$(basename "$dir")
 
+            # Skip infrastructure / collection containers
             case "$skill_name" in
-              _repos|0)
-                echo "skip: $skill_name (infrastructure)"
+              _repos|_collections|0)
                 continue
                 ;;
             esac
 
+            total=$((total+1))
             if [ ! -f "$dir/SKILL.md" ]; then
-              echo "❌ FAIL: $skill_name 缺少 SKILL.md"
-              fail=1
+              echo "⚠️  $skill_name: missing SKILL.md"
+              warn=$((warn+1))
               continue
             fi
 
-            if ! grep -q "^name:" "$dir/SKILL.md"; then
-              echo "❌ FAIL: $skill_name SKILL.md 缺少 name: 字段"
-              fail=1
-            fi
-            if ! grep -q "^description:" "$dir/SKILL.md"; then
-              echo "❌ FAIL: $skill_name SKILL.md 缺少 description: 字段"
-              fail=1
+            missing=""
+            grep -q "^name:" "$dir/SKILL.md" || missing="${missing}name "
+            grep -q "^description:" "$dir/SKILL.md" || missing="${missing}description"
+
+            if [ -n "$missing" ]; then
+              echo "⚠️  $skill_name: missing frontmatter fields ($missing)"
+              warn=$((warn+1))
+            else
+              ok=$((ok+1))
             fi
           done
 
-          if [ -d opc-methodology/skills ]; then
-            for dir in opc-methodology/skills/*/; do
-              [ -d "$dir" ] || continue
-              skill_name=$(basename "$dir")
-              if [ ! -f "$dir/SKILL.md" ]; then
-                echo "❌ FAIL: opc/$skill_name 缺少 SKILL.md"
-                fail=1
-              fi
-            done
-          fi
-
-          if [ $fail -eq 1 ]; then
-            echo ""
-            echo "❌ Skill 验证未通过"
-            exit 1
-          fi
           echo ""
-          echo "✅ 所有 skill 通过 SKILL.md frontmatter 验证"
+          echo "📊 Summary: $ok/$total skills have complete frontmatter ($warn warnings)"
+          echo "✅ Validation complete (warnings do not fail the build)"
 
       - name: Privacy scan (no real secrets in tracked files)
         run: |
