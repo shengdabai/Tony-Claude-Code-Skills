@@ -88,14 +88,44 @@ test -d openspec && echo "spec-driven" || echo "ad-hoc"
 [agent-skills:code-review-and-quality]
 ```
 
-## 触发关键词清单(主动建议用户启 OpenSpec)
+## 触发关键词清单
 
-听到以下任一,先问用户要不要 `openspec init`:
+### 强触发(等同 /spec 命令,直接进 Phase A-F)
+
+听到以下任一,**立刻**走 `/spec` 命令同款流程(详见 `~/.claude/commands/spec.md`):
+- `/spec`(slash 命令)
+- "spec"(裸词,需上下文是"做某功能",纯讨论 spec 概念不触发)
+- "写 spec"/"做 spec"/"起 spec"
+- "write spec"/"write a spec"
+- "propose this"/"提案"/"先做规格"/"先出规格"
+- "spec-driven"/"SDD this"
+
+### 弱触发(先问用户要不要启 SDD)
+
+听到以下,先用一句话问"这次要走 SDD 流程吗?默认 yes":
 - "我想做一个新功能 X"
 - "帮我规划一下 Y"
-- "这个项目要重构"
-- "想做 spec"/"写 spec"
-- "/opsx" 字面提到
+- "这个项目要重构 X"
+- 提到 `/opsx` 但没说具体哪个 subcommand
+
+用户回 yes → 进 Phase A-F;用户回 no → ad-hoc 模式
+
+### 非触发(不要误启 SDD)
+
+以下情况**不要**当 SDD 触发:
+- "这个 spec 是什么意思"/"解释一下 spec"(纯概念讨论)
+- "看看 openspec/ 目录"(只查看不动手)
+- "spec 写完了"(已完成态)
+- 用户在调试 bug / 改文档 / 写脚本,即便说了 "spec"
+
+判据:**用户是不是在说"我现在要开始做一个新东西"** —— 是 → 触发,否 → 不触发
+
+## 关于裸词 "spec" 的歧义
+
+"spec" 单词太短,容易误触。判断规则:
+1. 用户消息只有 "spec" 一个字 → 问"你是想启动 SDD 流程吗?如果是,告诉我做什么功能"
+2. "spec 这个 feature" / "写 spec for X" → 强触发
+3. "openspec / OpenSpec" 词面出现 → 看上下文,讨论工具不触发,讨论"用它做事"才触发
 
 ## Anti-Pattern(三层混淆)
 
