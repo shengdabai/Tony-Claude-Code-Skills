@@ -1,1 +1,0 @@
-/Users/adam/.claude/skills/gstack/checkpoint/SKILL.md

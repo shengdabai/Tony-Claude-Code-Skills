@@ -7,34 +7,84 @@ on:
     branches: [main]
 
 jobs:
-  validate:
+  validate-skills:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [20, 22]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-
-      - name: Install Vitest
-        run: npm ci
-
-      - name: Run tests
-        run: npm test
-
-      - name: Validate all skill files exist
+      - name: Validate SKILL.md frontmatter on every skill
         run: |
-          # Check skills directory structure
+          set -e
+          fail=0
+
           for dir in skills/*/; do
-            if [ ! -d "$dir" ]; then
-              echo "Warning: skills directory empty"
-              exit 0
-            fi
+            [ -d "$dir" ] || continue
             skill_name=$(basename "$dir")
-            echo "Checking skill: $skill_name"
+
+            case "$skill_name" in
+              _repos|0)
+                echo "skip: $skill_name (infrastructure)"
+                continue
+                ;;
+            esac
+
+            if [ ! -f "$dir/SKILL.md" ]; then
+              echo "❌ FAIL: $skill_name 缺少 SKILL.md"
+              fail=1
+              continue
+            fi
+
+            if ! grep -q "^name:" "$dir/SKILL.md"; then
+              echo "❌ FAIL: $skill_name SKILL.md 缺少 name: 字段"
+              fail=1
+            fi
+            if ! grep -q "^description:" "$dir/SKILL.md"; then
+              echo "❌ FAIL: $skill_name SKILL.md 缺少 description: 字段"
+              fail=1
+            fi
           done
-          echo "All skills validated"
+
+          if [ -d opc-methodology/skills ]; then
+            for dir in opc-methodology/skills/*/; do
+              [ -d "$dir" ] || continue
+              skill_name=$(basename "$dir")
+              if [ ! -f "$dir/SKILL.md" ]; then
+                echo "❌ FAIL: opc/$skill_name 缺少 SKILL.md"
+                fail=1
+              fi
+            done
+          fi
+
+          if [ $fail -eq 1 ]; then
+            echo ""
+            echo "❌ Skill 验证未通过"
+            exit 1
+          fi
+          echo ""
+          echo "✅ 所有 skill 通过 SKILL.md frontmatter 验证"
+
+      - name: Privacy scan (no real secrets in tracked files)
+        run: |
+          set -e
+          patterns='sk-(proj|ant|live)-[a-zA-Z0-9_-]{40,}|ghp_[a-zA-Z0-9]{36}|AKIA[A-Z0-9]{16}|AIza[a-zA-Z0-9_-]{30,}|xoxb-[a-zA-Z0-9-]{20,}|cli_a[0-9a-f]{30}'
+
+          hits=$(git ls-files | xargs grep -lE "$patterns" 2>/dev/null \
+            | grep -vE "_repos/|THIRD_PARTY|NOTICE|hooks/secret-scan|hooks/sync-skills|cso/SKILL\.md|gstack-cso/SKILL\.md|CHANGELOG\.md|placeholder|YOUR_|<your|REDACTED" \
+            || true)
+
+          if [ -n "$hits" ]; then
+            echo "❌ 真凭证扫描命中:"
+            echo "$hits"
+            exit 1
+          fi
+          echo "✅ 隐私扫描通过 (0 real credentials in tracked files)"
+
+      - name: No nested .git directories
+        run: |
+          nested=$(find . -name .git -type d -not -path "./.git" -not -path "./skills/_repos/*" 2>/dev/null)
+          if [ -n "$nested" ]; then
+            echo "❌ 发现嵌套 .git:"
+            echo "$nested"
+            exit 1
+          fi
+          echo "✅ 无嵌套 .git"

@@ -1,6 +1,14 @@
 node_modules/
+**/node_modules/
 .DS_Store
 *.bak
+
+# Build / compile artifacts (skill code is source-only, runtime built elsewhere)
+**/dist/
+**/build/
+**/.next/
+**/out/
+*.tsbuildinfo
 .omc/
 local-config/
 claude-home/
