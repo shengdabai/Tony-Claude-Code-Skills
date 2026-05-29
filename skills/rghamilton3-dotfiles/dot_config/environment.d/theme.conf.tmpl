@@ -1,0 +1,25 @@
+{{- /* Theme Environment Variables for Sway (Managed by chezmoi) */ -}}
+{{- /* This file is read by systemd for user sessions */ -}}
+{{- /* Location: ~/.config/environment.d/theme.conf */ -}}
+
+# ═══════════════════════════════════════════════════════════════════
+# GTK THEMING
+# ═══════════════════════════════════════════════════════════════════
+GTK_THEME=Adwaita:dark
+
+# ═══════════════════════════════════════════════════════════════════
+# QT THEMING
+# ═══════════════════════════════════════════════════════════════════
+# Use qt5ct/qt6ct for configuration
+QT_QPA_PLATFORMTHEME=qt5ct
+# Fallback style if qt5ct not configured
+QT_STYLE_OVERRIDE=Adwaita-Dark
+# Use Wayland backend for Qt apps
+QT_QPA_PLATFORM=wayland;xcb
+QT_WAYLAND_DISABLE_WINDOWDECORATION=1
+
+# ═══════════════════════════════════════════════════════════════════
+# XDG / FREEDESKTOP
+# ═══════════════════════════════════════════════════════════════════
+# Hint for apps that query XDG settings
+XDG_CURRENT_DESKTOP=sway

@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "getnote": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "/Users/tonysheng/.claude/mcp-servers/getnote-mcp/dist/index.js"
+      ],
+      "env": {
+        "GETNOTE_API_KEY": "gk_live_c3498e6cefed7565.94787b786eedb72359e9fba71abada4058c33f74c5bb8d05",
+        "GETNOTE_CLIENT_ID": "cli_3802f9db08b811f197679c63c078bacc"
+      }
+    }
+  }
+}
