@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "getnote": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "$HOME/.claude/mcp-servers/getnote-mcp/dist/index.js"
+      ],
+      "env": {
+        "GETNOTE_API_KEY": "GETNOTE_KEY_REDACTED",
+        "GETNOTE_CLIENT_ID": "GETNOTE_CLIENT_REDACTED"
+      }
+    }
+  }
+}
