@@ -15,3 +15,45 @@ config/settings.json
 # 浏览器自动化运行时数据 (含加密 key/policy_token), 永远不进仓
 **/browser_state/
 **/browser_profile/
+
+# 第三方源仓库克隆缓存(避免嵌套 .git 破坏 push)
+skills/_repos/
+
+# RuVector 本地 DB(含会话数据)
+ruvector.db
+**/ruvector.db
+
+# 孤儿污染目录(skills/0 是 stitch-design-taste 的错位副本)
+skills/0/
+
+# macOS 冲突副本(iCloud / Finder 同步残留)
+**/* 2.*
+
+# .gitignore 自身的冲突副本
+**/.gitignore 2
+
+# LICENSE 冲突副本
+**/LICENSE 2
+
+# 密钥/凭证
+*.pem
+*.key
+**/credentials.*
+**/secrets.*
+.aws/
+.ssh/
+
+# Claude 个人化文件(不应公开)
+my-config/CLAUDE.local.md
+my-config/projects/-Users-tonysheng/memory/user_*.md
+my-config/projects/-Users-tonysheng/memory/feedback_no-pii-storage.md
+
+# AI 历史归档(含个人对话)
+my-config/AI-Archive/
+**/.claude.json
+**/sessions/
+
+# 任何 .env / .envrc
+**/.env
+**/.env.*
+**/.envrc
