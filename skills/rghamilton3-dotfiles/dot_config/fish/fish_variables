@@ -1,0 +1,146 @@
+# This file contains fish universal variable definitions.
+# VERSION: 3.0
+SETUVAR --export EZA_LAAD_OPTIONS:\x2d\x2dall\x1e\x2d\x2dall\x1e\x2d\x2dbinary\x1e\x2d\x2donly\x2ddirs
+SETUVAR --export EZA_LAAID_OPTIONS:\x2d\x2dall\x1e\x2d\x2dall\x1e\x2d\x2dbinary\x1e\x2d\x2dicons\x1e\x2d\x2donly\x2ddirs
+SETUVAR --export EZA_LAAI_OPTIONS:\x2d\x2dall\x1e\x2d\x2dall\x1e\x2d\x2dbinary\x1e\x2d\x2dicons
+SETUVAR --export EZA_LAA_OPTIONS:\x2d\x2dall\x1e\x2d\x2dall\x1e\x2d\x2dbinary
+SETUVAR --export EZA_LAD_OPTIONS:\x2d\x2dall\x1e\x2d\x2dbinary\x1e\x2d\x2donly\x2ddirs
+SETUVAR --export EZA_LAID_OPTIONS:\x2d\x2dall\x1e\x2d\x2dbinary\x1e\x2d\x2dicons\x1e\x2d\x2donly\x2ddirs
+SETUVAR --export EZA_LAI_OPTIONS:\x2d\x2dall\x1e\x2d\x2dbinary\x1e\x2d\x2dicons
+SETUVAR --export EZA_LA_OPTIONS:\x2d\x2dall\x1e\x2d\x2dbinary
+SETUVAR --export EZA_LC_OPTIONS:\x2d\x2dacross
+SETUVAR --export EZA_LD_OPTIONS:\x2d\x2donly\x2ddirs
+SETUVAR --export EZA_LE_OPTIONS:\x2d\x2dextended\x1e\x2d\x2dlong
+SETUVAR --export EZA_LG_OPTIONS:\x2d\x2dgit\x1e\x2d\x2dgit\x2dignore\x1e\x2d\x2dlong
+SETUVAR --export EZA_LID_OPTIONS:\x2d\x2dicons\x1e\x2d\x2donly\x2ddirs
+SETUVAR --export EZA_LI_OPTIONS:\x2d\x2dicons
+SETUVAR --export EZA_LL_OPTIONS:\x2d\x2dlong
+SETUVAR --export EZA_LO_OPTIONS:\x2d\x2doneline
+SETUVAR --export EZA_LT_OPTIONS:\x2d\x2dtree\x1e\x2d\x2dlevel
+SETUVAR --export EZA_L_OPTIONS:\x1d
+SETUVAR --export EZA_STANDARD_OPTIONS:\x2d\x2dgroup\x1e\x2d\x2dheader\x1e\x2d\x2dgroup\x2ddirectories\x2dfirst
+SETUVAR --export FZF_DEFAULT_OPTS:\x2d\x2dcolor\x3dbg\x2b\x3a\x23414559\x2cbg\x3a\x23303446\x2cspinner\x3a\x23F2D5CF\x2chl\x3a\x23E78284\x20\x2d\x2dcolor\x3dfg\x3a\x23C6D0F5\x2cheader\x3a\x23E78284\x2cinfo\x3a\x23CA9EE6\x2cpointer\x3a\x23F2D5CF\x20\x2d\x2dcolor\x3dmarker\x3a\x23BABBF1\x2cfg\x2b\x3a\x23C6D0F5\x2cprompt\x3a\x23CA9EE6\x2chl\x2b\x3a\x23E78284\x20\x2d\x2dcolor\x3dselected\x2dbg\x3a\x2351576D\x20\x2d\x2dcolor\x3dborder\x3a\x23414559\x2clabel\x3a\x23C6D0F5
+SETUVAR --export __FISH_EZA_ALIASES:\x1d
+SETUVAR --export __FISH_EZA_BASE_ALIASES:l\x1ell\x1elg\x1ele\x1elt\x1elc\x1elo
+SETUVAR --export __FISH_EZA_EXPANDED:a\x1ed\x1ei\x1eid\x1eaa\x1ead\x1eai\x1eaid\x1eaad\x1eaai\x1eaaid
+SETUVAR --export __FISH_EZA_EXPANDED_OPT_NAME:LA\x1eLD\x1eLI\x1eLID\x1eLAA\x1eLAD\x1eLAI\x1eLAID\x1eLAAD\x1eLAAI\x1eLAAID
+SETUVAR --export __FISH_EZA_OPT_NAMES:\x1d
+SETUVAR --export __FISH_EZA_SORT_OPTIONS:name\x1e\x2ename\x1esize\x1eext\x1emod\x1eold\x1eacc\x1ecr\x1einode
+SETUVAR __done_min_cmd_duration:10000
+SETUVAR __done_notification_urgency_level:low
+SETUVAR __fish_initialized:3800
+SETUVAR _fisher_catppuccin_2F_fish_files:\x7e/\x2econfig/fish/themes/Catppuccin\x20Frappe\x2etheme\x1e\x7e/\x2econfig/fish/themes/Catppuccin\x20Latte\x2etheme\x1e\x7e/\x2econfig/fish/themes/Catppuccin\x20Macchiato\x2etheme\x1e\x7e/\x2econfig/fish/themes/Catppuccin\x20Mocha\x2etheme
+SETUVAR _fisher_danhper_2F_fish_2D_ssh_2D_agent_files:\x7e/\x2econfig/fish/functions/__ssh_agent_is_started\x2efish\x1e\x7e/\x2econfig/fish/functions/__ssh_agent_start\x2efish\x1e\x7e/\x2econfig/fish/conf\x2ed/fish\x2dssh\x2dagent\x2efish
+SETUVAR _fisher_edc_2F_bass_files:\x7e/\x2econfig/fish/functions/__bass\x2epy\x1e\x7e/\x2econfig/fish/functions/bass\x2efish
+SETUVAR _fisher_jorgebucaran_2F_fisher_files:\x7e/\x2econfig/fish/functions/fisher\x2efish\x1e\x7e/\x2econfig/fish/completions/fisher\x2efish
+SETUVAR _fisher_jorgebucaran_2F_nvm_2E_fish_files:\x7e/\x2econfig/fish/functions/_nvm_index_update\x2efish\x1e\x7e/\x2econfig/fish/functions/_nvm_list\x2efish\x1e\x7e/\x2econfig/fish/functions/_nvm_version_activate\x2efish\x1e\x7e/\x2econfig/fish/functions/_nvm_version_deactivate\x2efish\x1e\x7e/\x2econfig/fish/functions/nvm\x2efish\x1e\x7e/\x2econfig/fish/conf\x2ed/nvm\x2efish\x1e\x7e/\x2econfig/fish/completions/nvm\x2efish
+SETUVAR _fisher_plttn_2F_fish_2D_eza_files:\x7e/\x2econfig/fish/functions/eza_git\x2efish\x1e\x7e/\x2econfig/fish/conf\x2ed/fish\x2deza\x2efish
+SETUVAR _fisher_plugins:jorgebucaran/nvm\x2efish\x1ecatppuccin/fish\x1ejorgebucaran/fisher\x1edanhper/fish\x2dssh\x2dagent\x1eplttn/fish\x2deza\x1eedc/bass
+SETUVAR _fisher_upgraded_to_4_4:\x1d
+SETUVAR fish_color_autosuggestion:737994
+SETUVAR fish_color_cancel:e78284
+SETUVAR fish_color_command:8caaee
+SETUVAR fish_color_comment:838ba7
+SETUVAR fish_color_cwd:e5c890
+SETUVAR fish_color_cwd_root:red
+SETUVAR fish_color_end:ef9f76
+SETUVAR fish_color_error:e78284
+SETUVAR fish_color_escape:ea999c
+SETUVAR fish_color_gray:737994
+SETUVAR fish_color_history_current:\x2d\x2dbold
+SETUVAR fish_color_host:8caaee
+SETUVAR fish_color_host_remote:a6d189
+SETUVAR fish_color_keyword:e78284
+SETUVAR fish_color_normal:c6d0f5
+SETUVAR fish_color_operator:f4b8e4
+SETUVAR fish_color_option:a6d189
+SETUVAR fish_color_param:eebebe
+SETUVAR fish_color_quote:a6d189
+SETUVAR fish_color_redirection:f4b8e4
+SETUVAR fish_color_search_match:\x2d\x2dbackground\x3d414559
+SETUVAR fish_color_selection:\x2d\x2dbackground\x3d414559
+SETUVAR fish_color_status:e78284
+SETUVAR fish_color_user:81c8be
+SETUVAR fish_color_valid_path:\x2d\x2dunderline
+SETUVAR fish_greeting:
+SETUVAR fish_key_bindings:fish_default_key_bindings
+SETUVAR fish_pager_color_background:\x1d
+SETUVAR fish_pager_color_completion:c6d0f5
+SETUVAR fish_pager_color_description:737994
+SETUVAR fish_pager_color_prefix:f4b8e4
+SETUVAR fish_pager_color_progress:737994
+SETUVAR fish_pager_color_secondary_background:\x1d
+SETUVAR fish_pager_color_secondary_completion:\x1d
+SETUVAR fish_pager_color_secondary_description:\x1d
+SETUVAR fish_pager_color_secondary_prefix:\x1d
+SETUVAR fish_pager_color_selected_background:\x1d
+SETUVAR fish_pager_color_selected_completion:\x1d
+SETUVAR fish_pager_color_selected_description:\x1d
+SETUVAR fish_pager_color_selected_prefix:\x1d
+SETUVAR fish_user_paths:/home/rghamilton3/\x2eopencode/bin\x1e/home/rghamilton3/\x2elocal/share/pnpm\x1e/home/rghamilton3/\x2eclaude/local\x1e/home/rghamilton3/flutter/bin\x1e/home/rghamilton3/workspace/orbit/scripts\x1e/home/rghamilton3/\x2ecargo/bin\x1e/home/rghamilton3/\x2elocal/bin
+SETUVAR pure_begin_prompt_with_current_directory:true
+SETUVAR pure_check_for_new_release:false
+SETUVAR pure_color_at_sign:pure_color_mute
+SETUVAR pure_color_aws_profile:pure_color_warning
+SETUVAR pure_color_command_duration:pure_color_warning
+SETUVAR pure_color_current_directory:pure_color_primary
+SETUVAR pure_color_danger:red
+SETUVAR pure_color_dark:black
+SETUVAR pure_color_git_branch:pure_color_mute
+SETUVAR pure_color_git_dirty:pure_color_mute
+SETUVAR pure_color_git_stash:pure_color_info
+SETUVAR pure_color_git_unpulled_commits:pure_color_info
+SETUVAR pure_color_git_unpushed_commits:pure_color_info
+SETUVAR pure_color_hostname:pure_color_mute
+SETUVAR pure_color_info:cyan
+SETUVAR pure_color_jobs:pure_color_normal
+SETUVAR pure_color_k8s_context:pure_color_success
+SETUVAR pure_color_k8s_namespace:pure_color_primary
+SETUVAR pure_color_k8s_prefix:pure_color_info
+SETUVAR pure_color_light:white
+SETUVAR pure_color_mute:brblack
+SETUVAR pure_color_nixdevshell_prefix:pure_color_info
+SETUVAR pure_color_nixdevshell_symbol:pure_color_mute
+SETUVAR pure_color_normal:normal
+SETUVAR pure_color_prefix_root_prompt:pure_color_danger
+SETUVAR pure_color_primary:blue
+SETUVAR pure_color_prompt_on_error:pure_color_danger
+SETUVAR pure_color_prompt_on_success:pure_color_success
+SETUVAR pure_color_success:magenta
+SETUVAR pure_color_system_time:pure_color_mute
+SETUVAR pure_color_username_normal:pure_color_mute
+SETUVAR pure_color_username_root:pure_color_light
+SETUVAR pure_color_virtualenv:pure_color_mute
+SETUVAR pure_color_warning:yellow
+SETUVAR pure_enable_aws_profile:true
+SETUVAR pure_enable_container_detection:true
+SETUVAR pure_enable_git:true
+SETUVAR pure_enable_k8s:false
+SETUVAR pure_enable_nixdevshell:false
+SETUVAR pure_enable_single_line_prompt:false
+SETUVAR pure_enable_virtualenv:true
+SETUVAR pure_reverse_prompt_symbol_in_vimode:true
+SETUVAR pure_separate_prompt_on_error:false
+SETUVAR pure_shorten_prompt_current_directory_length:0
+SETUVAR pure_shorten_window_title_current_directory_length:0
+SETUVAR pure_show_jobs:false
+SETUVAR pure_show_prefix_root_prompt:false
+SETUVAR pure_show_subsecond_command_duration:false
+SETUVAR pure_show_system_time:false
+SETUVAR pure_symbol_aws_profile_prefix:
+SETUVAR pure_symbol_container_prefix:
+SETUVAR pure_symbol_git_dirty:\x2a
+SETUVAR pure_symbol_git_stash:\u2261
+SETUVAR pure_symbol_git_unpulled_commits:\u21e3
+SETUVAR pure_symbol_git_unpushed_commits:\u21e1
+SETUVAR pure_symbol_k8s_prefix:\u2638
+SETUVAR pure_symbol_nixdevshell_prefix:\u2744\ufe0f
+SETUVAR pure_symbol_prefix_root_prompt:\x23
+SETUVAR pure_symbol_prompt:\u276f
+SETUVAR pure_symbol_reverse_prompt:\u276e
+SETUVAR pure_symbol_ssh_prefix:
+SETUVAR pure_symbol_title_bar_separator:\x2d
+SETUVAR pure_symbol_virtualenv_prefix:
+SETUVAR pure_threshold_command_duration:5
+SETUVAR pure_truncate_prompt_current_directory_keeps:\x2d1
+SETUVAR pure_truncate_window_title_current_directory_keeps:\x2d1

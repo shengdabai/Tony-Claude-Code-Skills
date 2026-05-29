@@ -1,0 +1,1 @@
+$HOME/.claude/plugins/cache/tony/xiaolai-write/0.1.0/commands/plan-write-draft.md

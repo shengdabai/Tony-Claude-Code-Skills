@@ -1,0 +1,31 @@
+# Yazi Configuration
+# Location: ~/.config/yazi/yazi.toml
+
+[mgr]
+# Show hidden files by default
+show_hidden = true
+# Sort directories first
+sort_dir_first = true
+# Sort by natural order (1, 2, 10 instead of 1, 10, 2)
+sort_by = "natural"
+sort_sensitive = false
+sort_reverse = false
+
+[preview]
+# Enable image preview (requires compatible terminal + ueberzugpp or sixel)
+image_filter = "triangle"
+image_quality = 75
+# Max file size to preview (in bytes)
+max_size = 10485760  # 10MB
+
+[opener]
+# Use default apps
+folder = [
+    { run = 'yazi "$@"', block = true, desc = "Open in Yazi" },
+]
+
+[open]
+rules = [
+    # Directories
+    { name = "*/", use = "folder" },
+]

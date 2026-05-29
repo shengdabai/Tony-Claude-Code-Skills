@@ -1,0 +1,1 @@
+$HOME/Desktop/项目开发/刘小排-可以抄作业的闷声发财产品/刘小排产品研究流程/.claude/commands/liuxiaopai-product.md
