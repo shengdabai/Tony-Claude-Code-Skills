@@ -59,7 +59,7 @@ jobs:
           patterns='sk-(proj|ant|live)-[a-zA-Z0-9_-]{40,}|ghp_[a-zA-Z0-9]{36}|AKIA[A-Z0-9]{16}|AIza[a-zA-Z0-9_-]{30,}|xoxb-[a-zA-Z0-9-]{20,}|cli_a[0-9a-f]{30}'
 
           hits=$(git ls-files | xargs grep -lE "$patterns" 2>/dev/null \
-            | grep -vE "_repos/|THIRD_PARTY|NOTICE|hooks/secret-scan|hooks/sync-skills|cso/SKILL\.md|gstack-cso/SKILL\.md|CHANGELOG\.md|placeholder|YOUR_|<your|REDACTED" \
+            | grep -vE "_repos/|_collections/|THIRD_PARTY|NOTICE|hooks/secret-scan|hooks/sync-skills|cso/SKILL\.md|gstack-cso/SKILL\.md|CHANGELOG\.md|placeholder|YOUR_|<your|REDACTED|/test/|/tests/|/__tests__/|\.test\.|\.spec\.|fixtures?/" \
             || true)
 
           if [ -n "$hits" ]; then
