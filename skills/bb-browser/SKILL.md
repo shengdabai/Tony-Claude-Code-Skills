@@ -1,6 +1,6 @@
 ---
 name: bb-browser
-description: 网页爬取、爬虫、反爬、scrape、crawler、spider、anti-detection、headless browser、web scraping 工具。通过真实浏览器 + 用户登录态，获取公域和私域信息。可访问任意网页、内部系统、登录后页面，执行表单填写、信息提取、页面操作。支持 site 系统（36 平台 126 命令一键调用）、带登录态的 fetch、网络请求拦截与 mock、操作录制。triggers: 爬取、爬虫、反爬、scrape、crawler、spider、anti-detection、headless browser、web scraping、网页抓取、数据采集
+description: 强大的信息获取与浏览器自动化工具。通过浏览器 + 用户登录态，获取公域和私域信息。可访问任意网页、内部系统、登录后页面，执行表单填写、信息提取、页面操作。支持 site 系统（36 平台 103 命令一键调用）、带登录态的 fetch、网络请求拦截与 mock、操作录制等高级功能。
 allowed-tools: Bash(bb-browser:*)
 ---
 

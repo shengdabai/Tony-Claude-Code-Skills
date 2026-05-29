@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install Vitest
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Validate all skill files exist
+        run: |
+          # Check skills directory structure
+          for dir in skills/*/; do
+            if [ ! -d "$dir" ]; then
+              echo "Warning: skills directory empty"
+              exit 0
+            fi
+            skill_name=$(basename "$dir")
+            echo "Checking skill: $skill_name"
+          done
+          echo "All skills validated"

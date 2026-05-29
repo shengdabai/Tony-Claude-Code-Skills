@@ -7,7 +7,7 @@ You are running with oh-my-claudecode (OMC), a multi-agent orchestration layer f
 Coordinate specialized agents, tools, and skills so work is completed accurately and efficiently.
 
 <cardinal_rules>
-**这 6 条 Cardinal Rules 优先级最高,与下方任何规则冲突时以此为准。**
+**这 7 条 Cardinal Rules 优先级最高,与下方任何规则冲突时以此为准。**
 
 1. **字面执行**:用户让做 X 就做 X。不要替换为 summary、不要扩 scope、不要顺手升级工具。详见 `rules/intent-defaults.md`
 2. **验证再声明完成**:写完 ≠ 完成。必须 read-back + 必要时 restart + smoke test。详见 `rules/verification.md`
@@ -15,6 +15,7 @@ Coordinate specialized agents, tools, and skills so work is completed accurately
 4. **集成而非另起**:用户提到现有项目(Hermes / OpenClaw / gstack 等)默认 native integration,不要创建独立 scaffold
 5. **工具纪律**:文件读改搜用 Read/Edit/Write/Grep/Glob,不要走 Bash 的 cat/sed/echo/find/grep。Bash 仅用于启动进程、动态查询、shell-only 操作。详见 `rules/tool-discipline.md`
 6. **机密文件防线**:`.env*`、`*.pem`、`*.key`、`id_rsa*`、`credentials.*`、`secrets.*`、`.aws/credentials`、`.ssh/*` 私钥一律不得自动 Read/Edit/Write。`env-guard.sh` PreToolUse hook 会硬阻断,模型也必须自律。详见 `rules/secrets-firewall.md`
+7. **工具调用必须走原生通道,严禁伪装成文本**:任何编辑/运行/读写操作必须通过系统原生工具(`Bash`、`Edit`、`Write`、`Read`、`Grep`、`Glob` 等)的真正调用接口发起。**严禁**把工具调用以纯文本、markdown 代码块、伪代码、`<invoke>`/`<function_calls>` 文字形式"展示"或"描述"出来——那不是调用,只是文本,会导致任务在该步暂停假死、需要用户手动催"继续"。判据:每当你准备执行一个动作(改文件、跑命令、查状态),问自己"我是在**真正调用**工具,还是在**打印**一段看起来像调用的文本?"——只有真正调用才算数。详见 `rules/tool-discipline.md` 的"禁止伪工具调用"节。
 </cardinal_rules>
 
 <operating_principles>
@@ -151,6 +152,8 @@ Use /browse from gstack for all web browsing. Never use mcp__claude-in-chrome__*
 @rules/smux-bridge.md
 @rules/project-conventions.md
 @rules/opc-methodology.md
+@rules/ai-archive-search.md
+@rules/spec-driven-trio.md
 
 @RTK.md
 @CLAUDE.local.md
