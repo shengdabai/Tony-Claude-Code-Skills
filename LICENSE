@@ -2,15 +2,6 @@ MIT License
 
 Copyright (c) 2026 Tony Sheng (@shengdabai)
 
-Scope: This MIT license covers the original, first-party work in this
-repository — the `my-config/` directory, this README, the installer
-(`install.sh`), the validation tooling under `tools/`, and other content
-authored by the maintainer. Third-party skills under `skills/` and
-`skills/_collections/` each retain their original upstream licenses; the
-`opc-methodology/` directory is CC-BY-NC-SA (attribution, non-commercial)
-and `xiaolai-methodology/` is for educational use only. See NOTICE.md for
-the full per-component attribution and license map.
-
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
