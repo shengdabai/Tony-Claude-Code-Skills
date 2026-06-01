@@ -1,13 +1,37 @@
 # Tony's Claude Code Skills
 
-> **A curated, production-ready collection of 312+ Claude Code skills, agents, hooks, and configuration** — built around the **Spec-Driven Trio** (OpenSpec + Superpowers + addyosmani agent-skills).
+> **A curated, production-ready collection of 334+ Claude Code skills, agents, hooks, and configuration** — built around the **Spec-Driven Trio** (OpenSpec + Superpowers + addyosmani agent-skills).
 >
-> **312+ 个精选 Claude Code 技能、agent、hook 与配置** — 围绕 **Spec-Driven 三件套**(OpenSpec + Superpowers + addyosmani agent-skills)组织。
+> **334+ 个精选 Claude Code 技能、agent、hook 与配置** — 围绕 **Spec-Driven 三件套**(OpenSpec + Superpowers + addyosmani agent-skills)组织。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Skills](https://img.shields.io/badge/skills-312+-brightgreen)](skills/)
+[![Skills](https://img.shields.io/badge/skills-334+-brightgreen)](skills/)
 [![Collections](https://img.shields.io/badge/_collections-47%20more-blue)](skills/_collections/)
 [![CI](https://github.com/shengdabai/Tony-Claude-Code-Skills/actions/workflows/ci.yml/badge.svg)](https://github.com/shengdabai/Tony-Claude-Code-Skills/actions/workflows/ci.yml)
+
+---
+
+## 📊 By the Numbers / 项目现状
+
+| Metric / 指标 | Value / 数值 |
+|---|---|
+| Skill directories (first-party + curated) / skill 目录 | **334** |
+| `SKILL.md` files incl. nested / SKILL.md 文件 | **1,201** |
+| Subagents / 子 agent | **630** |
+| Slash commands / 斜杠命令 | **349** |
+| Bundled third-party collections / 内置第三方合集 | **19** |
+| Commits / 提交 | **32** |
+| Active maintenance / 活跃维护 | **2026-04 → present, weekly pushes** |
+| License / 协议 | **MIT** (first-party) + per-skill upstream (third-party) |
+| CI / 持续集成 | ✅ Credential + frontmatter gate on every push |
+| Install / 安装 | One command, ≈ 30 seconds |
+
+**Status / 现状:** Early-stage but actively maintained. Distribution is via direct
+`git clone` + `install.sh` (no package registry yet); every push is CI-gated for
+leaked credentials and skill-frontmatter integrity. Issues and PRs welcome.
+
+早期但持续维护,通过 `git clone` + 一键安装传播(尚未上架包管理器),每次 push 都跑
+CI 扫凭证泄漏与 frontmatter 完整性。欢迎 issue / PR。
 
 ---
 
