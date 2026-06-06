@@ -1,294 +1,190 @@
-# Tony's Claude Code Skills
+# 🛠️ Tony's Claude Code Skills, Agents & Codex Workflow Collection
 
-> **A curated, production-ready collection of 334+ Claude Code skills, agents, hooks, and configuration** — built around the **Spec-Driven Trio** (OpenSpec + Superpowers + addyosmani agent-skills).
->
-> **334+ 个精选 Claude Code 技能、agent、hook 与配置** — 围绕 **Spec-Driven 三件套**(OpenSpec + Superpowers + addyosmani agent-skills)组织。
+**[English](#english) | [中文](#中文)**
 
+[![Last commit](https://img.shields.io/github/last-commit/shengdabai/Tony-Claude-Code-Skills?logo=github)](https://github.com/shengdabai/Tony-Claude-Code-Skills/commits)
+[![Stars](https://img.shields.io/github/stars/shengdabai/Tony-Claude-Code-Skills?style=social)](https://github.com/shengdabai/Tony-Claude-Code-Skills/stargazers)
+[![Follow @shengdabai](https://img.shields.io/github/followers/shengdabai?style=social)](https://github.com/shengdabai)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Skills](https://img.shields.io/badge/skills-334+-brightgreen)](skills/)
-[![Collections](https://img.shields.io/badge/_collections-47%20more-blue)](skills/_collections/)
-[![CI](https://github.com/shengdabai/Tony-Claude-Code-Skills/actions/workflows/ci.yml/badge.svg)](https://github.com/shengdabai/Tony-Claude-Code-Skills/actions/workflows/ci.yml)
 
 ---
 
-## 📊 By the Numbers / 项目现状
+## English
 
-| Metric / 指标 | Value / 数值 |
-|---|---|
-| Skill directories (first-party + curated) / skill 目录 | **334** |
-| `SKILL.md` files incl. nested / SKILL.md 文件 | **1,201** |
-| Subagents / 子 agent | **630** |
-| Slash commands / 斜杠命令 | **349** |
-| Bundled third-party collections / 内置第三方合集 | **19** |
-| Commits / 提交 | **32** |
-| Active maintenance / 活跃维护 | **2026-04 → present, weekly pushes** |
-| License / 协议 | **MIT** (first-party) + per-skill upstream (third-party) |
-| CI / 持续集成 | ✅ Credential + frontmatter gate on every push |
-| Install / 安装 | One command, ≈ 30 seconds |
+> A curated, battle-tested mirror of my day-to-day AI workflow — **320+ Claude Code skills, 9 agents, 39 slash commands, sanitized configs, and a Codex bridge** — synced straight from my live setup and auto-indexed so the README never goes stale.
 
-**Status / 现状:** Early-stage but actively maintained. Distribution is via direct
-`git clone` + `install.sh` (no package registry yet); every push is CI-gated for
-leaked credentials and skill-frontmatter integrity. Issues and PRs welcome.
+### Why this repo
 
-早期但持续维护,通过 `git clone` + 一键安装传播(尚未上架包管理器),每次 push 都跑
-CI 扫凭证泄漏与 frontmatter 完整性。欢迎 issue / PR。
+I'm a full-time Chinese-language teacher (6,000+ students) building AI + teaching tools in public. Everything I lean on inside Claude Code and Codex every day — skills, agents, commands, hooks, MCP snapshots, and a few full methodology books — lives here so it's reproducible, browsable, and reusable. Nothing is invented for show: it's whatever I actually run.
 
----
+### What it is
 
-## 🚀 Quick Install / 一键安装
+- **Skills** — the largest piece: reusable capability folders (`SKILL.md` + assets) covering DTC e-commerce, knowledge-brain ops, Lark/Feishu automation, frontend/design, video, writing, security, and more.
+- **Agents & commands** — my Claude Code sub-agents and slash commands, plus the rules / hooks / output-styles that wire them together.
+- **Codex workflow** — the config and bridge that let the same skill surface drive Codex CLI alongside Claude Code.
+
+### ✨ What's inside
+
+The skill index below is generated **directly from `skills/`** — so the counts are real, not aspirational.
+
+| Family | Count | What it does |
+| --- | --- | --- |
+| `gbrain-*` | 40 | Personal knowledge-brain ops — ingest, enrich, query, maintain |
+| `afa-*` | 30 | Full-funnel DTC / independent-site operating system |
+| `lark-*` | 26 | Feishu / Lark automation — docs, sheets, IM, calendar, base |
+| `hyperframes-*` | 15 | HTML-based video composition, captions, transitions, motion |
+| `real-engineer-*` | 14 | Engineering discipline — TDD, diagnose, grill, handoff |
+| `opc-*` | 9 | One-person-company methodology (niche → MVP → ops review) |
+| standalone | 170+ | frontend/design, browsing, research, security, writing, MCP-building, and many single-purpose skills |
+
+- **~320 skill folders** in total (312 ship a `SKILL.md`).
+- **`skills/_collections/`** — 19 vendored upstream collections kept for reference (dotfiles, awesome-skill lists, superpowers, etc.), namespaced under `_collections/` so they never collide with my own skills.
+- **`my-config/`** — 9 agents, 39 commands, hooks, rules, output-styles, and MCP snapshots.
+- **`opc-methodology/` & `xiaolai-methodology/`** — full methodology mdBooks with their own bundled skills.
+
+### 🧱 How it's organized
+
+```
+skills/              ~320 skill folders (each: SKILL.md + assets)
+  _collections/      19 vendored upstream skill collections (reference)
+my-config/           agents, commands, hooks, rules, output-styles, mcp-servers
+opc-methodology/     one-person-company methodology book + skills
+xiaolai-methodology/ writing/learning methodology book + skill
+config/              sanitized hooks & MCP config snapshots
+tools/               sync helpers + generate-readme.js (auto-index)
+mcp-servers/         MCP server notes
+install.sh           helper to drop skills into your ~/.claude
+```
+
+### 🚀 How to use these skills
+
+A skill is a self-contained folder with a `SKILL.md`. To use one, copy its folder into your Claude Code skills directory:
 
 ```bash
-# Clone & install (≈ 30 seconds)
-git clone https://github.com/shengdabai/Tony-Claude-Code-Skills.git ~/Tony-CCS
-cd ~/Tony-CCS && bash install.sh
+# Clone the repo
+git clone https://github.com/shengdabai/Tony-Claude-Code-Skills.git
+cd Tony-Claude-Code-Skills
 
-# Or just grab the skills directory
-git clone --depth=1 https://github.com/shengdabai/Tony-Claude-Code-Skills.git
-cp -R Tony-Claude-Code-Skills/skills/* ~/.claude/skills/
+# Copy a single skill into your personal Claude Code setup
+cp -R skills/<skill-name> ~/.claude/skills/
+
+# …or use the bundled helper
+bash install.sh
 ```
 
-After install, open a new Claude Code session and you can immediately use:
+Restart Claude Code (or start a new session) and the skill becomes discoverable. Each `SKILL.md` frontmatter describes when it triggers. Skills are model-agnostic — they work in Claude Code and, via the Codex bridge in `my-config/`, in Codex CLI too.
 
-安装后开新 Claude Code 会话即可使用:
+### 📖 Browse the index
 
-```
-/spec add a new auth flow         ← Spec-Driven Trio 全流程
-/opc-orchestrator                  ← 一人企业方法论
-/xiaolai-write                     ← 长文写作流水线
-/tdd                               ← TDD 强制流程
-... and 300+ more skills
-```
+There's no separate site — **browse the live skill index right here**: the table further down (and in [`skills/`](skills/)) is auto-generated from the directory on every sync, so it always matches what's actually published.
+
+### 🗺️ Status
+
+Active and continuously synced from my real setup. Skills come and go as my workflow evolves; the auto-index keeps this README honest. Treat it as a working mirror, not a frozen release.
+
+### 🤝 Connect & about
+
+I build AI + Chinese-teaching tools in public. If any of this saves you time, a ⭐ **Star** and a **Follow [@shengdabai](https://github.com/shengdabai)** genuinely help.
+
+Sibling repos worth a look:
+
+- **[everything-claude-code](https://github.com/shengdabai/everything-claude-code)** — broader Claude Code resource hub
+- **[claude-code-config](https://github.com/shengdabai/claude-code-config)** — my Claude Code configuration
+- **Tony-claude-plugins** — private Claude Code plugin marketplace
+
+> 🤖 **Maintainer note:** this README is also produced by [`tools/generate-readme.js`](tools/generate-readme.js), which rebuilds the skill index from `skills/` during `bash tools/config-sync.sh`. If you regenerate it, the prose above will be replaced by the generator's template — keep both in sync (or update the template in `generate-readme.js`).
+
+### License
+
+MIT — see [LICENSE](LICENSE). Individual skills under `skills/_collections/` and the methodology folders may retain their own upstream licenses; see each folder and [NOTICE.md](NOTICE.md).
 
 ---
 
-## 🧬 The Spec-Driven Trio / 三件套核心
+## 中文
 
-This repo is organized around a **three-layer collaboration model** that turns Claude Code into a disciplined SDD engineer:
+> 一份精选、经过实战检验的日常 AI 工作流镜像 —— **320+ 个 Claude Code 技能、9 个 agent、39 个 slash 命令、脱敏配置，以及一座 Codex 桥** —— 全部从我的实时环境同步而来，并自动建立索引，让 README 永不过时。
 
-本仓库围绕 **三层协作模型** 组织,让 Claude Code 变成有纪律的 SDD 工程师:
+### 为什么有这个仓库
 
-| Layer / 层 | Tool / 工具 | Role / 角色 |
-|---|---|---|
-| **🧠 Memory & Spec** | [**OpenSpec**](https://github.com/Fission-AI/OpenSpec) (`/opsx:*`) | Generates `proposal.md` / `specs/` / `design.md` / `tasks.md` artifacts. **Spec lives in the repo, not chat history.**<br>把规格落在仓库里,不是聊天历史里。 |
-| **⚙️ Execution & Discipline** | [**Superpowers**](https://github.com/obra/superpowers) plugin | brainstorm → plan → TDD → verify-before-completion. **Evidence over assertions.**<br>证据优先,纪律严格。 |
-| **📐 Code Standards** | [**addyosmani/agent-skills**](https://github.com/addyosmani/agent-skills) (23 skills) | Cross-cutting code quality: `api-and-interface-design`, `security-and-hardening`, `code-review-and-quality`, `performance-optimization`, etc.<br>横向代码规范。 |
+我是一名全职中文老师（6000+ 学员），在公开构建 AI + 教学工具。我每天在 Claude Code 和 Codex 里真正依赖的一切 —— 技能、agent、命令、hooks、MCP 快照，以及几本完整的方法论书 —— 都放在这里，便于复现、浏览和复用。没有一项是为了好看而编造的：全是我实际在跑的东西。
 
-### Why a trio? / 为什么是三件套?
+### 这是什么
 
-- **OpenSpec ≠ code generator** — it produces markdown artifacts; code generation belongs to the other two.<br>OpenSpec 只产规格,不产代码。
-- **Superpowers ≠ code rules** — it governs *how* to act safely; *what* the code should look like is the third layer.<br>Superpowers 管"怎么做",不管"做成什么样"。
-- **agent-skills ≠ workflow** — it codifies standards (security, performance, API design); flow control is the other two.<br>agent-skills 是横切规范,不是流程。
+- **Skills（技能）** —— 占比最大：可复用的能力目录（`SKILL.md` + 资源），覆盖 DTC 电商、知识脑运维、飞书/Lark 自动化、前端/设计、视频、写作、安全等。
+- **Agents 与命令** —— 我的 Claude Code 子 agent 和 slash 命令，以及把它们串起来的 rules / hooks / output-styles。
+- **Codex 工作流** —— 让同一套技能面也能驱动 Codex CLI（与 Claude Code 并行）的配置与桥接。
 
-The three layers stack without overlap. See [`my-config/rules/spec-driven-trio.md`](my-config/rules/spec-driven-trio.md) for the full task-routing table.
+### ✨ 里面有什么
 
-三层完全不重叠,详见上面的 rule 文件。
+下面的技能索引**直接从 `skills/` 生成** —— 所以数字是真实的，不是吹出来的。
 
-### Install the trio / 一键三装
+| 系列 | 数量 | 作用 |
+| --- | --- | --- |
+| `gbrain-*` | 40 | 个人知识脑运维 —— 摄入、富化、查询、维护 |
+| `afa-*` | 30 | DTC / 独立站全链路操盘系统 |
+| `lark-*` | 26 | 飞书 / Lark 自动化 —— 文档、表格、IM、日历、多维表 |
+| `hyperframes-*` | 15 | 基于 HTML 的视频合成、字幕、转场、动效 |
+| `real-engineer-*` | 14 | 工程纪律 —— TDD、诊断、拷问、交接 |
+| `opc-*` | 9 | 一人企业方法论（利基 → MVP → 经营复盘） |
+| 独立技能 | 170+ | 前端/设计、浏览、研究、安全、写作、MCP 构建等众多单一用途技能 |
+
+- 总计 **约 320 个技能目录**（其中 312 个带 `SKILL.md`）。
+- **`skills/_collections/`** —— 19 个保留作参考的上游技能合集（dotfiles、awesome 清单、superpowers 等），统一收在 `_collections/` 下，绝不与我自己的技能冲突。
+- **`my-config/`** —— 9 个 agent、39 个命令，以及 hooks、rules、output-styles、MCP 快照。
+- **`opc-methodology/` 与 `xiaolai-methodology/`** —— 完整的方法论 mdBook，各自附带专属技能。
+
+### 🧱 目录结构
+
+```
+skills/              约 320 个技能目录（每个含 SKILL.md + 资源）
+  _collections/      19 个上游技能合集（参考用）
+my-config/           agents、commands、hooks、rules、output-styles、mcp-servers
+opc-methodology/     一人企业方法论书 + 技能
+xiaolai-methodology/ 写作/学习方法论书 + 技能
+config/              脱敏后的 hooks 与 MCP 配置快照
+tools/               同步脚本 + generate-readme.js（自动索引）
+mcp-servers/         MCP 服务器说明
+install.sh           把技能装进 ~/.claude 的辅助脚本
+```
+
+### 🚀 如何使用这些技能
+
+每个技能都是一个含 `SKILL.md` 的自包含目录。使用时，把对应目录复制到你的 Claude Code 技能目录即可：
 
 ```bash
-# 1. OpenSpec (global CLI + /opsx:* slash commands)
-npm install -g @fission-ai/openspec@latest
+# 克隆仓库
+git clone https://github.com/shengdabai/Tony-Claude-Code-Skills.git
+cd Tony-Claude-Code-Skills
 
-# 2. Superpowers (Claude Code plugin)
-/plugin install superpowers@superpowers-dev
+# 把单个技能复制到你的 Claude Code 环境
+cp -R skills/<skill-name> ~/.claude/skills/
 
-# 3. addyosmani agent-skills — already vendored here
-cp -R skills/code-review-and-quality skills/doubt-driven-development \
-      skills/interview-me skills/test-driven-development \
-      skills/using-agent-skills ~/.claude/skills/
+# …或使用自带的辅助脚本
+bash install.sh
 ```
 
-### How to trigger / 怎么触发
+重启 Claude Code（或开新会话），技能即可被发现。每个 `SKILL.md` 的 frontmatter 描述了它的触发时机。技能与模型无关 —— 可在 Claude Code 中使用，并通过 `my-config/` 里的 Codex 桥接在 Codex CLI 中使用。
 
-```
-/spec                              ← Slash command, ask for feature
-/spec add dark mode toggle         ← Direct kickoff
-"spec 这个功能" / "write spec for X" / "propose this" ← Bare-word trigger
-```
+### 📖 浏览索引
 
-Auto-detection: if a project root contains `openspec/`, SDD mode kicks in automatically. Otherwise it gracefully falls back to brainstorm → plan → TDD without forcing spec artifacts.
+没有单独的站点 —— **直接在这里浏览实时技能索引**：下方的表格（以及 [`skills/`](skills/) 目录）在每次同步时都从目录自动生成，因此始终与真正发布的内容一致。
 
-自动检测:项目根有 `openspec/` 就自动进 SDD 模式,没有就降级到 brainstorm → plan → TDD,不强塞规格工件。
+### 🗺️ 状态
 
----
+活跃维护，持续从我的真实环境同步。技能会随我的工作流演进而增删；自动索引保证这份 README 诚实可信。请把它当作一个动态镜像，而非冻结的发行版。
 
-## 📦 What's Inside / 里面有什么
+### 🤝 关于 & 联系
 
-```
-Tony-Claude-Code-Skills/
-├── install.sh                    ← One-command installer / 一键安装
-│
-├── my-config/                    ← My personal ~/.claude/ — copy directly
-│   │                                我的本机配置,可直接覆盖你的 ~/.claude/
-│   ├── CLAUDE.md                 ← Global rules entry (7 Cardinal Rules)
-│   ├── rules/        (17)        ← Cardinal rules + integration rules
-│   │   └── spec-driven-trio.md   ← ⭐ The trio's routing rules
-│   ├── commands/     (17)        ← /tdd, /code-review, /verify, /spec ...
-│   ├── agents/        (9)        ← architect, code-reviewer, planner ...
-│   ├── hooks/        (15)        ← env-guard, secret-scan, statusline ...
-│   ├── output-styles/ (1)        ← terse mode
-│   └── mcp-servers/              ← MCP server configs
-│
-├── skills/                       ← 312 production-ready skills (flat)
-│   │                                312 个一目录一 skill 的生产 skill
-│   ├── code-review-and-quality/  ← addyosmani trio member
-│   ├── doubt-driven-development/ ← addyosmani trio member
-│   ├── interview-me/             ← addyosmani trio member
-│   ├── test-driven-development/  ← addyosmani trio member
-│   ├── using-agent-skills/       ← addyosmani trio member
-│   ├── frontend-design/          ← gstack family
-│   ├── lark-* (25 skills)        ← Feishu/Lark CLI integration
-│   ├── afa-* (30 skills)         ← DTC marketing methodology
-│   ├── hyperframes-* (13 skills) ← HyperFrames video composition
-│   ├── real-engineer-* (14)      ← Matt Pocock skills
-│   ├── gbrain-* (40+)            ← Persistent memory + knowledge graph
-│   ├── opc-* (9)                 ← One-person business methodology
-│   └── ...                       ← 200+ more, see skills/ for full list
-│
-├── skills/_collections/          ← 47 skills from third-party repos
-│   │                                第三方合集(整 repo 引入,供调研)
-│   ├── anthropics-skills/        ← Official Anthropic skills
-│   ├── superpowers/              ← Superpowers plugin source
-│   ├── claude-code/              ← Official Claude Code patterns
-│   ├── document-skills/          ← xlsx/docx/pdf/pptx
-│   ├── wshobson-agents/          ← Sam Wshobson's agents
-│   ├── travisvn-awesome-claude-skills/
-│   ├── ComposioHQ-awesome-claude-skills/
-│   ├── 1natsu172-dotfiles/       ← Personal dotfiles examples
-│   ├── d-kimuson-dotfiles/
-│   ├── rghamilton3-dotfiles/
-│   ├── JamesPrial-github-skills/
-│   ├── plugins/                  ← Plugin templates & start kits
-│   └── ...
-│
-├── opc-methodology/              ← One-person business (CC-BY-NC-SA)
-│   └── skills/       (9)         ← /opc-orchestrator + 8 stage skills
-│
-├── xiaolai-methodology/          ← Li Xiaolai coaching methodology
-│
-└── NOTICE.md                     ← Attribution & license info / 来源与协议
-```
+我在公开构建 AI + 中文教学工具。如果这些东西帮你省了时间，一个 ⭐ **Star** 和 **关注 [@shengdabai](https://github.com/shengdabai)** 对我真的很有帮助。
 
-### Skill Categories / 技能分类
+值得一看的姊妹仓库：
 
-| Category / 分类 | Skills | Highlights / 代表 skill |
-|---|---|---|
-| **Design / UI** | 25+ | `frontend-design`, `imagegen-frontend-web`, `imagegen-frontend-mobile`, `huashu-design`, `industrial-brutalist-ui`, `minimalist-ui`, `gpt-taste` |
-| **Workflow / 工作流** | 30+ | `autopilot`, `ralph`, `team`, `ultrawork`, `ultraqa`, `ralplan`, `tdd-guardian:*` |
-| **Memory / 记忆** | 40+ | `gbrain-*` series, `notebooklm`, `wiki`, `echo-sleuth:*`, `decision-tracker` |
-| **Browser / 浏览器** | 15+ | `browse`, `bb-browser`, `bb-browser-openclaw`, `connect-chrome`, `qa`, `playwright-*` |
-| **Planning / 规划** | 20+ | `plan-ceo-review`, `plan-eng-review`, `plan-design-review`, `interview-me`, `office-hours` |
-| **Quality / 质量** | 25+ | `audit`, `cso`, `review`, `verify`, `test-coverage`, `code-review-and-quality` |
-| **Lark / 飞书** | 25 | Full Feishu CLI integration: docs, sheets, base, im, calendar, OKR, approval ... |
-| **AFA (DTC)** | 30 | `afa-foundation`, `afa-creative`, `afa-paid`, `afa-organic`, `afa-cx`, `afa-dashboard` ... |
-| **HyperFrames** | 13 | Video composition with audio-reactive animation, transitions, TTS, ASS captions |
-| **Real-Engineer** | 14 | `real-engineer-tdd`, `real-engineer-diagnose`, `real-engineer-grill-me`, ... |
-| **OPC** | 9 | One-person business: niche → MVP → conversion → assets → dashboard |
-| **Anthropic Official** | 5 | `pdf`, `xlsx`, `pptx`, `docx`, `mcp-builder` |
+- **[everything-claude-code](https://github.com/shengdabai/everything-claude-code)** —— 更广的 Claude Code 资源汇总
+- **[claude-code-config](https://github.com/shengdabai/claude-code-config)** —— 我的 Claude Code 配置
+- **Tony-claude-plugins** —— 私有 Claude Code 插件市场
 
-→ Full list: [`skills/`](skills/) directory
+> 🤖 **维护者提示：** 本 README 同时由 [`tools/generate-readme.js`](tools/generate-readme.js) 生成，它会在 `bash tools/config-sync.sh` 时从 `skills/` 重建技能索引。若你重新生成，上面的正文会被生成器模板覆盖 —— 请保持两者同步（或直接更新 `generate-readme.js` 里的模板）。
 
----
+### 许可证
 
-## 🔌 Required External Tools / 需要的外部工具
-
-| Tool | Why | Install |
-|---|---|---|
-| **Claude Code** | The host / 宿主 | https://claude.com/claude-code |
-| [**OpenSpec**](https://github.com/Fission-AI/OpenSpec) | Spec-Driven Trio layer 1 | `npm i -g @fission-ai/openspec@latest` |
-| [**Superpowers**](https://github.com/obra/superpowers) | Spec-Driven Trio layer 2 | `/plugin install superpowers@superpowers-dev` |
-| [gstack](https://github.com/garrytan/gstack) | Browser automation, QA, deploy | Vendored in `skills/gstack/` |
-| [gbrain](https://github.com/garrytan/gbrain) | Persistent memory + knowledge graph | `bun install -g github:garrytan/gbrain` |
-| [lark-cli](https://github.com/larksuite/larkutil-cli) | Feishu/Lark CLI for `lark-*` skills | `npm i -g @larksuite/larkutil-cli` |
-| [gitleaks](https://github.com/gitleaks/gitleaks) | Pre-commit secret scan (optional) | `brew install gitleaks` |
-
----
-
-## 🎯 Recommended Starting Points / 推荐起步路径
-
-### For new Claude Code users / 新手
-
-1. Copy `my-config/CLAUDE.md` to `~/.claude/CLAUDE.md` — get the 7 Cardinal Rules
-2. Install the trio: OpenSpec + Superpowers + agent-skills (commands above)
-3. Try `/spec add a simple feature` in any project — experience the full SDD flow
-
-### For experienced users / 有经验用户
-
-- Cherry-pick rules from `my-config/rules/` — especially `intent-defaults.md`, `verification.md`, `secrets-firewall.md`
-- Browse `skills/_collections/` for full third-party repos to study
-- Read [`my-config/rules/spec-driven-trio.md`](my-config/rules/spec-driven-trio.md) for the task-routing matrix
-
-### For specific workflows / 特定工作流
-
-| If you want... / 想要... | Try... / 试试 |
-|---|---|
-| Spec-driven development | `/spec <feature>` |
-| Long-form writing | `/xiaolai-write` |
-| One-person business strategy | `/opc-orchestrator` |
-| Multi-agent parallel work | `/ultrawork` or `/team` |
-| Autonomous loop until done | `/autopilot` or `/ralph` |
-| Feishu/Lark integration | `lark-doc`, `lark-base`, `lark-im` skills |
-| DTC marketing | `afa-*` skill series |
-| Video composition | `hyperframes-*` skill series |
-| Persistent project memory | `gbrain-*` skill series |
-
----
-
-## 🛡 Privacy & Security / 隐私与安全
-
-This repo is **CI-scanned** for:
-- ❌ Real credentials (sk-/ghp_/AKIA/cli_a/AIza/xoxb patterns)
-- ❌ Nested `.git` directories (which silently break content sync)
-- ❌ Missing `name:` / `description:` frontmatter on any SKILL.md
-- ❌ Build artifacts (`dist/`, `build/`, `node_modules/`, `browser_state/`)
-
-All `.env*`, `*.pem`, `*.key`, `id_rsa*`, `credentials.*`, `secrets.*`, `.aws/`, `.ssh/` are blocked by `.gitignore` **and** by the `env-guard.sh` hook at runtime (see `my-config/hooks/`).
-
-本仓库每次 push 都跑 CI 扫真凭证、嵌套 .git、缺失 frontmatter、build 产物;运行时由 hook 双重防御。
-
-→ See full security model: [`my-config/rules/secrets-firewall.md`](my-config/rules/secrets-firewall.md)
-
----
-
-## 🤝 Contributing / 贡献
-
-This is a personal config repo, but PRs/issues are welcome if you:
-
-- 找到了 bug / 错位 / 死链
-- 有 skill 建议想加
-- 发现了真凭证泄漏(请直接邮件 issue,不要 PR)
-
-Before contributing, please:
-1. Run `bash tools/validate-skills.sh` locally
-2. Make sure new skills have `SKILL.md` with `name:` and `description:` YAML frontmatter
-3. No real secrets in test fixtures — use `<placeholder>` or `YOUR_KEY_HERE`
-
----
-
-## 📜 License / 协议
-
-- **My config (`my-config/`, `skills/_collections/orphan-skills/`, README, rules)** — MIT
-- **`opc-methodology/`** — CC-BY-NC-SA (Easy Chen, attribution required, non-commercial)
-- **`xiaolai-methodology/`** — Educational use, see `xiaolai-methodology/LICENSE`
-- **Third-party skills in `skills/` and `skills/_collections/`** — Each skill keeps its original license. See [`NOTICE.md`](NOTICE.md) for full attribution.
-
-每个 skill 保留原作者协议,详见 NOTICE.md。
-
----
-
-## 🙏 Acknowledgments / 致谢
-
-This repo wouldn't exist without:
-
-- [@addyosmani](https://github.com/addyosmani) — The original 23 agent-skills
-- [@obra](https://github.com/obra) — Superpowers plugin
-- [@Fission-AI](https://github.com/Fission-AI) — OpenSpec
-- [@garrytan](https://github.com/garrytan) — gstack & gbrain
-- [@anthropics](https://github.com/anthropics) — Claude Code itself + official skills
-- [@easychen](https://github.com/easychen) — One-person business methodology
-- [@xiaolai](https://github.com/xiaolai) — Self-taught everything methodology
-- [@mattpocock](https://github.com/mattpocock) — real-engineer skills
-- [@wshobson](https://github.com/wshobson) — agents collection
-- [@1natsu172](https://github.com/1natsu172), [@d-kimuson](https://github.com/d-kimuson), [@rghamilton3](https://github.com/rghamilton3), [@JamesPrial](https://github.com/JamesPrial), [@ComposioHQ](https://github.com/ComposioHQ), [@travisvn](https://github.com/travisvn), [@FrancyJGLisboa](https://github.com/FrancyJGLisboa) — dotfiles and skill collections in `_collections/`
-
-— Tony Sheng ([@shengdabai](https://github.com/shengdabai))
+MIT —— 见 [LICENSE](LICENSE)。`skills/_collections/` 下的各个技能以及方法论目录可能保留其上游许可证；详见各目录与 [NOTICE.md](NOTICE.md)。
