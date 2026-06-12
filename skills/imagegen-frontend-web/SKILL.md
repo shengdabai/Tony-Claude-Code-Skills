@@ -42,6 +42,37 @@ Use left-text / right-image only when it is genuinely the strongest choice — n
 ---
 
 # CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION
+
+## Quick reference — table of contents
+
+This file is long because web art direction is high-dimensional. Use this TOC to jump only to the section you need; sections are independent.
+
+- §1 ACTIVE BASELINE CONFIGURATION — dials (variance, density, art-direction, image-usage, spacing, etc.) that gate every other rule
+- §2 COMBINATORIAL VARIATION ENGINE — Theme / Background / Typography / Hero / Section System / Components / Motion menus
+- §3 FRONTEND REFERENCE RULE — make images that a coding model can actually rebuild
+- §4 HERO MINIMALISM RULES — one-image-per-section, headline line caps, hero cleanliness
+- §5 IMAGE COUNT & PAGE SLICING — generate enough images per section
+- §6 CREATIVITY ESCALATION RULE — push past safe defaults when brief allows
+- §7 IMAGE-FIRST ART DIRECTION — image-led narrative over typographic-only
+- §8 ANTI-AI-SLOP RULES — layout / visual / typography / content / density slop bans
+- §9 TYPOGRAPHY-FIRST DISCIPLINE — size contrast, reading order
+- §10 SECTION RHYTHM RULE — vary density, ratio, alignment, scale
+- §11 COMPONENT EXECUTION GUIDELINES — card / button / form / hero specifics
+- §12 DENSITY & SPACING DISCIPLINE — breathable, balanced page
+- §13 COLOR & MATERIAL RULES — palette discipline, gradient restraint
+- §14 IMAGE / MEDIA DIRECTION — when images belong, how to frame them
+- §15 DEFAULT SITE PACKS — 4 / 8 / 12 section presets
+- §16 MULTI-IMAGE CONSISTENCY RULE — same brand world across the set
+- §17 CLARITY CHECK — pre-ship audit
+- §18 EXTRA CREATIVITY & IMPLEMENTATION EDGE — push beyond template
+- §19 RESPONSE BEHAVIOR — generation playbook
+- §20 EXAMPLE INTERPRETATIONS — calibrated samples
+- §21 FINAL GOAL — premium, art-directed, implementation-friendly references
+
+Jump to the section relevant to your step. Do not preload the whole file.
+
+---
+
 You are an elite frontend image art director.
 
 Your job is not to generate generic AI art.
@@ -402,7 +433,7 @@ Generate **one separate horizontal image PER section**. Always.
 - never combine multiple sections in a single image
 - never return a single tall slice that contains the whole page
 - never return one "best" image and skip the rest
-- never replace several sections with one collage
+- never replace 2 or more sections with one collage
 
 If the request is ambiguous about section count, **default high**:
 - "hero" -> 1 image
@@ -506,7 +537,7 @@ Use images to:
 
 Important:
 - the design should not become text-only or card-only unless the user explicitly wants that
-- if a page has multiple sections, several sections should meaningfully include imagery
+- if a page has multiple sections, at least one third of them must meaningfully include imagery (real images, not placeholder rectangles)
 - if a hero exists, it should usually contain a strong visual image, product visual, or art-directed media element
 - imagery should feel premium and intentional, not like stock filler
 
@@ -754,7 +785,7 @@ or a confident flat color field — picked deliberately, not as decoration.
 - gradients must always read as professional and intentional, never as visual noise
 
 ### Materiality
-Where appropriate, add:
+For editorial, lifestyle, agency, and content-led briefs, add:
 - paper feel
 - glass feel
 - brushed metal feel
@@ -920,7 +951,7 @@ When the user asks for a frontend design:
 5. choose Hero Scale for the whole site (giant / mid / mini)
 5. choose a strong visual combination (theme, type, hero arch, section system, motion, narrative spine, second-read moment)
 7. for each section: pick a Composition Anchor, Background Mode, and CTA Variation — vary across sections
-8. choose 4 signature components used appropriately across sections
+8. choose 4 signature components and re-use each one in at least 2 sections so the page reads as one design system
 9. enforce hero minimalism + section size variety (some giant, some mini)
 10. enforce strong image usage including full-bleed backgrounds where it fits
 11. lock one consistent palette across all images
@@ -985,3 +1016,11 @@ Generate frontend reference images that feel:
 - implementation-friendly
 
 The result should look like a top-tier website concept with strong imagery, confident creativity, and generous spacing - not a dense, repetitive AI layout.
+
+## When to use
+
+Apply this skill when the user asks for premium website design reference images, landing page concepts, art-directed multi-section design boards, or marketing site visuals — generated as separate horizontal images per section.
+
+## Scope note
+
+This skill outputs web design reference images, one per section. It does not write running code. For code implementation from those images use `image-to-code-skill`. For mobile app screen images use `imagegen-frontend-mobile`. For brand identity boards use `brandkit`. For greenfield code-first UI use a taste skill: `design-taste-frontend`, `minimalist-ui`, `industrial-brutalist-ui`, `gpt-taste`, or `high-end-visual-design`. For redesigning an existing site use `redesign-existing-projects`.

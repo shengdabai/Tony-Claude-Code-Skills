@@ -96,3 +96,11 @@ Evaluate your code against this matrix before delivering. This is the last filte
 - [ ] All animations use only `transform` and `opacity` — no layout-triggering properties
 - [ ] `backdrop-blur` is only applied to fixed/sticky elements, never to scrolling content
 - [ ] The overall impression reads as "$150k agency build", not "template with nice fonts"
+
+## When to use
+
+Apply this skill when the user asks for an agency-tier, Apple-adjacent, Linear-adjacent, or Awwwards-tier site with double-bezel nested cards, button-in-button CTAs, spring-physics motion, and dramatic macro-whitespace.
+
+## Scope note
+
+This skill is the heavy-agency aesthetic. It is the wrong skill for: warm editorial minimalism (use `minimalist-ui`), brutalist industrial design (use `industrial-brutalist-ui`), GSAP-driven scroll choreography (use `gpt-taste`), Stitch design-system documents (use `stitch-design-taste`), brand identity boards (use `brandkit`), or redesigning an existing project (use `redesign-existing-projects`). For website-from-image reproduction use `image-to-code-skill`.

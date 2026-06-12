@@ -1,0 +1,53 @@
+# 用户自研/原创 skill 清单 — 桥接到 Codex 的优先集
+# 格式: claude-skill-name  (codex 侧用同名,除非注释标注改名)
+# 分组按优先级,# 注释行与空行忽略
+
+## P0 原创方法论(必须可见)
+# liuxiaopai-product 真身在项目目录(刘小排产品研究流程/.claude/skills/),
+# 非 ~/.claude/skills/ 下,sync 脚本的 readlink 找不到,故已手工 symlink。
+# 源: .../03-刘小排-可以抄作业的闷声发财产品/刘小排产品研究流程/.claude/skills/liuxiaopai-product
+liuxiaopai-product
+opc-orchestrator
+opc-niche-positioning
+opc-value-proposition
+opc-business-model-design
+opc-mvp-designer
+opc-conversion-loop
+opc-asset-ops
+opc-dashboard-review
+opc-resource-audit
+xiaolai-methodology
+liuxiaopai-design
+liuxiaopai-methodology
+dedao-write
+decision-tracker
+humanizer-zh
+
+## P1 原创内容/工具
+seedance-prompt-zh
+seedance-prompt-en
+aihot
+darwin-skill
+
+## P2 gbrain 个人知识脑 — 已禁用桥接
+# gbrain-* 的 SKILL.md frontmatter name 字段是通用词(query/ingest/publish/
+# briefing/daily-task-manager/strategic-reading),Codex 按 name 去重后这些
+# 已以「不带 gbrain 前缀」的通用名出现在列表中(功能可用)。再建 gbrain-*
+# 前缀 symlink 只会产生被去重忽略的噪音,故不桥接。需要时直接在 Codex 里
+# 用通用名调用(如 query / ingest)。
+
+## P3 自建设计/动画生态(高频)
+hyperframes
+high-end-visual-design
+gpt-taste
+image-to-code
+design-taste-frontend
+redesign-existing-projects
+industrial-brutalist-ui
+minimalist-ui
+stitch-design-taste
+imagegen-frontend-web
+imagegen-frontend-mobile
+full-output-enforcement
+brandkit
+native-feel-cross-platform-desktop

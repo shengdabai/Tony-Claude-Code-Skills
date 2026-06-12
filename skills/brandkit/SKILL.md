@@ -56,6 +56,26 @@ They define the quality bar, restraint, and presentation logic.
 
 # CORE PRINCIPLE
 
+## Quick reference — table of contents
+
+This file is long because brand identity design is high-dimensional. Use this TOC to jump only to the relevant block; sections are independent.
+
+Major blocks (search by name in the file):
+- CORE PRINCIPLE — the brand kit is a visual argument, not decoration
+- 5 LOGO STRATEGIES — Monogram + Meaning / Product Action / Metaphor Fusion / Negative Space / Construction Geometry (numbered ## 1–5 in the "Logo Strategy" zone)
+- 9 BOARD TYPES — Logo Cover / Logo Construction / Digital Application / Brand Essence / Color System / Typography / Physical Application / Image Direction / System Detail (numbered ## 1–9 in the "Boards" zone)
+- BRAND TERRITORIES — Dark Developer / Dark Product / Dark Nature / Dark Security / Light Editorial / Luxury Beauty / Voice Communication / Cultural Experimental
+- COLOR DISCIPLINE — palette logic, accent usage, banned hex families
+- TYPOGRAPHY DISCIPLINE — display vs body, serif/sans defaults
+- IMAGE DIRECTION — premium mockups, photography, abstract treatments
+- AI-TELL BANS — purple-blue glow, fake glassmorphism, generic 4-tile bento spam
+- QUALITY CHECK — pre-ship audit
+- RESPONSE BEHAVIOR — generation playbook
+
+Jump to the block relevant to your current step. Do not preload the whole file.
+
+---
+
 A premium brand kit is not decoration.
 
 It is a visual argument for why the brand exists.
@@ -796,3 +816,11 @@ The final result should be:
 - art-directed
 - implementation-friendly
 - stronger than normal AI-generated brand visuals
+
+## When to use
+
+Apply this skill when the user asks for a brand identity board, logo system, brand-guidelines deck, visual-world board, or studio-style brand presentation as an image (not as code or as a marketing site).
+
+## Scope note
+
+This skill produces brand-system images only. It does not generate running UI code, websites, or app screens. For UI implementation pick a code-producing taste skill: `high-end-visual-design`, `design-taste-frontend`, `minimalist-ui`, `industrial-brutalist-ui`, or `gpt-taste`. For mobile app screen images use `imagegen-frontend-mobile`. For web design reference images use `imagegen-frontend-web`. For website-from-image code reproduction use `image-to-code-skill`.

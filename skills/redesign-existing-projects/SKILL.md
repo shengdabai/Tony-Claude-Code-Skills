@@ -176,3 +176,11 @@ Apply changes in this order for maximum visual impact with minimum risk:
 - If the project uses Tailwind, check the version (v3 vs v4) before modifying config.
 - If the project has no framework, use vanilla CSS.
 - Keep changes reviewable and focused. Small, targeted improvements over big rewrites.
+
+## When to use
+
+Apply this skill when the user points at an existing repo, site, or app and asks for it to look more premium, less AI-generic, or production-grade — without a full rewrite or framework migration.
+
+## Scope note
+
+This skill is audit-and-upgrade only; it does not generate greenfield aesthetics. For new greenfield work pick the matching taste skill instead: warm-monochrome editorial (`minimalist-ui`), brutalist industrial (`industrial-brutalist-ui`), GSAP marketing (`gpt-taste`), Awwwards agency-tier (`high-end-visual-design`), Stitch design-system docs (`stitch-design-taste`), or balanced general taste (`design-taste-frontend`). For brand identity boards rather than web UI use `brandkit`. For website-from-image reproduction use `image-to-code-skill`.

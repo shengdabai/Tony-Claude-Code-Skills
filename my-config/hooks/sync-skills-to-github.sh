@@ -72,4 +72,4 @@ fi
 
 git add -A
 git commit -m "auto-sync: update skills ($(date '+%Y-%m-%d %H:%M'))" --quiet 2>/dev/null
-git push --quiet 2>/dev/null
+git push --quiet 2>/dev/null || echo "[$(date "+%Y-%m-%d %H:%M")] push failed: sync-skills-to-github.sh" >> "$HOME/.claude/logs/sync-push-fail.log"

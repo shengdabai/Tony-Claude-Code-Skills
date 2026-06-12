@@ -47,3 +47,11 @@ Before finalizing any response, verify:
 - Every item the user requested is present and finished
 - Code blocks contain actual runnable code, not descriptions of what code would do
 - Nothing was shortened to save space
+
+## When to use
+
+Apply this skill whenever the user asks for a "complete file", a "full implementation", or any task whose deliverable is a finished artifact that must not contain placeholders.
+
+## Scope note
+
+This skill enforces output completeness only. It does not prescribe visual taste, typography, color, or layout. For premium UI direction pair this with `high-end-visual-design` (Awwwards-tier), `minimalist-ui`, `industrial-brutalist-ui`, or `design-taste-frontend` (taste-skill v2). For brand-system images pair with `brandkit`. For website-from-image work pair with `image-to-code-skill`.

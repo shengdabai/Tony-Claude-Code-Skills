@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 # ai-backup.sh — 轻量备份 Claude + Codex 对话历史(跳过 sqlite/images 大件)
 # 输出: ~/AI-Session-Backups/ai-history-<ts>.tar.gz (chmod 600)
 set -Eeuo pipefail

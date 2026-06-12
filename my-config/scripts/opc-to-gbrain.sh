@@ -6,7 +6,7 @@
 #   ~/.claude/scripts/opc-to-gbrain.sh [项目代号] [--dry-run]
 #
 # 示例:
-#   cd ~/Desktop/项目开发/zturns-go
+#   cd ~/Desktop/项目开发/02-Z-Turns-Go
 #   ~/.claude/scripts/opc-to-gbrain.sh zturnsgo
 #   ~/.claude/scripts/opc-to-gbrain.sh zturnsgo --dry-run
 #

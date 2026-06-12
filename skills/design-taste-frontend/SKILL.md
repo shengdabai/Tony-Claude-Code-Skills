@@ -8,6 +8,28 @@ description: Anti-slop frontend skill for landing pages, portfolios, and redesig
 > Landing pages, portfolios, and redesigns. Not dashboards, not data tables, not multi-step product UI.
 > Every rule below is **contextual**. None of it fires automatically. First read the brief, then pull only what fits.
 
+## Quick reference — table of contents
+
+This file is long because design taste is high-dimensional. Use this TOC to jump only to what you need. Sections are independent and do not chain.
+
+- §0 BRIEF INFERENCE — read the room (industry, vibe words, references, mood) before any code
+- §1 THE THREE DIALS — Density / Motion-Intensity / Refinement gate every other rule
+- §2 BRIEF → DESIGN SYSTEM MAP — translate brief signals into palette / type / layout choices
+- §3 DEFAULT ARCHITECTURE & CONVENTIONS — Next.js / Tailwind / Motion / GSAP defaults, no useState for continuous values
+- §4 DESIGN ENGINEERING DIRECTIVES — anti-AI bias correction (serif default ban, italic descender clearance, palette rotation, button/form contrast, eyebrow restraint, split-header ban, mobile collapse)
+- §5 CONTEXT-AWARE PROACTIVITY — when to over-deliver vs hold back
+- §6 PERFORMANCE & ACCESSIBILITY GUARDRAILS — Lighthouse, contrast ratios, reduced-motion
+- §7 DIAL DEFINITIONS — technical reference for §1
+- §8 DARK MODE PROTOCOL — when to ship dark and how to do it well
+- §9 AI TELLS — forbidden patterns checklist (the live audit)
+- §10 REFERENCE VOCABULARY — pattern names the agent should know
+- §11 REDESIGN PROTOCOL — audit existing site first, do not rip-and-replace
+- §12 THE BLOCK LIBRARY — components contract; implementations land here iteratively
+- §13 OUT OF SCOPE — what this skill does NOT do
+- §14 FINAL PRE-FLIGHT CHECK — ship-gate audit
+
+Jump to the section relevant to your current step. Do not preload the whole file at once.
+
 ---
 
 ## 0. BRIEF INFERENCE (Read the Room Before Anything Else)
@@ -166,7 +188,7 @@ LLMs default to clichés. Override these defaults proactively. Each rule has a c
 * **Display / Headlines:** Default `text-4xl md:text-6xl tracking-tighter leading-none`.
 * **Body / Paragraphs:** Default `text-base text-gray-600 leading-relaxed max-w-[65ch]`.
 * **Sans font choice:**
-  * **Discouraged as default:** `Inter`. Pick `Geist`, `Outfit`, `Cabinet Grotesk`, `Satoshi`, or a brand-appropriate serif first.
+  * **Discouraged as default:** `Inter`. Pick `Geist`, `Outfit`, `Cabinet Grotesk`, `Satoshi`, or a serif whose mood matches the brand brief.
   * **Override:** Inter is acceptable when the user explicitly asks for a neutral / standard / Linear-style feel, or when the brief is a public-sector / accessibility-first site.
 * **Pairings to know:** `Geist` + `Geist Mono`, `Satoshi` + `JetBrains Mono`, `Cabinet Grotesk` + `Inter Tight`, `GT America` + `IBM Plex Mono`.
 
@@ -256,7 +278,7 @@ LLMs default to "static successful state only." Always implement full cycles:
   - **Pre-Flight Check is mechanical:** count instances of `uppercase tracking` (or similar small-caps mono labels above headlines) across all section components. If count > ceil(sectionCount / 3), the output fails.
   - **What to do instead of an eyebrow:** drop it entirely. The headline alone is enough. If you need to categorize a section, the section's location on the page already categorizes it; no label needed.
 * **SPLIT-HEADER BAN (mandatory).** The pattern "left big headline + right small explainer paragraph" as a section header (left col-span-7/8, right col-span-4/5 with a small body paragraph floating in the right column) is **banned as default**. Sections should have ONE focused message. If you genuinely need both a headline and an explainer paragraph, stack them vertically (headline on top, body below, max-width 65ch). Reach for the split-header pattern only when there is a real compositional reason (e.g., the right column carries a visual or interactive element, not just filler text).
-* **Bento Background Diversity (mandatory).** Bento and feature-grid sections cannot be 6 white-on-white cards with text inside. At least 2-3 cells in any multi-cell grid need real visual variation: a real image, a brand-appropriate gradient (not AI-purple), a pattern, a tinted background. A cream-on-cream bento with only typography inside reads as boring AI default, even when the rest of the page is good.
+* **Bento Background Diversity (mandatory).** Bento and feature-grid sections cannot be 6 white-on-white cards with text inside. At least 2-3 cells in any multi-cell grid need real visual variation: a real image, a gradient that uses the brand palette (no AI-purple), a pattern, a tinted background. A cream-on-cream bento with only typography inside reads as boring AI default, even when the rest of the page is good.
 * **Mobile collapse must be explicit per section.** For every multi-column layout, declare the `< 768px` fallback in the same component. No "it'll work, Tailwind handles it" assumptions.
 
 ### 4.8 Image & Visual Asset Strategy
@@ -353,12 +375,12 @@ The page has ONE theme. Sections do not invert.
 
 These are tools, not defaults. Use them when the design read calls for them. **None of these fire automatically.**
 
-* **Liquid Glass / Glassmorphism:** Appropriate for premium consumer, Apple-adjacent, luxury brand, or media-overlay vibes. Inappropriate for dashboards, public-sector, or "boring B2B." When used, go beyond `backdrop-blur`: add a 1px inner border (`border-white/10`) and a subtle inner shadow (`shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]`) for physical edge refraction. Provide a solid-fill fallback under `prefers-reduced-transparency`.
+* **Liquid Glass / Glassmorphism:** Use for premium consumer, Apple-adjacent, luxury brand, or media-overlay vibes. Do not use for dashboards, public-sector, or "boring B2B." When used, go beyond `backdrop-blur`: add a 1px inner border (`border-white/10`) and a subtle inner shadow (`shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]`) for physical edge refraction. Provide a solid-fill fallback under `prefers-reduced-transparency`.
 * **Magnetic Micro-physics:** Use when `MOTION_INTENSITY > 5` AND the brief reads premium / playful / agency. Implement EXCLUSIVELY with Motion's `useMotionValue` / `useTransform` outside the React render cycle. Never `useState`. See Section 3.B.
 * **Perpetual Micro-Interactions** (Pulse, Typewriter, Float, Shimmer, Carousel): Use when `MOTION_INTENSITY > 5` AND the section actively benefits from motion (status indicators, live feeds, AI-feel). **Not every card needs an infinite loop.** If a section is informational, leave it still. Apply Spring Physics (`type: "spring", stiffness: 100, damping: 20`) - no linear easing.
 * **"Motion claimed, motion shown."** If `MOTION_INTENSITY > 4`, the page must actually move: entry transitions on hero, scroll-reveal on key sections, hover physics on CTAs, at minimum. A static page that claims `MOTION_INTENSITY: 7` is broken. Conversely, if you cannot ship working motion in the available scope, drop the dial to 3 and ship a clean static page. Never half-build motion that breaks (cut-off ScrollTriggers, jumpy enters, missing cleanups).
 * **MOTION MUST BE MOTIVATED (mandatory).** Before adding any animation, ask: "what does this animation communicate?" Valid answers: hierarchy (drawing attention to the right thing), storytelling (revealing content in sequence that matches a narrative), feedback (acknowledging a user action), state transition (showing something changed). Invalid answer: "it looked cool". GSAP everywhere because GSAP is available is amateur. Each ScrollTrigger, each marquee, each pinned section needs a reason. If you cannot articulate the reason in one sentence, drop the animation.
-* **MARQUEE MAX-ONE-PER-PAGE (mandatory).** Horizontal scrolling text marquees ("logos endlessly scrolling", "manifesto scrolling sideways", "kinetic word strip") are appropriate at most ONCE per page. Two or more marquees on the same page reads as lazy filler. Pick the one section where the marquee actually serves the content; the others get a different layout.
+* **MARQUEE MAX-ONE-PER-PAGE (mandatory).** Horizontal scrolling text marquees ("logos endlessly scrolling", "manifesto scrolling sideways", "kinetic word strip") may appear at most ONCE per page. Two or more marquees on the same page reads as lazy filler. Pick the one section where the marquee actually serves the content; the others get a different layout.
 * **GSAP Sticky-Stack Pattern (when scroll-stack is used).** A "card stack on scroll" must be a REAL sticky-stack, not a sequential reveal list. See Section 5.A below for the canonical code skeleton. Common failure: trigger fires halfway through scroll instead of pinning at viewport top. Fix: `start: "top top"` not `start: "top center"` or `"top 80%"`.
 * **GSAP Horizontal-Pan Pattern (when horizontal scroll-hijack is used).** See Section 5.B below for the canonical skeleton. Common failure: animation starts before the section is pinned, so the user sees half a slide. Same fix: `start: "top top"`, pin the wrapper, scrub the inner track.
 
@@ -613,7 +635,7 @@ Avoid these signatures unless the brief explicitly asks for them.
 * **NO 3-column equal feature cards.** The generic "three identical cards horizontally" feature row is banned. Use 2-column zig-zag, asymmetric grid, scroll-pinned, or horizontal-scroll alternative.
 
 ### 9.D Content & Data ("Jane Doe" Effect)
-* **NO generic names.** "John Doe", "Sarah Chan", "Jack Su" → use creative, realistic, locale-appropriate names.
+* **NO generic names.** "John Doe", "Sarah Chan", "Jack Su" → use creative, realistic names that match the locale of the brand brief.
 * **NO generic avatars.** No SVG "egg" or Lucide user icons → use believable photo placeholders or specific styling.
 * **NO fake-perfect numbers.** Avoid `99.99%`, `50%`, `1234567`. Use organic, messy data (`47.2%`, `+1 (312) 847-1928`).
 * **NO startup-slop brand names.** "Acme", "Nexus", "SmartFlow", "Cloudly" → invent contextual, premium names that sound real.
@@ -813,7 +835,7 @@ Apply in order - stop when the brief is satisfied:
 1. **Typography refresh** - biggest visual lift per unit of risk.
 2. **Spacing & rhythm** - increase section padding, fix vertical rhythm.
 3. **Color recalibration** - desaturate, unify neutrals, keep brand accent.
-4. **Motion layer** - add `MOTION_INTENSITY`-appropriate micro-interactions to existing components.
+4. **Motion layer** - add micro-interactions whose intensity matches the project's `MOTION_INTENSITY` dial.
 5. **Hero & key-section recomposition** - restructure top-of-funnel using Section 10 vocabulary.
 6. **Full block replacement** - only when the existing block is unsalvageable.
 
@@ -1204,3 +1226,11 @@ But that is **web glassmorphism / frosted-glass approximation**, not official Ap
 ---
 
 **End of appendices.** Install commands above are reality anchors. The Apple Liquid Glass skeleton is a labeled approximation, not an Apple-issued package. For canonical docs per design system, consult the system's official docs (links in Section 2 plus Appendix B).
+
+## When to use
+
+Apply this skill (v2 taste-skill) when the user asks for any greenfield landing page, marketing site, portfolio, or product redesign and wants a single balanced taste system that infers atmosphere from the brief rather than committing to one preset aesthetic.
+
+## Scope note
+
+This skill is the balanced general-purpose taste system. Prefer a more specific sibling when the user signals a clear style: `minimalist-ui` for warm editorial monochrome, `industrial-brutalist-ui` for brutalist/Swiss/military, `gpt-taste` for GSAP marketing pages with AIDA structure, `high-end-visual-design` for Awwwards-tier double-bezel cards. For existing-project upgrades use `redesign-existing-projects`. For brand identity boards use `brandkit`. For `DESIGN.md` documentation use `stitch-design-taste`. For website-from-image reproduction use `image-to-code-skill`. For v1 backward compatibility use `design-taste-frontend-v1` (`taste-skill-v1`).

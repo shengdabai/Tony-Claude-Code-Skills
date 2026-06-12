@@ -19,6 +19,8 @@
 - Regex 处理中文文本必须考虑:全角标点(。．、:;)、编号格式混用(1. vs 1．vs (1))、字间空格(如 '听 力')
 - 批量提取前必须用实际中文源文件测试 regex,不要用英文/数字假设
 - 所有涉及中文的文件操作显式使用 UTF-8 编码
+- **CJK 标点归一化禁止过度转换**:normalization 脚本只动正文标点,**绝不**碰引用块/代码块/链接里的标点(历史教训:把引用原文的标点也转了,破坏 verbatim 引用)
+- **RTK 包裹的 grep 对 UTF-8 不可靠**:搜中文必须用 `Grep` 工具(ripgrep,UTF-8 安全),或 `rtk proxy grep ...` 绕过重写;**禁止**用裸 `grep` 做中文匹配 verification(byte 级匹配会漏/错)
 
 ## Download & Network
 
@@ -54,6 +56,7 @@
 ## GitHub 发布检查
 
 - 推 public 仓库前先 secret scan
+- **推 public 仓库前必扫内部/状态文件**:`.pipeline-state.json`、`.omc/`、`*-todo.md`、`.state.json`、`opc-doc/` 等内部产物不得进 public repo(历史教训:把流水线状态文件误部署到公开 OSS)。`.gitignore` 兜底 + 推前 `git ls-files | grep -iE 'state|\.omc|todo'` 复查
 - 推后自动加 `homepage=zturnsgo.com` / 描述 / 开发者向加 `FUNDING.yml`
 
 ## Vercel 部署陷阱

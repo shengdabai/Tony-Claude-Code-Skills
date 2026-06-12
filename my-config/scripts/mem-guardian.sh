@@ -90,8 +90,11 @@ is_protected_pid() {
 graceful_quit() {
     local app="$1"
     local count
-    count=$(pgrep -c "$app" 2>/dev/null || echo 0)
-    if [ "$count" -eq 0 ]; then
+    # macOS BSD pgrep 没有 -c(count) 选项(那是 Linux pgrep),且不带 -f 只匹配
+    # comm 字段,匹配不到 "Genspark Helper" 这类带空格子进程 → 历史 bug:永远判"未运行"。
+    # 改用 -f 全命令匹配 + wc -l 计数,macOS/Linux 通用。
+    count=$(pgrep -f "$app" 2>/dev/null | wc -l | tr -d ' ')
+    if [ "${count:-0}" -eq 0 ]; then
         log_skip "$app 未运行"
         return 0
     fi
@@ -115,8 +118,8 @@ graceful_quit() {
     sleep 5
 
     # 还有残留？再等一次
-    count=$(pgrep -c "$app" 2>/dev/null || echo 0)
-    if [ "$count" -gt 0 ]; then
+    count=$(pgrep -f "$app" 2>/dev/null | wc -l | tr -d ' ')
+    if [ "${count:-0}" -gt 0 ]; then
         log_warn "$app 仍有 $count 个进程残留（可能用户取消了退出）"
     else
         log_info "$app 已完全退出"
@@ -158,8 +161,9 @@ main() {
     for app in "${RECYCLABLE_APPS[@]}"; do
         graceful_quit "$app"
 
-        # 每退一个就检查是否已经缓解
-        sleep 2
+        # 每退一个就检查是否已经缓解(macOS 回收 page 需几秒,沉降 5s 再测,
+        # 否则刚 quit 立即重测会读到旧 swap,"已恢复"早退逻辑失灵)
+        sleep 5
         swap_pct=$(get_swap_pct)
         comp_mb=$(get_compressor_mb)
         log_info "退出 $app 后: swap=${swap_pct}% compressor=${comp_mb}MB"
@@ -200,6 +204,26 @@ main() {
             kill -TERM "$pid" 2>/dev/null && log_act "已 kill -TERM $pid"
         fi
     done < <(ps -axo pid,etime,command | awk '/mcp-server|mcp@|oh-my-claudecode\/bridge/ && !/awk/ {print $1, $2, substr($0, index($0, $3))}')
+
+    # ============ 升级兜底:swap 仍高 + claude CLI 会话堆积 → 回收过老闲置会话 ============
+    # 解决 mem-guardian 盲区:Electron/MCP 清完仍高时,压力多来自堆积的 claude CLI 会话。
+    # 保守策略:仅当 ≥4 个 CLI 会话(堆积特征)且 swap 仍超阈值时,reap >12h 的老会话。
+    # SIGTERM 优雅退出(可 claude --continue 恢复)+ reap-keep.txt 白名单双保险。
+    swap_pct=$(get_swap_pct)
+    if [ "$swap_pct" -ge "$SWAP_THRESHOLD" ]; then
+        local cli_count
+        cli_count=$(ps -axo command= | grep -cE '/\.local/bin/claude($| )')
+        if [ "${cli_count:-0}" -ge 4 ] && [ -x "$HOME/.claude/scripts/claude-reap.sh" ]; then
+            log_warn "swap 仍 ${swap_pct}% 且 ${cli_count} 个 claude CLI 会话堆积 — 调用 claude-reap 12h"
+            if [ "$DRY_RUN" = "1" ]; then
+                bash "$HOME/.claude/scripts/claude-reap.sh" 12h --dry 2>&1 | while IFS= read -r l; do log_act "[reap] $l"; done
+            else
+                bash "$HOME/.claude/scripts/claude-reap.sh" 12h 2>&1 | while IFS= read -r l; do log_act "[reap] $l"; done
+            fi
+        elif [ "${cli_count:-0}" -ge 4 ]; then
+            log_skip "claude-reap.sh 不存在或不可执行,跳过会话回收"
+        fi
+    fi
 
     swap_pct=$(get_swap_pct)
     comp_mb=$(get_compressor_mb)

@@ -16,14 +16,21 @@ usage limit、API 失败、上下文压缩都会中断会话。任何超过 5 �
 
 ### Phase 1: Plan（cheap）
 1. 扫描范围，识别所有 work item
-2. 写到 `.omc/plans/<task-name>-todo.md`，格式：
+2. 写到 `.omc/plans/<task-name>-todo.md`，**顶部必须先写完成定义契约（DoD），再列 item**：
    ```markdown
    # <Task>
+   ## Definition of Done
+   - Must: <不做完不算完成的 1-3 条>
+   - Won't: <本次明确不做的事，防 scope 漂移>
+   - 验收命令: <一条可执行的 smoke test / 检查命令>
+   - 停止条件: <达到什么状态立即停手交付，不再继续优化>
+
    - [ ] item-1: <repo/file> — <action>
    - [ ] item-2: ...
    ```
-3. 估算总成本，向用户确认后才进 Phase 2
-4. **不**修改任何代码
+3. **收口纪律**：验收命令通过 + Must 全勾 = 完成，立即交付；「还可以更好」不构成继续理由。
+4. 估算总成本，向用户确认后才进 Phase 2
+5. **不**修改任何代码
 
 ### Phase 2: Execute（expensive）
 1. 每完成一个 item 立即把 `[ ]` 改成 `[x]` 并 commit/save

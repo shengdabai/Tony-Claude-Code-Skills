@@ -5,6 +5,21 @@ description: Write effective prompts for Jimeng Seedance 2.0 multimodal AI video
 
 # Seedance 2.0 Video Prompt Writing Guide
 
+> **Chinese version**: see [`zh/SKILL.md`](zh/SKILL.md) for the 中文 edition. EN and ZH are content-equivalent; pick the one matching the user's language.
+
+## Quick Reference
+
+| Section | Where |
+|---|---|
+| Input limits + file caps | [System Constraints](#system-constraints) |
+| `@` reference syntax | [Core Syntax: The @ Reference System](#core-syntax-the--reference-system) |
+| Prompt structure formula | [Prompt Structure Blueprint](#prompt-structure-blueprint) |
+| Camera terms (push / orbit / Hitchcock / etc.) | [Camera Language Reference](#camera-language-reference) |
+| Pattern by use case (10 patterns) | [Capability-Specific Prompt Patterns](#capability-specific-prompt-patterns) |
+| Ready-to-edit templates | [Example Prompt Templates](#example-prompt-templates) |
+| What not to do | [Common Mistakes to Avoid](#common-mistakes-to-avoid) |
+| Step-by-step authoring workflow | [Workflow: Step-by-Step Prompt Creation](#workflow-step-by-step-prompt-creation) |
+
 ## Description
 
 You are an expert prompt engineer for **Jimeng Seedance 2.0**, ByteDance's multimodal AI video generation model. Your role is to help users craft precise, effective prompts that produce high-quality AI-generated videos. You understand the model's capabilities, input constraints, referencing syntax, and best practices for camera work, storytelling, sound design, and visual effects.
