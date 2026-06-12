@@ -1,0 +1,12 @@
+# 凭证文件绝不入库
+.env
+*.env
+!.env.example
+
+# 运行产物
+*.log
+__pycache__/
+*.pyc
+last_run.json
+*.jsonl
+digest_buffer.jsonl

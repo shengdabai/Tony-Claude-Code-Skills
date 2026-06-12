@@ -182,3 +182,11 @@ no generic placeholder names, no broken image links.)
 - Being too vague in atmosphere descriptions
 - Ignoring the anti-pattern list — these are what make the output premium
 - Defaulting to generic "safe" designs instead of enforcing the curated aesthetic
+
+## When to use
+
+Apply this skill when the user asks for a `DESIGN.md` for Google Stitch (or for any agent that consumes semantic design docs), or when they want to encode a premium taste system as a portable specification rather than a code artifact.
+
+## Scope note
+
+This skill produces a documentation artifact (`DESIGN.md`), not running UI code. For implementation use a code-producing taste skill: `high-end-visual-design`, `design-taste-frontend`, `minimalist-ui`, `industrial-brutalist-ui`, or `gpt-taste`. For redesigning an existing codebase use `redesign-existing-projects`. For brand identity image boards use `brandkit`. For reproducing a target website from screenshots use `image-to-code-skill`.

@@ -1,0 +1,251 @@
+BLACKLIST  _repos
+LINKED     afa -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa
+LINKED     afa-aov -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-aov
+LINKED     afa-brand -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-brand
+LINKED     afa-compete -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-compete
+LINKED     afa-convert -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-convert
+LINKED     afa-creative -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-creative
+LINKED     afa-cx -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-cx
+LINKED     afa-dashboard -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-dashboard
+LINKED     afa-diagnose -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-diagnose
+LINKED     afa-email -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-email
+LINKED     afa-expand -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-expand
+LINKED     afa-explore -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-explore
+LINKED     afa-fb -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-fb
+LINKED     afa-foundation -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-foundation
+LINKED     afa-geo -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-geo
+LINKED     afa-gg -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-gg
+LINKED     afa-influencer -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-influencer
+LINKED     afa-launch -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-launch
+LINKED     afa-monetize -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-monetize
+LINKED     afa-ops -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-ops
+LINKED     afa-organic -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-organic
+LINKED     afa-paid -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-paid
+LINKED     afa-pr -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-pr
+LINKED     afa-product -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-product
+LINKED     afa-retain -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-retain
+LINKED     afa-scale -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-scale
+LINKED     afa-seo -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-seo
+LINKED     afa-sms -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-sms
+LINKED     afa-social -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-social
+LINKED     afa-tt -> $HOME/Desktop/项目开发/01-Claude生态/afa-dtc-skills/afa-tt
+LINKED     agent-reach -> $HOME/.claude/skills/_repos/agent-reach-src/agent_reach/skill
+LINKED     aihot -> $HOME/.claude/skills/aihot
+LINKED     anysearch -> $HOME/.claude/skills/anysearch
+EXISTS     api-and-interface-design
+NO_SKILL   autoplan
+EXISTS     backend-patterns
+LINKED     bb-browser -> $HOME/.claude/skills/_repos/bb-browser-src/skills/bb-browser
+LINKED     bb-browser-openclaw -> $HOME/.claude/skills/_repos/bb-browser-src/skills/bb-browser-openclaw
+NO_SKILL   benchmark
+LINKED     brandkit -> $HOME/Desktop/项目开发/01-Claude生态/taste-skill/skills/brandkit
+NO_SKILL   browse
+EXISTS     browser-testing-with-devtools
+NO_SKILL   canary
+NO_SKILL   careful
+EXISTS     ci-cd-and-automation
+LINKED     claude-code-project-layout -> $HOME/.claude/skills/claude-code-project-layout
+EXISTS     clickhouse-io
+EXISTS     code-review-and-quality
+EXISTS     code-simplification
+NO_SKILL   codex
+EXISTS     coding-standards
+NO_SKILL   connect-chrome
+EXISTS     context-engineering
+EXISTS     continuous-learning
+NO_SKILL   cso
+BLACKLIST  d-kimuson-dotfiles
+LINKED     darwin-skill -> $HOME/.claude/skills/darwin-skill
+EXISTS     debugging-and-error-recovery
+LINKED     decision-tracker -> $HOME/.claude/skills/decision-tracker
+LINKED     dedao-write -> $HOME/Projects/gbrain/skills/dedao-write
+LINKED     dependency-guard -> $HOME/.claude/skills/dependency-guard
+EXISTS     deprecation-and-migration
+NO_SKILL   design-consultation
+NO_SKILL   design-review
+NO_SKILL   design-shotgun
+EXISTS     design-taste-frontend
+NO_SKILL   document-release
+EXISTS     documentation-and-adrs
+LINKED     doubt-driven-development -> $HOME/.claude/skills/doubt-driven-development
+EXISTS     eval-harness
+EXISTS     extract
+LINKED     find-skills -> $HOME/.claude/skills/_repos/vercel-labs-skills/skills/find-skills
+EXISTS     follow-builders
+NO_SKILL   freeze
+EXISTS     frontend-design
+EXISTS     frontend-patterns
+EXISTS     frontend-slides
+EXISTS     frontend-ui-engineering
+LINKED     full-output-enforcement -> $HOME/Desktop/项目开发/01-Claude生态/taste-skill/skills/output-skill
+LINKED     gbrain-academic-verify -> $HOME/Projects/gbrain/skills/academic-verify
+LINKED     gbrain-archive-crawler -> $HOME/Projects/gbrain/skills/archive-crawler
+LINKED     gbrain-article-enrichment -> $HOME/Projects/gbrain/skills/article-enrichment
+LINKED     gbrain-book-mirror -> $HOME/Projects/gbrain/skills/book-mirror
+LINKED     gbrain-brain-ops -> $HOME/Projects/gbrain/skills/brain-ops
+LINKED     gbrain-brain-pdf -> $HOME/Projects/gbrain/skills/brain-pdf
+LINKED     gbrain-briefing -> $HOME/Projects/gbrain/skills/briefing
+LINKED     gbrain-citation-fixer -> $HOME/Projects/gbrain/skills/citation-fixer
+LINKED     gbrain-concept-synthesis -> $HOME/Projects/gbrain/skills/concept-synthesis
+LINKED     gbrain-cron-scheduler -> $HOME/Projects/gbrain/skills/cron-scheduler
+LINKED     gbrain-cross-modal-review -> $HOME/Projects/gbrain/skills/cross-modal-review
+LINKED     gbrain-daily-task-manager -> $HOME/Projects/gbrain/skills/daily-task-manager
+LINKED     gbrain-daily-task-prep -> $HOME/Projects/gbrain/skills/daily-task-prep
+LINKED     gbrain-data-research -> $HOME/Projects/gbrain/skills/data-research
+LINKED     gbrain-enrich -> $HOME/Projects/gbrain/skills/enrich
+LINKED     gbrain-frontmatter-guard -> $HOME/Projects/gbrain/skills/frontmatter-guard
+LINKED     gbrain-idea-ingest -> $HOME/Projects/gbrain/skills/idea-ingest
+LINKED     gbrain-ingest -> $HOME/Projects/gbrain/skills/ingest
+LINKED     gbrain-maintain -> $HOME/Projects/gbrain/skills/maintain
+LINKED     gbrain-media-ingest -> $HOME/Projects/gbrain/skills/media-ingest
+LINKED     gbrain-meeting-ingestion -> $HOME/Projects/gbrain/skills/meeting-ingestion
+LINKED     gbrain-migrate -> $HOME/Projects/gbrain/skills/migrate
+LINKED     gbrain-minion-orchestrator -> $HOME/Projects/gbrain/skills/minion-orchestrator
+LINKED     gbrain-perplexity-research -> $HOME/Projects/gbrain/skills/perplexity-research
+LINKED     gbrain-publish -> $HOME/Projects/gbrain/skills/publish
+LINKED     gbrain-query -> $HOME/Projects/gbrain/skills/query
+LINKED     gbrain-repo-architecture -> $HOME/Projects/gbrain/skills/repo-architecture
+LINKED     gbrain-reports -> $HOME/Projects/gbrain/skills/reports
+LINKED     gbrain-signal-detector -> $HOME/Projects/gbrain/skills/signal-detector
+LINKED     gbrain-skill-creator -> $HOME/Projects/gbrain/skills/skill-creator
+LINKED     gbrain-skillify -> $HOME/Projects/gbrain/skills/skillify
+LINKED     gbrain-skillpack-check -> $HOME/Projects/gbrain/skills/skillpack-check
+LINKED     gbrain-smoke-test -> $HOME/Projects/gbrain/skills/smoke-test
+LINKED     gbrain-soul-audit -> $HOME/Projects/gbrain/skills/soul-audit
+LINKED     gbrain-strategic-reading -> $HOME/Projects/gbrain/skills/strategic-reading
+LINKED     gbrain-testing -> $HOME/Projects/gbrain/skills/testing
+LINKED     gbrain-voice-note-ingest -> $HOME/Projects/gbrain/skills/voice-note-ingest
+LINKED     gbrain-webhook-transforms -> $HOME/Projects/gbrain/skills/webhook-transforms
+EXISTS     git-workflow-and-versioning
+LINKED     gpt-taste -> $HOME/Desktop/项目开发/01-Claude生态/taste-skill/skills/gpt-tasteskill
+NO_SKILL   gstack-upgrade
+NO_SKILL   guard
+LINKED     harness-eval -> $HOME/.claude/skills/_repos/openharness-src/.claude/skills/harness-eval
+LINKED     high-end-visual-design -> $HOME/Desktop/项目开发/01-Claude生态/taste-skill/skills/soft-skill
+LINKED     humanizer-zh -> $HOME/.claude/skills/humanizer-zh
+EXISTS     hyperframes
+LINKED     hyperframes-animejs -> $HOME/Desktop/项目开发/01-Claude生态/hyperframes/skills/animejs
+LINKED     hyperframes-contribute-catalog -> $HOME/Desktop/项目开发/01-Claude生态/hyperframes/skills/contribute-catalog
+LINKED     hyperframes-css-animations -> $HOME/Desktop/项目开发/01-Claude生态/hyperframes/skills/css-animations
+LINKED     hyperframes-gsap -> $HOME/Desktop/项目开发/01-Claude生态/hyperframes/skills/gsap
+LINKED     hyperframes-hyperframes-cli -> $HOME/Desktop/项目开发/01-Claude生态/hyperframes/skills/hyperframes-cli
+LINKED     hyperframes-hyperframes-media -> $HOME/Desktop/项目开发/01-Claude生态/hyperframes/skills/hyperframes-media
+LINKED     hyperframes-hyperframes-registry -> $HOME/Desktop/项目开发/01-Claude生态/hyperframes/skills/hyperframes-registry
+LINKED     hyperframes-lottie -> $HOME/Desktop/项目开发/01-Claude生态/hyperframes/skills/lottie
+LINKED     hyperframes-remotion-to-hyperframes -> $HOME/Desktop/项目开发/01-Claude生态/hyperframes/skills/remotion-to-hyperframes
+LINKED     hyperframes-tailwind -> $HOME/Desktop/项目开发/01-Claude生态/hyperframes/skills/tailwind
+LINKED     hyperframes-three -> $HOME/Desktop/项目开发/01-Claude生态/hyperframes/skills/three
+LINKED     hyperframes-typegpu -> $HOME/Desktop/项目开发/01-Claude生态/hyperframes/skills/typegpu
+LINKED     hyperframes-waapi -> $HOME/Desktop/项目开发/01-Claude生态/hyperframes/skills/waapi
+LINKED     hyperframes-website-to-hyperframes -> $HOME/Desktop/项目开发/01-Claude生态/hyperframes/skills/website-to-hyperframes
+EXISTS     idea-refine
+LINKED     image-to-code -> $HOME/Desktop/项目开发/01-Claude生态/taste-skill/skills/image-to-code-skill
+LINKED     imagegen-frontend-mobile -> $HOME/Desktop/项目开发/01-Claude生态/taste-skill/skills/imagegen-frontend-mobile
+LINKED     imagegen-frontend-web -> $HOME/Desktop/项目开发/01-Claude生态/taste-skill/skills/imagegen-frontend-web
+EXISTS     incremental-implementation
+LINKED     industrial-brutalist-ui -> $HOME/Desktop/项目开发/01-Claude生态/taste-skill/skills/brutalist-skill
+LINKED     interview-me -> $HOME/.claude/skills/interview-me
+NO_SKILL   investigate
+BLACKLIST  JamesPrial-github-skills
+NO_SKILL   land-and-deploy
+LINKED     lark-approval -> $HOME/.agents/skills/lark-approval
+LINKED     lark-apps -> $HOME/.agents/skills/lark-apps
+LINKED     lark-attendance -> $HOME/.agents/skills/lark-attendance
+LINKED     lark-base -> $HOME/.agents/skills/lark-base
+LINKED     lark-calendar -> $HOME/.agents/skills/lark-calendar
+LINKED     lark-contact -> $HOME/.agents/skills/lark-contact
+LINKED     lark-doc -> $HOME/.agents/skills/lark-doc
+LINKED     lark-drive -> $HOME/.agents/skills/lark-drive
+LINKED     lark-event -> $HOME/.agents/skills/lark-event
+LINKED     lark-im -> $HOME/.agents/skills/lark-im
+LINKED     lark-mail -> $HOME/.agents/skills/lark-mail
+LINKED     lark-markdown -> $HOME/.agents/skills/lark-markdown
+LINKED     lark-minutes -> $HOME/.agents/skills/lark-minutes
+LINKED     lark-okr -> $HOME/.agents/skills/lark-okr
+LINKED     lark-openapi-explorer -> $HOME/.agents/skills/lark-openapi-explorer
+LINKED     lark-shared -> $HOME/.agents/skills/lark-shared
+LINKED     lark-sheets -> $HOME/.agents/skills/lark-sheets
+LINKED     lark-skill-maker -> $HOME/.agents/skills/lark-skill-maker
+LINKED     lark-slides -> $HOME/.agents/skills/lark-slides
+LINKED     lark-task -> $HOME/.agents/skills/lark-task
+LINKED     lark-vc -> $HOME/.agents/skills/lark-vc
+LINKED     lark-vc-agent -> $HOME/.agents/skills/lark-vc-agent
+LINKED     lark-whiteboard -> $HOME/.agents/skills/lark-whiteboard
+LINKED     lark-wiki -> $HOME/.agents/skills/lark-wiki
+LINKED     lark-workflow-meeting-summary -> $HOME/.agents/skills/lark-workflow-meeting-summary
+LINKED     lark-workflow-standup-report -> $HOME/.agents/skills/lark-workflow-standup-report
+NO_SKILL   learn
+BLACKLIST  learned
+LINKED     liuxiaopai-design -> $HOME/.claude/skills/liuxiaopai-design
+LINKED     liuxiaopai-methodology -> $HOME/.claude/skills/liuxiaopai-methodology
+LINKED     mcp-builder -> $HOME/.claude/skills/mcp-builder
+LINKED     minimalist-ui -> $HOME/Desktop/项目开发/01-Claude生态/taste-skill/skills/minimalist-skill
+LINKED     native-feel-cross-platform-desktop -> $HOME/Desktop/项目开发/01-Claude生态/native-feel-skill
+EXISTS     notebooklm
+NO_SKILL   office-hours
+EXISTS     onboard
+LINKED     opc-asset-ops -> $HOME/Desktop/项目开发/01-Claude生态/Tony-Claude-Code-Skills/opc-methodology/skills/opc-asset-ops
+LINKED     opc-business-model-design -> $HOME/Desktop/项目开发/01-Claude生态/Tony-Claude-Code-Skills/opc-methodology/skills/opc-business-model-design
+LINKED     opc-conversion-loop -> $HOME/Desktop/项目开发/01-Claude生态/Tony-Claude-Code-Skills/opc-methodology/skills/opc-conversion-loop
+LINKED     opc-dashboard-review -> $HOME/Desktop/项目开发/01-Claude生态/Tony-Claude-Code-Skills/opc-methodology/skills/opc-dashboard-review
+LINKED     opc-mvp-designer -> $HOME/Desktop/项目开发/01-Claude生态/Tony-Claude-Code-Skills/opc-methodology/skills/opc-mvp-designer
+LINKED     opc-niche-positioning -> $HOME/Desktop/项目开发/01-Claude生态/Tony-Claude-Code-Skills/opc-methodology/skills/opc-niche-positioning
+LINKED     opc-orchestrator -> $HOME/Desktop/项目开发/01-Claude生态/Tony-Claude-Code-Skills/opc-methodology/skills/opc-orchestrator
+LINKED     opc-resource-audit -> $HOME/Desktop/项目开发/01-Claude生态/Tony-Claude-Code-Skills/opc-methodology/skills/opc-resource-audit
+LINKED     opc-value-proposition -> $HOME/Desktop/项目开发/01-Claude生态/Tony-Claude-Code-Skills/opc-methodology/skills/opc-value-proposition
+EXISTS     performance-optimization
+NO_SKILL   plan-ceo-review
+NO_SKILL   plan-design-review
+NO_SKILL   plan-eng-review
+EXISTS     planning-and-task-breakdown
+LINKED     pptx -> $HOME/.claude/skills/pptx
+LINKED     pr-merge -> $HOME/.claude/skills/_repos/openharness-src/.claude/skills/pr-merge
+EXISTS     project-guidelines-example
+NO_SKILL   qa
+NO_SKILL   qa-only
+LINKED     real-engineer-caveman -> $HOME/.agents/skills/real-engineer-caveman
+LINKED     real-engineer-diagnose -> $HOME/.agents/skills/real-engineer-diagnose
+LINKED     real-engineer-grill-me -> $HOME/.agents/skills/real-engineer-grill-me
+LINKED     real-engineer-grill-with-docs -> $HOME/.agents/skills/real-engineer-grill-with-docs
+LINKED     real-engineer-handoff -> $HOME/.agents/skills/real-engineer-handoff
+LINKED     real-engineer-improve-codebase-architecture -> $HOME/.agents/skills/real-engineer-improve-codebase-architecture
+LINKED     real-engineer-prototype -> $HOME/.agents/skills/real-engineer-prototype
+LINKED     real-engineer-setup-matt-pocock-skills -> $HOME/.agents/skills/real-engineer-setup-matt-pocock-skills
+LINKED     real-engineer-tdd -> $HOME/.agents/skills/real-engineer-tdd
+LINKED     real-engineer-to-issues -> $HOME/.agents/skills/real-engineer-to-issues
+LINKED     real-engineer-to-prd -> $HOME/.agents/skills/real-engineer-to-prd
+LINKED     real-engineer-triage -> $HOME/.agents/skills/real-engineer-triage
+LINKED     real-engineer-write-a-skill -> $HOME/.agents/skills/real-engineer-write-a-skill
+LINKED     real-engineer-zoom-out -> $HOME/.agents/skills/real-engineer-zoom-out
+LINKED     redesign-existing-projects -> $HOME/Desktop/项目开发/01-Claude生态/taste-skill/skills/redesign-skill
+EXISTS     resume-from-ledger
+NO_SKILL   retro
+NO_SKILL   review
+BLACKLIST  rghamilton3-dotfiles
+BLACKLIST  rsmdt-the-startup
+BLACKLIST  ruvector.db
+EXISTS     security-and-hardening
+EXISTS     security-review
+LINKED     seedance-prompt-en -> $HOME/Desktop/项目开发/01-Claude生态/seedance2-skill
+LINKED     seedance-prompt-zh -> $HOME/Desktop/项目开发/01-Claude生态/seedance2-skill/zh
+NO_SKILL   setup-browser-cookies
+NO_SKILL   setup-deploy
+NO_SKILL   ship
+EXISTS     shipping-and-launch
+EXISTS     skill-creator
+EXISTS     source-driven-development
+EXISTS     spec-driven-development
+LINKED     stitch-design-taste -> $HOME/Desktop/项目开发/01-Claude生态/taste-skill/skills/stitch-skill
+EXISTS     strategic-compact
+BLACKLIST  superpowers
+EXISTS     sync-skills-preflight
+EXISTS     teach-impeccable
+EXISTS     test-driven-development
+BLACKLIST  travisvn-awesome-claude-skills
+NO_SKILL   unfreeze
+EXISTS     using-agent-skills
+LINKED     web-access -> $HOME/.agents/skills/web-access
+BLACKLIST  wshobson-agents
+LINKED     xiaolai-methodology -> $HOME/Desktop/项目开发/01-Claude生态/Tony-Claude-Code-Skills/xiaolai-methodology
+LINKED     xlsx -> $HOME/.claude/skills/xlsx
+LINKED     zread -> $HOME/.claude/skills/zread

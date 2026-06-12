@@ -70,6 +70,48 @@ test -d openspec && echo "spec-driven" || echo "ad-hoc"
 /opsx:archive                     ← 归档 change,specs 入库
 ```
 
+## Constitution Gate(propose 阶段治理约束)
+
+> 提炼自 GitHub spec-kit 的 constitution 治理思路,白嫖其精华而**不引入第二套工具**。
+> 核心 = **少量不可变原则 + 阶段门禁 + 显式豁免论证**。OpenSpec 本身没有这层,这里补上。
+
+### 三条治理机制(propose 时强制)
+
+1. **不可变原则集**:下方 5 条核心原则是项目宪法,所有 proposal 默认遵守,不逐项重新讨论。
+2. **阶段门禁(phase gate)**:proposal 的 `## Constitution Check` 没全部勾选 → **不得进入 `/opsx:apply`**。
+3. **显式豁免**:任何违反必须在 proposal 里写明「为什么必须违反 + 更简方案为何不够」;无法论证就回去改设计,而不是放行。
+
+### 5 条核心原则(对照清单)
+
+- **简洁优先**:不为"将来可能用到"提前引入抽象/依赖/分层;现有能力够用就不新建。
+- **测试先行**:每个新 capability 的验收标准能写成测试(TDD 可落地),并在 tasks 中标注。
+- **接口契约稳定**:对外 API / 模块边界变更显式列入 `## Impact`,无隐式 breaking change。
+- **安全默认**:输入/认证/存储/外部集成有对应硬化项;密钥/PII 绝不写进工件(配合 secrets-firewall)。
+- **可逆可观测**:破坏性/不可逆操作有回滚或迁移路径;关键行为有日志或验证点。
+
+### 落地方式
+
+- **权威源 = 本节**(持久、全局、不被 npm 升级冲掉)。
+- **即时模板**:已把对应 `## Constitution Check` 章节追加进 OpenSpec 包内 `schemas/spec-driven/templates/proposal.md`,下次 `openspec` 生成 proposal 自动带上。
+- ⚠️ **包模板会被 `npm update @fission-ai/openspec` 覆盖**。升级后若该章节丢失,从下方模板块复制回包模板即可:
+
+```markdown
+## Constitution Check
+
+<!-- 治理门禁(提炼自 spec-kit constitution)。propose 阶段逐条过,违反项不得进入 apply。 -->
+
+### 核心原则对照
+- [ ] 简洁优先:未为"将来可能用到"引入抽象/依赖/分层
+- [ ] 测试先行:每个新 capability 的验收标准可写成测试,已在 tasks 标注
+- [ ] 接口契约稳定:对外 API/模块边界变更已列入 Impact,无隐式 breaking change
+- [ ] 安全默认:输入/认证/存储/外部集成有硬化项,未把密钥/PII 写进工件
+- [ ] 可逆可观测:破坏性/不可逆操作有回滚或迁移路径;关键行为有日志/验证点
+
+### 违反与豁免(Complexity Tracking)
+<!-- 任一未勾选 = 违反。论证「为什么必须违反 + 更简方案为何不够」,否则回去改设计。 -->
+- 违反项:<原则> — 必须违反的理由:<...> — 已排除的更简方案:<...>
+```
+
 ## Ad-hoc 项目工作流(无 openspec/)
 
 ```

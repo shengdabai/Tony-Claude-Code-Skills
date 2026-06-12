@@ -90,3 +90,11 @@ To prevent the design from appearing purely digital, simulated analog degradatio
 1.  **Grid Determinism:** Utilize `display: grid; gap: 1px;` with contrasting parent/child background colors to generate mathematically perfect, razor-thin dividing lines without complex border declarations.
 2.  **Semantic Rigidity:** Construct the DOM using precise semantic tags (`<data>`, `<samp>`, `<kbd>`, `<output>`, `<dl>`) to accurately reflect the technical nature of the telemetry.
 3.  **Typography Clamping:** Implement CSS `clamp()` functions exclusively for macro-typography to ensure massive text scales aggressively while maintaining structural integrity across viewports.
+
+## When to use
+
+Apply this skill when the user asks for industrial, brutalist, military terminal, blueprint, dossier, declassified, Swiss-print, or CRT-aesthetic interfaces. Typical fits: data-dense dashboards, archival portfolios, editorial sites, hardware-product landing pages.
+
+## Scope note
+
+This skill commits to one aesthetic family (Swiss print OR tactical telemetry). It is the wrong skill for: warm minimalism (use `minimalist-ui`), soft consumer SaaS (use `high-end-visual-design`), or generic AI-tool branding (use `design-taste-frontend`). For brand-system imagery rather than UI code use `brandkit`. For redesigning an existing project rather than greenfield use `redesign-existing-projects`.

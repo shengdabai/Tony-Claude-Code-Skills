@@ -83,3 +83,11 @@ When tasked with writing frontend code (HTML, React, Tailwind, Vue) or designing
 5. Add scroll-entry animations to all major content blocks.
 6. Ensure sections have visual depth through imagery, ambient gradients, or subtle textures — no empty flat backgrounds.
 7. Provide code that reflects this high-end, uncluttered, editorial aesthetic natively without requiring manual adjustments.
+
+## When to use
+
+Apply this skill when the user asks for Notion-tier, Linear-tier, document-style, editorial, or warm-monochrome interfaces with muted pastel accents and bento layouts. Typical fits: productivity SaaS, knowledge tools, documentation sites, content platforms.
+
+## Scope note
+
+This skill enforces a single warm-monochrome editorial aesthetic. It is the wrong skill for: brutalist or military aesthetics (use `industrial-brutalist-ui`), GSAP-heavy marketing pages (use `gpt-taste`), agency-tier glass/cinematic motion (use `high-end-visual-design`), or brand identity boards (use `brandkit`). For redesigning an existing project rather than greenfield use `redesign-existing-projects`.

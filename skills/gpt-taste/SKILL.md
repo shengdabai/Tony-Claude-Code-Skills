@@ -72,3 +72,11 @@ Before writing ANY React/UI code, you MUST output a `<design_plan>` block contai
 4. **Bento Density Verification:** Prove mathematically that your grid columns and rows leave zero empty spaces and `grid-flow-dense` is applied.
 5. **Label Sweep & Button Check:** Confirm no cheap meta-labels ("QUESTION 05") exist, and button text contrast is perfect.
 Only output the UI code after this rigorous verification is complete.
+
+## When to use
+
+Apply this skill when the user asks for an Awwwards-tier landing page with heavy GSAP scroll choreography, AIDA marketing structure, gapless bento grids, or strict layout-variance enforcement against the LLM's default "centered hero + 3-cards" bias.
+
+## Scope note
+
+This skill is GSAP-first and marketing-page-first. It does not cover: redesigning existing apps (use `redesign-existing-projects`), warm-monochrome editorial UI (use `minimalist-ui`), brutalist industrial aesthetics (use `industrial-brutalist-ui`), brand identity boards (use `brandkit`), or full Framer-Motion dashboards (use `high-end-visual-design`). When the user wants a softer or quieter aesthetic, prefer `high-end-visual-design` or `design-taste-frontend` instead of this skill.
