@@ -51231,3 +51231,378 @@
 [2026-06-12 15:04:15] INFO  扫描 >3 天的僵尸 MCP 进程
 [2026-06-12 15:04:20] SKIP  PID 48506 有活跃父进程 45760，跳过
 [2026-06-12 15:04:22] INFO  完成: swap=62% compressor=4506MB
+[2026-06-12 15:12:22] INFO  swap=62% compressor=4544MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 15:12:22] WARN  触发阈值: swap=62% comp=4544MB — 开始清理
+[2026-06-12 15:12:22] SKIP  Genspark 未运行
+[2026-06-12 15:12:27] INFO  退出 Genspark 后: swap=62% compressor=4544MB
+[2026-06-12 15:12:27] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 15:12:28] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 15:12:28] INFO  完成: swap=62% compressor=4544MB
+[2026-06-12 15:20:28] INFO  swap=62% compressor=4539MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 15:20:28] WARN  触发阈值: swap=62% comp=4539MB — 开始清理
+[2026-06-12 15:20:28] SKIP  Genspark 未运行
+[2026-06-12 15:20:33] INFO  退出 Genspark 后: swap=62% compressor=4539MB
+[2026-06-12 15:20:33] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 15:20:34] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 15:20:34] INFO  完成: swap=62% compressor=4539MB
+[2026-06-12 15:28:34] INFO  swap=62% compressor=4533MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 15:28:34] WARN  触发阈值: swap=62% comp=4533MB — 开始清理
+[2026-06-12 15:28:34] SKIP  Genspark 未运行
+[2026-06-12 15:28:39] INFO  退出 Genspark 后: swap=62% compressor=4533MB
+[2026-06-12 15:28:39] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 15:28:39] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 15:28:40] INFO  完成: swap=62% compressor=4533MB
+[2026-06-12 15:36:40] INFO  swap=62% compressor=4526MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 15:36:40] WARN  触发阈值: swap=62% comp=4526MB — 开始清理
+[2026-06-12 15:36:40] SKIP  Genspark 未运行
+[2026-06-12 15:36:45] INFO  退出 Genspark 后: swap=62% compressor=4526MB
+[2026-06-12 15:36:45] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 15:36:46] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 15:36:46] INFO  完成: swap=62% compressor=4526MB
+[2026-06-12 15:44:46] INFO  swap=62% compressor=4524MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 15:44:46] WARN  触发阈值: swap=62% comp=4524MB — 开始清理
+[2026-06-12 15:44:46] SKIP  Genspark 未运行
+[2026-06-12 15:44:51] INFO  退出 Genspark 后: swap=62% compressor=4524MB
+[2026-06-12 15:44:51] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 15:44:52] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 15:44:52] INFO  完成: swap=62% compressor=4524MB
+[2026-06-12 15:52:52] INFO  swap=62% compressor=4518MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 15:52:52] WARN  触发阈值: swap=62% comp=4518MB — 开始清理
+[2026-06-12 15:52:52] SKIP  Genspark 未运行
+[2026-06-12 15:52:57] INFO  退出 Genspark 后: swap=62% compressor=4518MB
+[2026-06-12 15:52:57] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 15:52:58] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 15:52:58] INFO  完成: swap=62% compressor=4518MB
+[2026-06-12 16:00:58] INFO  swap=62% compressor=4509MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 16:00:58] WARN  触发阈值: swap=62% comp=4509MB — 开始清理
+[2026-06-12 16:00:58] SKIP  Genspark 未运行
+[2026-06-12 16:01:03] INFO  退出 Genspark 后: swap=62% compressor=4509MB
+[2026-06-12 16:01:03] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 16:01:03] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 16:01:04] INFO  完成: swap=62% compressor=4509MB
+[2026-06-12 16:09:04] INFO  swap=62% compressor=4500MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 16:09:04] WARN  触发阈值: swap=62% comp=4500MB — 开始清理
+[2026-06-12 16:09:04] SKIP  Genspark 未运行
+[2026-06-12 16:09:09] INFO  退出 Genspark 后: swap=62% compressor=4500MB
+[2026-06-12 16:09:09] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 16:09:09] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 16:09:10] INFO  完成: swap=62% compressor=4500MB
+[2026-06-12 16:17:10] INFO  swap=62% compressor=4415MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 16:17:10] WARN  触发阈值: swap=62% comp=4415MB — 开始清理
+[2026-06-12 16:17:10] SKIP  Genspark 未运行
+[2026-06-12 16:17:15] INFO  退出 Genspark 后: swap=62% compressor=4415MB
+[2026-06-12 16:17:15] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 16:17:15] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 16:17:16] INFO  完成: swap=62% compressor=4415MB
+[2026-06-12 16:25:16] INFO  swap=62% compressor=4454MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 16:25:16] WARN  触发阈值: swap=62% comp=4454MB — 开始清理
+[2026-06-12 16:25:16] SKIP  Genspark 未运行
+[2026-06-12 16:25:21] INFO  退出 Genspark 后: swap=62% compressor=4453MB
+[2026-06-12 16:25:21] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 16:25:22] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 16:25:22] INFO  完成: swap=62% compressor=4453MB
+[2026-06-12 16:33:22] INFO  swap=62% compressor=4422MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 16:33:22] WARN  触发阈值: swap=62% comp=4422MB — 开始清理
+[2026-06-12 16:33:22] SKIP  Genspark 未运行
+[2026-06-12 16:33:28] INFO  退出 Genspark 后: swap=62% compressor=4422MB
+[2026-06-12 16:33:28] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 16:33:28] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 16:33:28] INFO  完成: swap=62% compressor=4422MB
+[2026-06-12 16:41:29] INFO  swap=62% compressor=4418MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 16:41:29] WARN  触发阈值: swap=62% comp=4418MB — 开始清理
+[2026-06-12 16:41:29] SKIP  Genspark 未运行
+[2026-06-12 16:41:34] INFO  退出 Genspark 后: swap=62% compressor=4418MB
+[2026-06-12 16:41:34] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 16:41:34] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 16:41:35] INFO  完成: swap=62% compressor=4418MB
+[2026-06-12 16:49:35] INFO  swap=62% compressor=4436MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 16:49:35] WARN  触发阈值: swap=62% comp=4436MB — 开始清理
+[2026-06-12 16:49:35] SKIP  Genspark 未运行
+[2026-06-12 16:49:40] INFO  退出 Genspark 后: swap=62% compressor=4436MB
+[2026-06-12 16:49:40] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 16:49:40] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 16:49:41] INFO  完成: swap=62% compressor=4436MB
+[2026-06-12 16:57:41] INFO  swap=62% compressor=4441MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 16:57:41] WARN  触发阈值: swap=62% comp=4441MB — 开始清理
+[2026-06-12 16:57:41] SKIP  Genspark 未运行
+[2026-06-12 16:57:46] INFO  退出 Genspark 后: swap=62% compressor=4441MB
+[2026-06-12 16:57:46] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 16:57:47] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 16:57:47] INFO  完成: swap=62% compressor=4441MB
+[2026-06-12 17:05:47] INFO  swap=62% compressor=4549MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 17:05:47] WARN  触发阈值: swap=62% comp=4549MB — 开始清理
+[2026-06-12 17:05:47] SKIP  Genspark 未运行
+[2026-06-12 17:05:53] INFO  退出 Genspark 后: swap=62% compressor=4549MB
+[2026-06-12 17:05:53] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 17:05:53] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 17:05:53] INFO  完成: swap=62% compressor=4549MB
+[2026-06-12 17:13:53] INFO  swap=62% compressor=4526MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 17:13:53] WARN  触发阈值: swap=62% comp=4526MB — 开始清理
+[2026-06-12 17:13:54] SKIP  Genspark 未运行
+[2026-06-12 17:13:59] INFO  退出 Genspark 后: swap=62% compressor=4526MB
+[2026-06-12 17:13:59] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 17:13:59] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 17:14:00] INFO  完成: swap=62% compressor=4526MB
+[2026-06-12 17:22:00] INFO  swap=62% compressor=4524MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 17:22:00] WARN  触发阈值: swap=62% comp=4524MB — 开始清理
+[2026-06-12 17:22:00] SKIP  Genspark 未运行
+[2026-06-12 17:22:05] INFO  退出 Genspark 后: swap=62% compressor=4524MB
+[2026-06-12 17:22:05] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 17:22:05] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 17:22:06] INFO  完成: swap=62% compressor=4524MB
+[2026-06-12 17:30:06] INFO  swap=62% compressor=4521MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 17:30:06] WARN  触发阈值: swap=62% comp=4521MB — 开始清理
+[2026-06-12 17:30:06] SKIP  Genspark 未运行
+[2026-06-12 17:30:11] INFO  退出 Genspark 后: swap=62% compressor=4521MB
+[2026-06-12 17:30:11] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 17:30:11] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 17:30:12] INFO  完成: swap=62% compressor=4521MB
+[2026-06-12 17:38:12] INFO  swap=62% compressor=4516MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 17:38:12] WARN  触发阈值: swap=62% comp=4516MB — 开始清理
+[2026-06-12 17:38:12] SKIP  Genspark 未运行
+[2026-06-12 17:38:17] INFO  退出 Genspark 后: swap=62% compressor=4516MB
+[2026-06-12 17:38:17] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 17:38:18] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 17:38:18] INFO  完成: swap=62% compressor=4516MB
+[2026-06-12 17:46:18] INFO  swap=62% compressor=4514MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 17:46:18] WARN  触发阈值: swap=62% comp=4514MB — 开始清理
+[2026-06-12 17:46:18] SKIP  Genspark 未运行
+[2026-06-12 17:46:24] INFO  退出 Genspark 后: swap=62% compressor=4514MB
+[2026-06-12 17:46:24] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 17:46:24] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 17:46:24] INFO  完成: swap=62% compressor=4514MB
+[2026-06-12 17:54:24] INFO  swap=62% compressor=4510MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 17:54:24] WARN  触发阈值: swap=62% comp=4510MB — 开始清理
+[2026-06-12 17:54:25] SKIP  Genspark 未运行
+[2026-06-12 17:54:30] INFO  退出 Genspark 后: swap=62% compressor=4510MB
+[2026-06-12 17:54:30] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 17:54:30] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 17:54:30] INFO  完成: swap=62% compressor=4510MB
+[2026-06-12 18:02:31] INFO  swap=62% compressor=4503MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 18:02:31] WARN  触发阈值: swap=62% comp=4503MB — 开始清理
+[2026-06-12 18:02:31] SKIP  Genspark 未运行
+[2026-06-12 18:02:36] INFO  退出 Genspark 后: swap=62% compressor=4503MB
+[2026-06-12 18:02:36] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 18:02:36] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 18:02:37] INFO  完成: swap=62% compressor=4503MB
+[2026-06-12 18:10:37] INFO  swap=62% compressor=4503MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 18:10:37] WARN  触发阈值: swap=62% comp=4503MB — 开始清理
+[2026-06-12 18:10:37] SKIP  Genspark 未运行
+[2026-06-12 18:10:42] INFO  退出 Genspark 后: swap=62% compressor=4503MB
+[2026-06-12 18:10:42] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 18:10:42] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 18:10:43] INFO  完成: swap=62% compressor=4503MB
+[2026-06-12 18:18:43] INFO  swap=62% compressor=4501MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 18:18:43] WARN  触发阈值: swap=62% comp=4501MB — 开始清理
+[2026-06-12 18:18:43] SKIP  Genspark 未运行
+[2026-06-12 18:18:48] INFO  退出 Genspark 后: swap=62% compressor=4501MB
+[2026-06-12 18:18:48] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 18:18:49] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 18:18:49] INFO  完成: swap=62% compressor=4501MB
+[2026-06-12 18:26:49] INFO  swap=62% compressor=4499MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 18:26:49] WARN  触发阈值: swap=62% comp=4499MB — 开始清理
+[2026-06-12 18:26:49] SKIP  Genspark 未运行
+[2026-06-12 18:26:54] INFO  退出 Genspark 后: swap=62% compressor=4499MB
+[2026-06-12 18:26:54] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 18:26:55] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 18:26:55] INFO  完成: swap=62% compressor=4499MB
+[2026-06-12 18:34:55] INFO  swap=62% compressor=4498MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 18:34:55] WARN  触发阈值: swap=62% comp=4498MB — 开始清理
+[2026-06-12 18:34:55] SKIP  Genspark 未运行
+[2026-06-12 18:35:01] INFO  退出 Genspark 后: swap=62% compressor=4498MB
+[2026-06-12 18:35:01] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 18:35:01] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 18:35:01] INFO  完成: swap=62% compressor=4498MB
+[2026-06-12 18:43:01] INFO  swap=62% compressor=4498MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 18:43:01] WARN  触发阈值: swap=62% comp=4498MB — 开始清理
+[2026-06-12 18:43:01] SKIP  Genspark 未运行
+[2026-06-12 18:43:07] INFO  退出 Genspark 后: swap=62% compressor=4498MB
+[2026-06-12 18:43:07] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 18:43:07] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 18:43:07] INFO  完成: swap=62% compressor=4498MB
+[2026-06-12 18:51:08] INFO  swap=62% compressor=4497MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 18:51:08] WARN  触发阈值: swap=62% comp=4497MB — 开始清理
+[2026-06-12 18:51:08] SKIP  Genspark 未运行
+[2026-06-12 18:51:13] INFO  退出 Genspark 后: swap=62% compressor=4497MB
+[2026-06-12 18:51:13] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 18:51:13] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 18:51:14] INFO  完成: swap=62% compressor=4497MB
+[2026-06-12 18:59:14] INFO  swap=62% compressor=4497MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 18:59:14] WARN  触发阈值: swap=62% comp=4497MB — 开始清理
+[2026-06-12 18:59:14] SKIP  Genspark 未运行
+[2026-06-12 18:59:19] INFO  退出 Genspark 后: swap=62% compressor=4497MB
+[2026-06-12 18:59:19] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 18:59:19] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 18:59:20] INFO  完成: swap=62% compressor=4497MB
+[2026-06-12 19:07:20] INFO  swap=62% compressor=4497MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 19:07:20] WARN  触发阈值: swap=62% comp=4497MB — 开始清理
+[2026-06-12 19:07:20] SKIP  Genspark 未运行
+[2026-06-12 19:07:25] INFO  退出 Genspark 后: swap=62% compressor=4497MB
+[2026-06-12 19:07:25] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 19:07:25] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 19:07:26] INFO  完成: swap=62% compressor=4497MB
+[2026-06-12 19:15:26] INFO  swap=62% compressor=4491MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 19:15:26] WARN  触发阈值: swap=62% comp=4491MB — 开始清理
+[2026-06-12 19:15:26] SKIP  Genspark 未运行
+[2026-06-12 19:15:31] INFO  退出 Genspark 后: swap=62% compressor=4491MB
+[2026-06-12 19:15:31] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 19:15:32] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 19:15:32] INFO  完成: swap=62% compressor=4491MB
+[2026-06-12 19:23:32] INFO  swap=62% compressor=4490MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 19:23:32] WARN  触发阈值: swap=62% comp=4490MB — 开始清理
+[2026-06-12 19:23:32] SKIP  Genspark 未运行
+[2026-06-12 19:23:38] INFO  退出 Genspark 后: swap=62% compressor=4490MB
+[2026-06-12 19:23:38] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 19:23:38] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 19:23:38] INFO  完成: swap=62% compressor=4490MB
+[2026-06-12 19:31:38] INFO  swap=62% compressor=4501MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 19:31:38] WARN  触发阈值: swap=62% comp=4501MB — 开始清理
+[2026-06-12 19:31:39] SKIP  Genspark 未运行
+[2026-06-12 19:31:44] INFO  退出 Genspark 后: swap=62% compressor=4501MB
+[2026-06-12 19:31:44] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 19:31:44] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 19:31:44] INFO  完成: swap=62% compressor=4501MB
+[2026-06-12 19:39:45] INFO  swap=62% compressor=4442MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 19:39:45] WARN  触发阈值: swap=62% comp=4442MB — 开始清理
+[2026-06-12 19:39:45] SKIP  Genspark 未运行
+[2026-06-12 19:39:50] INFO  退出 Genspark 后: swap=62% compressor=4442MB
+[2026-06-12 19:39:50] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 19:39:50] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 19:39:51] INFO  完成: swap=62% compressor=4442MB
+[2026-06-12 19:47:51] INFO  swap=62% compressor=4440MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 19:47:51] WARN  触发阈值: swap=62% comp=4440MB — 开始清理
+[2026-06-12 19:47:51] SKIP  Genspark 未运行
+[2026-06-12 19:47:56] INFO  退出 Genspark 后: swap=62% compressor=4440MB
+[2026-06-12 19:47:56] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 19:47:57] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 19:47:57] INFO  完成: swap=62% compressor=4440MB
+[2026-06-12 19:55:57] INFO  swap=62% compressor=4495MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 19:55:57] WARN  触发阈值: swap=62% comp=4495MB — 开始清理
+[2026-06-12 19:55:57] SKIP  Genspark 未运行
+[2026-06-12 19:56:02] INFO  退出 Genspark 后: swap=62% compressor=4495MB
+[2026-06-12 19:56:02] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 19:56:03] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 19:56:03] INFO  完成: swap=62% compressor=4495MB
+[2026-06-12 20:04:03] INFO  swap=62% compressor=4495MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 20:04:03] WARN  触发阈值: swap=62% comp=4495MB — 开始清理
+[2026-06-12 20:04:03] SKIP  Genspark 未运行
+[2026-06-12 20:04:09] INFO  退出 Genspark 后: swap=62% compressor=4495MB
+[2026-06-12 20:04:09] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 20:04:09] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 20:04:09] INFO  完成: swap=62% compressor=4495MB
+[2026-06-12 20:12:09] INFO  swap=62% compressor=4494MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 20:12:09] WARN  触发阈值: swap=62% comp=4494MB — 开始清理
+[2026-06-12 20:12:10] SKIP  Genspark 未运行
+[2026-06-12 20:12:15] INFO  退出 Genspark 后: swap=62% compressor=4494MB
+[2026-06-12 20:12:15] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 20:12:15] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 20:12:15] INFO  完成: swap=62% compressor=4494MB
+[2026-06-12 20:20:15] INFO  swap=62% compressor=4492MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 20:20:15] WARN  触发阈值: swap=62% comp=4492MB — 开始清理
+[2026-06-12 20:20:16] SKIP  Genspark 未运行
+[2026-06-12 20:20:21] INFO  退出 Genspark 后: swap=62% compressor=4492MB
+[2026-06-12 20:20:21] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 20:20:21] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 20:20:21] INFO  完成: swap=62% compressor=4492MB
+[2026-06-12 20:28:22] INFO  swap=62% compressor=4521MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 20:28:22] WARN  触发阈值: swap=62% comp=4521MB — 开始清理
+[2026-06-12 20:28:22] SKIP  Genspark 未运行
+[2026-06-12 20:28:27] INFO  退出 Genspark 后: swap=62% compressor=4521MB
+[2026-06-12 20:28:27] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 20:28:27] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 20:28:28] INFO  完成: swap=62% compressor=4521MB
+[2026-06-12 20:36:28] INFO  swap=62% compressor=4610MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 20:36:28] WARN  触发阈值: swap=62% comp=4610MB — 开始清理
+[2026-06-12 20:36:28] SKIP  Genspark 未运行
+[2026-06-12 20:36:33] INFO  退出 Genspark 后: swap=62% compressor=4610MB
+[2026-06-12 20:36:33] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 20:36:34] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 20:36:34] INFO  完成: swap=62% compressor=4610MB
+[2026-06-12 20:44:34] INFO  swap=62% compressor=4800MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 20:44:34] WARN  触发阈值: swap=62% comp=4800MB — 开始清理
+[2026-06-12 20:44:34] SKIP  Genspark 未运行
+[2026-06-12 20:44:40] INFO  退出 Genspark 后: swap=62% compressor=4793MB
+[2026-06-12 20:44:40] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 20:44:40] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 20:44:40] INFO  完成: swap=62% compressor=4793MB
+[2026-06-12 20:52:40] INFO  swap=62% compressor=5408MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 20:52:40] WARN  触发阈值: swap=62% comp=5408MB — 开始清理
+[2026-06-12 20:52:40] WARN  Genspark 有 1 个进程，准备优雅退出
+[2026-06-12 20:52:41] ACT   已发送 quit 信号给 Genspark
+[2026-06-12 20:52:46] WARN  Genspark 仍有 1 个进程残留（可能用户取消了退出）
+[2026-06-12 20:52:51] INFO  退出 Genspark 后: swap=62% compressor=5404MB
+[2026-06-12 20:52:51] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 20:52:52] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 20:52:52] INFO  完成: swap=62% compressor=5404MB
+[2026-06-12 21:00:52] INFO  swap=62% compressor=5857MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 21:00:52] WARN  触发阈值: swap=62% comp=5857MB — 开始清理
+[2026-06-12 21:00:52] WARN  Genspark 有 1 个进程，准备优雅退出
+[2026-06-12 21:00:53] ACT   已发送 quit 信号给 Genspark
+[2026-06-12 21:00:58] WARN  Genspark 仍有 1 个进程残留（可能用户取消了退出）
+[2026-06-12 21:01:03] INFO  退出 Genspark 后: swap=62% compressor=5857MB
+[2026-06-12 21:01:03] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 21:01:03] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 21:01:04] INFO  完成: swap=62% compressor=5857MB
+[2026-06-12 21:09:04] INFO  swap=62% compressor=5349MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 21:09:04] WARN  触发阈值: swap=62% comp=5349MB — 开始清理
+[2026-06-12 21:09:04] WARN  Genspark 有 1 个进程，准备优雅退出
+[2026-06-12 21:09:04] ACT   已发送 quit 信号给 Genspark
+[2026-06-12 21:09:10] WARN  Genspark 仍有 1 个进程残留（可能用户取消了退出）
+[2026-06-12 21:09:15] INFO  退出 Genspark 后: swap=62% compressor=5349MB
+[2026-06-12 21:09:15] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 21:09:15] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 21:09:16] INFO  完成: swap=62% compressor=5349MB
+[2026-06-12 21:17:16] INFO  swap=62% compressor=5045MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 21:17:16] WARN  触发阈值: swap=62% comp=5045MB — 开始清理
+[2026-06-12 21:17:16] WARN  Genspark 有 1 个进程，准备优雅退出
+[2026-06-12 21:17:16] ACT   已发送 quit 信号给 Genspark
+[2026-06-12 21:17:21] WARN  Genspark 仍有 1 个进程残留（可能用户取消了退出）
+[2026-06-12 21:17:27] INFO  退出 Genspark 后: swap=62% compressor=5045MB
+[2026-06-12 21:17:27] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 21:17:27] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 21:17:27] INFO  完成: swap=62% compressor=5045MB
+[2026-06-12 21:25:27] INFO  swap=62% compressor=5043MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 21:25:27] WARN  触发阈值: swap=62% comp=5043MB — 开始清理
+[2026-06-12 21:25:27] WARN  Genspark 有 1 个进程，准备优雅退出
+[2026-06-12 21:25:28] ACT   已发送 quit 信号给 Genspark
+[2026-06-12 21:25:33] WARN  Genspark 仍有 1 个进程残留（可能用户取消了退出）
+[2026-06-12 21:25:38] INFO  退出 Genspark 后: swap=62% compressor=5043MB
+[2026-06-12 21:25:38] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 21:25:39] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 21:25:39] INFO  完成: swap=62% compressor=5043MB
+[2026-06-12 21:33:39] INFO  swap=62% compressor=5031MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 21:33:39] WARN  触发阈值: swap=62% comp=5031MB — 开始清理
+[2026-06-12 21:33:39] WARN  Genspark 有 1 个进程，准备优雅退出
+[2026-06-12 21:33:39] ACT   已发送 quit 信号给 Genspark
+[2026-06-12 21:33:45] WARN  Genspark 仍有 1 个进程残留（可能用户取消了退出）
+[2026-06-12 21:33:50] INFO  退出 Genspark 后: swap=62% compressor=5031MB
+[2026-06-12 21:33:50] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 21:33:51] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 21:33:51] INFO  完成: swap=62% compressor=5031MB
+[2026-06-12 21:41:51] INFO  swap=62% compressor=5029MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 21:41:51] WARN  触发阈值: swap=62% comp=5029MB — 开始清理
+[2026-06-12 21:41:51] WARN  Genspark 有 1 个进程，准备优雅退出
+[2026-06-12 21:41:52] ACT   已发送 quit 信号给 Genspark
+[2026-06-12 21:41:57] WARN  Genspark 仍有 1 个进程残留（可能用户取消了退出）
+[2026-06-12 21:42:02] INFO  退出 Genspark 后: swap=62% compressor=5029MB
+[2026-06-12 21:42:02] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 21:42:02] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 21:42:03] INFO  完成: swap=62% compressor=5029MB
+[2026-06-12 21:50:03] INFO  swap=62% compressor=5046MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 21:50:03] WARN  触发阈值: swap=62% comp=5046MB — 开始清理
+[2026-06-12 21:50:03] WARN  Genspark 有 1 个进程，准备优雅退出
+[2026-06-12 21:50:03] ACT   已发送 quit 信号给 Genspark
+[2026-06-12 21:50:09] WARN  Genspark 仍有 1 个进程残留（可能用户取消了退出）
+[2026-06-12 21:50:14] INFO  退出 Genspark 后: swap=62% compressor=5046MB
+[2026-06-12 21:50:14] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 21:50:14] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 21:50:14] INFO  完成: swap=62% compressor=5046MB
+[2026-06-12 21:58:15] INFO  swap=62% compressor=5042MB threshold_swap=60% threshold_comp=5000MB dry_run=0
+[2026-06-12 21:58:15] WARN  触发阈值: swap=62% comp=5042MB — 开始清理
+[2026-06-12 21:58:15] WARN  Genspark 有 1 个进程，准备优雅退出
+[2026-06-12 21:58:15] ACT   已发送 quit 信号给 Genspark
+[2026-06-12 21:58:20] WARN  Genspark 仍有 1 个进程残留（可能用户取消了退出）
+[2026-06-12 21:58:26] INFO  退出 Genspark 后: swap=62% compressor=5042MB
+[2026-06-12 21:58:26] INFO  扫描 >3 天的僵尸 MCP 进程
+[2026-06-12 21:58:26] SKIP  PID 48506 有活跃父进程 45760，跳过
+[2026-06-12 21:58:26] INFO  完成: swap=62% compressor=5042MB
