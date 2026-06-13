@@ -12,5 +12,5 @@ case "$fp" in
 esac
 [ -f "$fp" ] || exit 0
 # 后台登记，绝不阻断主流程
-( cd "$HOME/Desktop/学习资料/00-想法工坊" && node engine/forge.mjs import "$fp" --category=自动归档 >/dev/null 2>&1 ) &
+( cd "$HOME/Desktop/02-学习资料/00-想法工坊" && node engine/forge.mjs import "$fp" --category=自动归档 >/dev/null 2>&1 ) &
 exit 0

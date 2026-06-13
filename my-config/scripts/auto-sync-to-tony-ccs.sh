@@ -15,7 +15,7 @@
 
 set -euo pipefail
 
-REPO="$HOME/Desktop/项目开发/01-Claude生态/Tony-Claude-Code-Skills"
+REPO="$HOME/Desktop/01-项目开发/01-Claude生态/Tony-Claude-Code-Skills"
 SRC="$HOME/.claude"
 DST="$REPO/my-config"
 LOG="$HOME/.claude/logs/auto-sync.log"

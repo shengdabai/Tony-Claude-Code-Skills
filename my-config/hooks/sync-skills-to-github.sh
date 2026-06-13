@@ -8,7 +8,7 @@
 # - Pre-push secret scan blocks the push if any tracked file matches
 #   high-confidence credential patterns.
 
-REPO_DIR="$HOME/Desktop/项目开发/01-Claude生态/Tony-Claude-Code-Skills"
+REPO_DIR="$HOME/Desktop/01-项目开发/01-Claude生态/Tony-Claude-Code-Skills"
 SKILLS_SRC="$HOME/.claude/skills"
 
 # Ensure local repo exists

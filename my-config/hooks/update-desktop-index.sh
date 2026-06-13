@@ -1,6 +1,6 @@
 #!/bin/bash
-# Auto-maintain 索引.md (AUTO-TREE block) for the 4 main Desktop folders:
-#   ~/Desktop/项目开发, ~/Desktop/学习资料, ~/Desktop/内容创作, ~/Desktop/杂项
+# Auto-maintain 索引.md (AUTO-TREE block) for the main numbered Desktop folders:
+#   ~/Desktop/01-项目开发, ~/Desktop/02-学习资料, ~/Desktop/03-内容创作, ~/Desktop/06-杂项
 #
 # - Scans 2 levels of each folder, regenerates the block between
 #   <!-- AUTO-TREE-START --> and <!-- AUTO-TREE-END -->.
@@ -17,7 +17,7 @@
 # not abort the whole rewrite, or deletions silently fail to propagate.
 
 DESKTOP="$HOME/Desktop"
-TARGETS=("项目开发" "学习资料" "内容创作" "杂项")
+TARGETS=("01-项目开发" "02-学习资料" "03-内容创作" "06-杂项")
 START_MARKER="<!-- AUTO-TREE-START -->"
 END_MARKER="<!-- AUTO-TREE-END -->"
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Auto-sync ~/Desktop/项目开发/01-Claude生态/Tony-claude-plugins to GitHub
+# Auto-sync ~/Desktop/01-项目开发/01-Claude生态/Tony-claude-plugins to GitHub
 # (private repo shengdabai/Tony-claude-plugins). Stop hook, async.
 #
 # Only commits + pushes when there are real changes. Pre-push secret scan
@@ -7,7 +7,7 @@
 # patterns (private repo, but defense-in-depth per secrets-firewall rule).
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
-REPO="$HOME/Desktop/项目开发/01-Claude生态/Tony-claude-plugins"
+REPO="$HOME/Desktop/01-项目开发/01-Claude生态/Tony-claude-plugins"
 
 [ -d "$REPO/.git" ] || exit 0
 cd "$REPO" || exit 0

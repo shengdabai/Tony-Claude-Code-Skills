@@ -1,10 +1,9 @@
 import type { ProviderAdapter, RunOpts, RunResult, AvailabilityCheck } from './types';
 import { estimateCostUsd } from '../pricing';
-import { execFileSync } from 'child_process';
+import { execFileSync, spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { resolveClaudeCommand } from '../../../browse/src/claude-bin';
 
 /**
  * Claude adapter — wraps the `claude` CLI via claude -p.
@@ -19,11 +18,10 @@ export class ClaudeAdapter implements ProviderAdapter {
   readonly family = 'claude' as const;
 
   async available(): Promise<AvailabilityCheck> {
-    // Binary on PATH (or GSTACK_CLAUDE_BIN override). Routes through the shared
-    // resolver so Windows + override paths behave the same as production sites.
-    const resolved = resolveClaudeCommand();
-    if (!resolved) {
-      return { ok: false, reason: 'claude CLI not found on PATH. Install from https://claude.ai/download or npm i -g @anthropic-ai/claude-code (or set GSTACK_CLAUDE_BIN)' };
+    // Binary on PATH?
+    const res = spawnSync('sh', ['-c', 'command -v claude'], { timeout: 2000 });
+    if (res.status !== 0) {
+      return { ok: false, reason: 'claude CLI not found on PATH. Install from https://claude.ai/download or npm i -g @anthropic-ai/claude-code' };
     }
     // Auth sniff: ~/.claude/.credentials.json OR ANTHROPIC_API_KEY
     const credsPath = path.join(os.homedir(), '.claude', '.credentials.json');
@@ -37,16 +35,12 @@ export class ClaudeAdapter implements ProviderAdapter {
 
   async run(opts: RunOpts): Promise<RunResult> {
     const start = Date.now();
-    const resolved = resolveClaudeCommand();
-    if (!resolved) {
-      throw new Error('claude CLI not resolvable (set GSTACK_CLAUDE_BIN or install)');
-    }
-    const args = [...resolved.argsPrefix, '-p', '--output-format', 'json'];
+    const args = ['-p', '--output-format', 'json'];
     if (opts.model) args.push('--model', opts.model);
     if (opts.extraArgs) args.push(...opts.extraArgs);
 
     try {
-      const out = execFileSync(resolved.command, args, {
+      const out = execFileSync('claude', args, {
         input: opts.prompt,
         cwd: opts.workdir,
         timeout: opts.timeoutMs,

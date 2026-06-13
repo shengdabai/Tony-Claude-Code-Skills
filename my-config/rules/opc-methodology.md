@@ -1,7 +1,7 @@
 # OPC 一人企业方法论 Skills
 
 Easy（@easychen）的《一人企业方法论 2.1》配套 9 个 Claude Code skills,已全局软链到 `~/.claude/skills/opc-*`。
-源位置：`~/Desktop/项目开发/01-Claude生态/Tony-Claude-Code-Skills/opc-methodology/`(已并入 Tony-CCS 主仓,与 Easy 上游脱钩,需要时手工 diff 同步)。
+源位置：`~/Desktop/01-项目开发/01-Claude生态/Tony-Claude-Code-Skills/opc-methodology/`(已并入 Tony-CCS 主仓,与 Easy 上游脱钩,需要时手工 diff 同步)。
 
 ## Skills 清单
 

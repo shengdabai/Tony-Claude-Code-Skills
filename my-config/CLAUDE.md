@@ -166,7 +166,7 @@ LARK_CLI_NO_PROXY=1 lark-cli --profile cli_aa80e81017f85bc0 --as user \
 
 **仅当**本条消息带 `<bridge_context>` 块,且用户要求制作 HTML/网页/页面/海报/报告页/可视化页/长图时(本地终端会话不触发):
 
-1. 按 `onepage-pdf` skill 规范生成**桌面布局** HTML(设计宽 1280px;避免 `min-height:100vh` 撑高;`@media (max-width:N≥741px)` 断点会在打印时塌陷,需配 print 修正 css),保存到 `~/Desktop/内容创作/飞书HTML/<YYYYMMDD>-<标题>.html`
+1. 按 `onepage-pdf` skill 规范生成**桌面布局** HTML(设计宽 1280px;避免 `min-height:100vh` 撑高;`@media (max-width:N≥741px)` 断点会在打印时塌陷,需配 print 修正 css),保存到 `~/Desktop/03-内容创作/16-飞书HTML/<YYYYMMDD>-<标题>.html`
 2. 跑 `bash ~/.claude/scripts/feishu-html-pdf.sh <html路径> <bridge_context 里的 chat_id>`(第 4 参可传修正 css 路径)——自动转单页不分页 PDF 并以 Claude bot 身份发回该 chat
 3. 转完用 pymupdf 渲染低 dpi 缩略图自检一眼(布局没塌、底部没截断),再回复:「🖨 HTML 已存 <本机路径>,PDF 已发」。不要把 HTML 源码贴进飞书。
 
@@ -213,4 +213,4 @@ Use /browse from gstack for all web browsing. Never use mcp__claude-in-chrome__*
 - **编码风格（不可变/小文件/错误处理/校验）** → `rules/coding-style.md`(写或重构代码前先 Read)
 - **Git 工作流 + commit 安全门** → `rules/git-workflow.md`(commit/push/建 PR 前必先 Read，含 secret 预检)
 - **Loop Engineering（循环工程）** → `rules/loop-engineering.md`（重复性任务要 loop 化、设计/启动/审查任何循环、用 /loop /loops:* /loop-design ralph 监工 定时任务时）
-- **想法工坊 / HTML 深度页与归档** → `rules/ideaforge.md`（做深度 HTML 分析页、或把 html 纳入本地知识系统时；引擎在 `~/Desktop/学习资料/00-想法工坊/`，知识库根 = `~/Desktop/学习资料/`；写 html 已由 PostToolUse hook 自动归档）
+- **想法工坊 / HTML 深度页与归档** → `rules/ideaforge.md`（做深度 HTML 分析页、或把 html 纳入本地知识系统时；引擎在 `~/Desktop/02-学习资料/00-想法工坊/`，知识库根 = `~/Desktop/02-学习资料/`；写 html 已由 PostToolUse hook 自动归档）
