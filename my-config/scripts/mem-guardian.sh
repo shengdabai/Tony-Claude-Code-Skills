@@ -9,6 +9,12 @@
 
 set -u
 
+# launchd 默认 locale 常为 C/POSIX,会把日志串里全角标点(如 ，)的首字节
+# 并进前面的变量名 → "$ppid，" 被解析成未定义变量 → set -u 报 unbound 中断。
+# 强制 UTF-8 locale 一次性根治所有 CJK 相邻变量展开问题。
+export LC_ALL="en_US.UTF-8"
+export LANG="en_US.UTF-8"
+
 LOG_DIR="$HOME/.claude/scripts/logs"
 LOG_FILE="$LOG_DIR/mem-guardian.log"
 mkdir -p "$LOG_DIR"
@@ -16,7 +22,9 @@ mkdir -p "$LOG_DIR"
 # ============ 配置 ============
 DRY_RUN="${MEM_GUARDIAN_DRY_RUN:-0}"           # 1=只记录不执行, 0=真实执行
 SWAP_THRESHOLD="${MEM_GUARDIAN_SWAP_PCT:-60}"  # swap 超过百分比才触发
-COMP_THRESHOLD_MB="${MEM_GUARDIAN_COMP_MB:-5000}"
+# 36GB 机器:6GB compressor + 71% 空闲属正常,5000 会每 8 分钟假触发空转。
+# 提到 7500 让 guardian 只在真正压力(坏 episode 时 comp 常冲 8G+)下动手。
+COMP_THRESHOLD_MB="${MEM_GUARDIAN_COMP_MB:-7500}"
 
 # ============ 工作进程白名单（绝对不动） ============
 # 这些进程/路径出现时，立即跳过，永不触碰
@@ -142,6 +150,19 @@ get_compressor_mb() {
     echo $((pages * 16 / 1024))
 }
 
+# 是否仍超阈值(swap 或 compressor 任一超标都算"仍有压力")。
+# 历史根因 bug:原"已恢复"判断与 reap 升级门槛都只看 swap,导致
+# compressor 驱动的压力(swap 仍低)下 guardian 早退、reap 永不触发。
+still_over() {
+    local sp cp
+    sp=$(get_swap_pct)
+    cp=$(get_compressor_mb)
+    if [ "$sp" -ge "$SWAP_THRESHOLD" ] || [ "$cp" -ge "$COMP_THRESHOLD_MB" ]; then
+        return 0   # 仍有压力
+    fi
+    return 1       # 两项都已回落
+}
+
 # ============ 主流程 ============
 main() {
     local swap_pct comp_mb
@@ -167,8 +188,10 @@ main() {
         swap_pct=$(get_swap_pct)
         comp_mb=$(get_compressor_mb)
         log_info "退出 $app 后: swap=${swap_pct}% compressor=${comp_mb}MB"
-        if [ "$swap_pct" -lt "$SWAP_THRESHOLD" ]; then
-            log_info "已恢复到阈值以下，停止清理"
+        # 必须 swap 与 compressor 都回落才算恢复;只看 swap 会在 compressor
+        # 仍高时早退,跳过后续 MCP 清理 + reap 升级(历史复发根因)。
+        if ! still_over; then
+            log_info "swap+compressor 均回落到阈值以下，停止清理"
             return 0
         fi
     done
@@ -194,7 +217,7 @@ main() {
         ppid=$(ps -p "$pid" -o ppid= 2>/dev/null | tr -d ' ')
         if [ -n "$ppid" ] && [ "$ppid" != "1" ]; then
             # 有活的父进程，可能仍在用，跳过
-            log_skip "PID $pid 有活跃父进程 $ppid，跳过"
+            log_skip "PID ${pid} 有活跃父进程 ${ppid}，跳过"
             continue
         fi
         log_warn "孤儿 MCP: PID $pid, ${days}天, $(echo $cmd | cut -c1-80)"
@@ -209,12 +232,15 @@ main() {
     # 解决 mem-guardian 盲区:Electron/MCP 清完仍高时,压力多来自堆积的 claude CLI 会话。
     # 保守策略:仅当 ≥4 个 CLI 会话(堆积特征)且 swap 仍超阈值时,reap >12h 的老会话。
     # SIGTERM 优雅退出(可 claude --continue 恢复)+ reap-keep.txt 白名单双保险。
-    swap_pct=$(get_swap_pct)
-    if [ "$swap_pct" -ge "$SWAP_THRESHOLD" ]; then
+    # 升级门槛同样改为 swap 或 compressor 任一仍超标即触发(原只看 swap,
+    # compressor 驱动压力下 reap 永不执行 = 复发根因之一)。
+    if still_over; then
+        swap_pct=$(get_swap_pct)
+        comp_mb=$(get_compressor_mb)
         local cli_count
         cli_count=$(ps -axo command= | grep -cE '/\.local/bin/claude($| )')
         if [ "${cli_count:-0}" -ge 4 ] && [ -x "$HOME/.claude/scripts/claude-reap.sh" ]; then
-            log_warn "swap 仍 ${swap_pct}% 且 ${cli_count} 个 claude CLI 会话堆积 — 调用 claude-reap 12h"
+            log_warn "压力仍在(swap=${swap_pct}% comp=${comp_mb}MB)且 ${cli_count} 个 claude CLI 会话堆积 — 调用 claude-reap 12h"
             if [ "$DRY_RUN" = "1" ]; then
                 bash "$HOME/.claude/scripts/claude-reap.sh" 12h --dry 2>&1 | while IFS= read -r l; do log_act "[reap] $l"; done
             else

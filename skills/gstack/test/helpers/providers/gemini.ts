@@ -22,10 +22,8 @@ export class GeminiAdapter implements ProviderAdapter {
     if (res.status !== 0) {
       return { ok: false, reason: 'gemini CLI not found on PATH. Install per https://github.com/google-gemini/gemini-cli' };
     }
-    const legacyCfgDir = path.join(os.homedir(), '.config', 'gemini');
-    const newCfgDir = path.join(os.homedir(), '.gemini');
-    const newOauth = path.join(newCfgDir, 'oauth_creds.json');
-    const hasCfg = fs.existsSync(legacyCfgDir) || fs.existsSync(newOauth);
+    const cfgDir = path.join(os.homedir(), '.config', 'gemini');
+    const hasCfg = fs.existsSync(cfgDir);
     const hasKey = !!process.env.GOOGLE_API_KEY;
     if (!hasCfg && !hasKey) {
       return { ok: false, reason: 'No Gemini auth found. Log in via `gemini login` or export GOOGLE_API_KEY.' };

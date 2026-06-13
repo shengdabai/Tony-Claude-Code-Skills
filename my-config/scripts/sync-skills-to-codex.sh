@@ -24,7 +24,7 @@ linked=0; exist=0; fail=0
 # 源覆盖表:真身不在 ~/.claude/skills/ 下的 skill,在此显式给绝对路径
 # 格式: skill名|绝对源目录(含 SKILL.md)
 declare -a SRC_OVERRIDE=(
-  "liuxiaopai-product|$HOME/Desktop/项目开发/03-刘小排-可以抄作业的闷声发财产品/刘小排产品研究流程/.claude/skills/liuxiaopai-product"
+  "liuxiaopai-product|$HOME/Desktop/01-项目开发/03-刘小排-可以抄作业的闷声发财产品/01-刘小排产品研究流程/.claude/skills/liuxiaopai-product"
 )
 resolve_override() {
   local n="$1"

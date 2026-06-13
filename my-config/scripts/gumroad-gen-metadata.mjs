@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 
-const BASE = "$HOME/Desktop/项目开发/05-中文教学项目/04-中文教材生成工具/中文教材";
+const BASE = "$HOME/Desktop/01-项目开发/05-中文教学项目/04-中文教材生成工具/中文教材";
 const COVERS = "/tmp/covers";
 fs.mkdirSync(COVERS, { recursive: true });
 

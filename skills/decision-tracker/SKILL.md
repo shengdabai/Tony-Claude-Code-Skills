@@ -9,7 +9,7 @@ description: 记录和跟踪个人重大决策。当用户说"记决策"、"记�
 
 ## 系统常量(所有路径写死,不受当前工作目录影响)
 
-- `DATA_ROOT` = `~/Desktop/项目开发/12-决策跟踪系统`
+- `DATA_ROOT` = `~/Desktop/01-项目开发/07-决策跟踪系统`
 - 决策目录:`{DATA_ROOT}/decisions/{YYYY-MM-DD}-{标题}/`
 - 两文件:`01-原始信息.md`、`02-决策档案.md`
 - 索引:`{DATA_ROOT}/index.json`、`{DATA_ROOT}/LEDGER.md`

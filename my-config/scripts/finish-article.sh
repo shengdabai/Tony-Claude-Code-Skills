@@ -9,7 +9,7 @@ PUBDATE="${2:-$(date +%Y-%m-%d)}"
 WORK="$HOME/.local/share/tony-articles"
 CLAUDE="$HOME/.local/bin/claude"
 LOG="$HOME/.claude/logs/finish-article.log"
-FACTORY="$HOME/Desktop/内容创作/01-文章加工厂"
+FACTORY="$HOME/Desktop/03-内容创作/01-文章加工厂"
 SF="$FACTORY/$SLUG/.state.json"
 
 log(){ echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG"; }

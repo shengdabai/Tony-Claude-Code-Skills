@@ -1,8 +1,8 @@
 # 想法工坊 · HTML 深度页生成与自动归档
 
-本地知识系统：引擎在 `~/Desktop/学习资料/00-想法工坊/`（IdeaForge），知识库根 = `~/Desktop/学习资料/`。把 想法/链接/图片 炼成专业可视化深度页 + 结合 Tony 背景的"能做什么"启发，全部本地存储、可检索。
+本地知识系统：引擎在 `~/Desktop/02-学习资料/00-想法工坊/`（IdeaForge），知识库根 = `~/Desktop/02-学习资料/`。把 想法/链接/图片 炼成专业可视化深度页 + 结合 Tony 背景的"能做什么"启发，全部本地存储、可检索。
 
-**所有 AI 本地生成的 HTML 都走想法工坊流程**：用 `forge` 生成 → 自动落盘 `00-想法工坊/pages/` 并进 `pages.json` 索引；手写/外来的 html 一律分类整理进 `~/Desktop/学习资料/` 的编号子目录（01~11），由 PostToolUse hook 自动登记。
+**所有 AI 本地生成的 HTML 都走想法工坊流程**：用 `forge` 生成 → 自动落盘 `00-想法工坊/pages/` 并进 `pages.json` 索引；手写/外来的 html 一律分类整理进 `~/Desktop/02-学习资料/` 的编号子目录（01~11），由 PostToolUse hook 自动登记。
 
 ## 何时用
 - 用户要"把某链接/想法/图片做成深度分析页/学习页/可视化页" → 用 `forge`，**不要手写一次性 html**。
@@ -22,10 +22,10 @@ PostToolUse hook `~/.claude/hooks/ideaforge-archive.sh`：任何写入的 `.html
 - 离线免费兜底：ollama。
 
 ## 个性化
-启发板块质量取决于 `~/Desktop/学习资料/00-想法工坊/profile.md`（Tony 画像）。启发不准 → 改 profile.md，不改引擎。
+启发板块质量取决于 `~/Desktop/02-学习资料/00-想法工坊/profile.md`（Tony 画像）。启发不准 → 改 profile.md，不改引擎。
 
 ## 结构 / 维护
 - 索引 `pages.json`：{slug,title,type,source,tags,category,createdAt,htmlPath}。
 - 生成提示词 `engine/prompt.md`、视觉范本 `templates/golden.html`、设计契约 `SPEC.md`。
-- 全局命令安装：`bash ~/Desktop/学习资料/00-想法工坊/install-forge.sh`（装到 ~/.local/bin/forge）。
+- 全局命令安装：`bash ~/Desktop/02-学习资料/00-想法工坊/install-forge.sh`（装到 ~/.local/bin/forge）。
 - Codex 被派来改系统时读 `SPEC.md`。
