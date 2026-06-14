@@ -18,6 +18,7 @@ set -euo pipefail
 REPO="$HOME/Desktop/01-项目开发/01-Claude生态/Tony-Claude-Code-Skills"
 SRC="$HOME/.claude"
 DST="$REPO/my-config"
+DST_REL="my-config"
 LOG="$HOME/.claude/logs/auto-sync.log"
 mkdir -p "$(dirname "$LOG")"
 
@@ -48,6 +49,7 @@ for sub in rules commands agents hooks output-styles mcp-servers scripts; do
       --exclude='.env*' \
       --exclude='*.key' \
       --exclude='*.pem' \
+      --exclude='*.bak-*' \
       --exclude='id_rsa*' \
       --exclude='credentials.*' \
       --exclude='secrets.*' \
@@ -78,15 +80,17 @@ find "$DST" -name ".git" -type d 2>/dev/null | while read gitdir; do
   log "✂️ 拆嵌套 .git: $gitdir"
 done
 
-# --- 5. 检查是否真有变化 ---
-if git diff --quiet && git diff --cached --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
+# --- 5. 检查 my-config 是否真有变化 ---
+if git diff --quiet -- "$DST_REL" \
+  && git diff --cached --quiet -- "$DST_REL" \
+  && [ -z "$(git ls-files --others --exclude-standard -- "$DST_REL")" ]; then
   log "✓ 无变化,退出"
   exit 0
 fi
 
 # --- 6. 隐私硬扫(即将 commit 范围) ---
 patterns='sk-(proj|ant|live)-[a-zA-Z0-9_-]{40,}|ghp_[a-zA-Z0-9]{36}|AKIA[A-Z0-9]{16}|AIza[a-zA-Z0-9_-]{30,}|xoxb-[a-zA-Z0-9-]{20,}|cli_a[0-9a-f]{30}'
-git add -A
+git add -A -- "$DST_REL"
 hits=$(git diff --cached --name-only | xargs grep -lE "$patterns" 2>/dev/null \
   | grep -vE "_repos/|_collections/|THIRD_PARTY|NOTICE|hooks/secret-scan|hooks/sync-skills|cso/SKILL\.md|CHANGELOG|placeholder|YOUR_|<your|REDACTED|/test/|/tests/|\.test\.|\.spec\." \
   || true)
