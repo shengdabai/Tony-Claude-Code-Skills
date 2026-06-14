@@ -50,6 +50,8 @@ for sub in rules commands agents hooks output-styles mcp-servers scripts; do
       --exclude='*.key' \
       --exclude='*.pem' \
       --exclude='*.bak-*' \
+      --exclude='*.log' \
+      --exclude='logs/' \
       --exclude='id_rsa*' \
       --exclude='credentials.*' \
       --exclude='secrets.*' \
