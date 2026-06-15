@@ -99,26 +99,41 @@ else
 fi
 
 # === 4. launchctl 体检(com.tony.* 任务退出码)===
-# 两个已知死亡任务的 -15/15(SIGTERM)不算新故障,只列出标 KNOWN-DEAD。
+# 关键:launchctl 的 LastExitStatus 记录的是"上一次退出原因",不是当前状态。
+# 常驻 KeepAlive 服务(frpc/lark-commander/hermes-webhook* 等)被 SIGTERM(-15)/
+# SIGKILL(-9,常由 mem-guardian 内存守护触发)杀掉后,launchd 会自动拉回。此时
+# LastExitStatus 仍永远显示上次死因,但服务其实在跑 → 只看退出码必然误报。
+# 正确判据:看第一列 PID。PID 为数字=正在运行,历史退出码忽略;PID 为 "-" 且
+# 退出码非 0 才是"挂了且没被拉起来"的真故障。
 log ""
-log "--- [4] launchctl com.tony.* 任务退出码 ---"
+log "--- [4] launchctl com.tony.* 任务状态(PID 优先,退出码次之)---"
 KNOWN_DEAD="com.tony.lark-deepseek com.tony.lark-agy com.tony.daily-ai-news"  # daily-ai-news 的 -15 是 launchd 回收"脚本成功跑完后"残留的 claude/MCP 子进程,非真故障
 while IFS= read -r line; do
   # launchctl list 输出列: PID  LastExitStatus  Label
+  pid=$(echo "$line" | awk '{print $1}')
   label=$(echo "$line" | awk '{print $3}')
   status=$(echo "$line" | awk '{print $2}')
   [ -z "$label" ] && continue
-  # 退出码非 0 且非 "-"(从未运行)才关注
+  # (a) 服务当前正在运行(PID 为数字)→ 退出码只是历史残留,非当前故障
+  if [ "$pid" != "-" ] && [ -n "$pid" ]; then
+    if [ "$status" != "0" ] && [ "$status" != "-" ]; then
+      log "  OK   $label (运行中 PID=$pid; 上次 exit=$status 为历史残留,已被 KeepAlive 拉回)"
+    else
+      log "  OK   $label (运行中 PID=$pid)"
+    fi
+    continue
+  fi
+  # (b) 服务未运行(PID 为 "-"):退出码非 0 且非 "-"(从未运行)才是真故障
   if [ "$status" != "0" ] && [ "$status" != "-" ]; then
     if echo "$KNOWN_DEAD" | grep -qw "$label"; then
-      log "  KNOWN-DEAD $label (exit=$status) — 已知死亡,忽略"
+      log "  KNOWN-DEAD $label (未运行, exit=$status) — 已知死亡,忽略"
       NOTES+=("KNOWN-DEAD: $label (exit=$status)")
     else
-      log "  FAIL $label (exit=$status) — 非已知故障"
-      FAILURES+=("launchd 任务异常: $label (exit=$status)")
+      log "  FAIL $label (未运行, exit=$status) — 挂掉且未被拉起,真故障"
+      FAILURES+=("launchd 任务挂掉未拉起: $label (exit=$status)")
     fi
   else
-    log "  OK   $label (exit=$status)"
+    log "  OK   $label (未运行, exit=$status — 一次性任务正常退出/从未运行)"
   fi
 done < <(launchctl list 2>/dev/null | grep -i 'com.tony')
 

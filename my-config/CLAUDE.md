@@ -167,14 +167,42 @@ LARK_CLI_NO_PROXY=1 lark-cli --profile cli_aa80e81017f85bc0 --as user \
 **仅当**本条消息带 `<bridge_context>` 块,且用户要求制作 HTML/网页/页面/海报/报告页/可视化页/长图时(本地终端会话不触发):
 
 1. 按 `onepage-pdf` skill 规范生成**桌面布局** HTML(设计宽 1280px;避免 `min-height:100vh` 撑高;`@media (max-width:N≥741px)` 断点会在打印时塌陷,需配 print 修正 css),保存到 `~/Desktop/03-内容创作/16-飞书HTML/<YYYYMMDD>-<标题>.html`
-2. 跑 `bash ~/.claude/scripts/feishu-html-pdf.sh <html路径> <bridge_context 里的 chat_id>`(第 4 参可传修正 css 路径)——自动转单页不分页 PDF 并以 Claude bot 身份发回该 chat
-3. 转完用 pymupdf 渲染低 dpi 缩略图自检一眼(布局没塌、底部没截断),再回复:「🖨 HTML 已存 <本机路径>,PDF 已发」。不要把 HTML 源码贴进飞书。
+2. 跑 `bash ~/.claude/scripts/feishu-html-pdf.sh <html路径> <bridge_context 里的 chat_id>`(第 4 参可传修正 css 路径)——自动保留本地单页归档 PDF 和 `*.feishu.pdf`，但默认发到飞书的是逐页图片（绕开飞书 PDF 预览器闪退）；只有明确需要发 PDF 文件时才临时设 `FEISHU_SEND_FORMAT=pdf`
+3. 转完用 pymupdf 渲染低 dpi 缩略图自检一眼(布局没塌、底部没截断),再回复:「🖨 HTML/PDF 已存 <本机路径>,页面图片已发」。不要把 HTML 源码贴进飞书。
 
 ## 🎛 飞书全设备指挥(仅飞书 bot 触发)
 
 **仅当**本条消息带 `<bridge_context>` 块,且用户要求**操作/查看/重启设备、服务器、定时任务、agent、会话、健康状态**(如"看下上海云""重跑日报""服务器状态""Air 在线吗""现在有什么任务在跑""把 X 任务重启")时:
 先 Read `/Volumes/2T/ai-memory-system/command-center/docs/commander-playbook.md`(设备直达表 + 任务控制命令 + 安全红线),按手册执行。
 要点:双云走 ssh 别名 shanghai / silicon-valley;破坏性操作必须先复述等用户回"确认";长任务先回"在跑了"再报结果;本地终端会话不触发本节。
+
+## ✅ 飞书任务完成回复格式(仅飞书 bot 触发,本地终端永不触发)
+
+**仅当**本条用户消息顶部带 `<bridge_context>` 块时生效(本地终端会话**绝不**触发,本地照常 caveman 简洁风)。
+
+通过飞书 bot 完成一个编码/操作类任务后,用户在**手机**上看回复。**绝不**把完整代码、整段 diff、终端日志原文贴回飞书。改用下面这套简洁卡片式摘要,用大白话讲清"做完了什么、结果如何":
+
+```
+✅ **完成** · <一句话说清这次干了啥>
+
+**做了什么**
+- <要点,口语化,一条一句>
+
+**改动文件**
+- `相对路径` — <一句话说明改了什么>
+
+**结果**
+- <构建/测试/运行的结论>
+
+> 想看代码或细节回我"看代码",我整理成飞书文档发你
+```
+
+硬规则(同 codex bot,见 `~/.agent-feishu-channel/codex-workspace/AGENTS.md`):
+- `**` 两侧留空格(飞书 markdown 卡片才渲染加粗);用 `###`/`-`/emoji 排版
+- 全长尽量 **< 250 字**,手机一屏读完;长了只留最关键 3-5 条
+- **禁止**贴 >15 行代码块;内容多/用户要完整代码 → 建飞书云文档,回复只给链接 + 一句摘要
+- 失败:`❌ **没成功** · <原因>` + 一行下一步,挑关键 1-2 行报错,别贴一大坨
+- 纯闲聊/问答(无实际任务)→ 正常自然回答,本模板不适用
 
 ## gstack 集成
 
@@ -213,4 +241,5 @@ Use /browse from gstack for all web browsing. Never use mcp__claude-in-chrome__*
 - **编码风格（不可变/小文件/错误处理/校验）** → `rules/coding-style.md`(写或重构代码前先 Read)
 - **Git 工作流 + commit 安全门** → `rules/git-workflow.md`(commit/push/建 PR 前必先 Read，含 secret 预检)
 - **Loop Engineering（循环工程）** → `rules/loop-engineering.md`（重复性任务要 loop 化、设计/启动/审查任何循环、用 /loop /loops:* /loop-design ralph 监工 定时任务时）
+- **Claude × Codex 协同分工** → `rules/claude-codex-collab.md`（调 codex / 委派 codex / 要第二意见 / code review / rescue 解卡 / 双模型 / best-of-N / 跑机械批量或定时自动化时；含通路选择、5 个配合模式、review loop、反模式）
 - **想法工坊 / HTML 深度页与归档** → `rules/ideaforge.md`（做深度 HTML 分析页、或把 html 纳入本地知识系统时；引擎在 `~/Desktop/02-学习资料/00-想法工坊/`，知识库根 = `~/Desktop/02-学习资料/`；写 html 已由 PostToolUse hook 自动归档）

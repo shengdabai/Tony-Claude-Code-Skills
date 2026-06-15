@@ -59,4 +59,5 @@
 - `/loops:green` — 修到测试/构建全绿
 - `/loops:babysit-prs` — 盯自己的 PR：CI 红了修，comment 来了改
 - `/loops:ledger-drain` — 清 `.omc/plans/` 未完成 ledger，一轮一批
+- `/loops:codex-review` — 当前 diff 交 Codex(gpt-5.5) 独立审，VERDICT 驱动 implement→review→fix（分工见 `rules/claude-codex-collab.md`）
 - 设计新循环 → `/loop-design <一句话目标>`
