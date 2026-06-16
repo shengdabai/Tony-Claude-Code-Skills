@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # mem-guardian — 自动内存守护
 # 设计原则:
-#   1. 只在 swap > 60% 时才动手（平时完全静默）
+#   1. 只在 compressor 真实超阈(默认7500MB)时动手; swap绝对值在本机是加密残留不可靠（平时完全静默）
 #   2. 正向白名单保护工作进程（Claude/MCP/Hermes/OpenClaw/node 都不碰）
 #   3. 只通过 osascript 优雅退出 Electron 应用，禁止 kill -9 工作类进程
 #   4. 所有操作记日志，可审计
@@ -21,7 +21,7 @@ mkdir -p "$LOG_DIR"
 
 # ============ 配置 ============
 DRY_RUN="${MEM_GUARDIAN_DRY_RUN:-0}"           # 1=只记录不执行, 0=真实执行
-SWAP_THRESHOLD="${MEM_GUARDIAN_SWAP_PCT:-60}"  # swap 超过百分比才触发
+SWAP_THRESHOLD="${MEM_GUARDIAN_SWAP_PCT:-95}"  # swap%触发阈; 默认95=实际禁用(本机swap是encrypted陈旧残留,不反映实时压力,靠compressor判据)
 # 36GB 机器:6GB compressor + 71% 空闲属正常,5000 会每 8 分钟假触发空转。
 # 提到 7500 让 guardian 只在真正压力(坏 episode 时 comp 常冲 8G+)下动手。
 COMP_THRESHOLD_MB="${MEM_GUARDIAN_COMP_MB:-7500}"

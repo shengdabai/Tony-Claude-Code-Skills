@@ -142,7 +142,9 @@ When the user asks you to perform tasks involving complex architecture design, m
 ## 📊 飞书用量查询(仅飞书 bot 触发)
 
 **仅当**本条消息顶部带 `<bridge_context>` 块,且用户问 **codex / claude code 的用量 / 余额 / 还剩多少 / 限额 / quota / 5 小时 / 本周** 时:
-用 Bash 跑 `~/.hermes/bin/usage-report.sh`(只问 codex 加 `codex`、只问 claude 加 `claude`),stdout **原样**回复(已是排好版中文报告)。数据来自本机 Vibe Island.app 实时缓存。本地终端会话不触发。
+用 Bash 跑 `~/.hermes/bin/usage-card.sh <chat_id> <all|claude|codex> [app_id]`(全问省第二参或填 `all`、只问 codex 填 `codex`、只问 claude 填 `claude`;`chat_id` 取 `<bridge_context>` 里的值;`app_id` 取当前触发 bot 的 app_id,拿不到就省略走默认 Claude bot)。脚本会把用量渲成**一张精美竖长图自动发回该聊天**(走图片通道不碰 PDF 预览器),你只需回一句「📊 用量卡片已发」,**不要**再贴文字报告。数据来自本机 Vibe Island.app 实时缓存。
+- 失败兜底:`usage-card.sh` 报错(网络/渲染失败)时,退回 `~/.hermes/bin/usage-report.sh`(同样支持 `codex`/`claude` 参数)取文字报告原样回复。
+- 本地终端会话不触发本节。
 
 ## 👁 飞书群历史 / 看图(仅飞书 bot 触发)
 
@@ -167,8 +169,8 @@ LARK_CLI_NO_PROXY=1 lark-cli --profile cli_aa80e81017f85bc0 --as user \
 **仅当**本条消息带 `<bridge_context>` 块,且用户要求制作 HTML/网页/页面/海报/报告页/可视化页/长图时(本地终端会话不触发):
 
 1. 按 `onepage-pdf` skill 规范生成**桌面布局** HTML(设计宽 1280px;避免 `min-height:100vh` 撑高;`@media (max-width:N≥741px)` 断点会在打印时塌陷,需配 print 修正 css),保存到 `~/Desktop/03-内容创作/16-飞书HTML/<YYYYMMDD>-<标题>.html`
-2. 跑 `bash ~/.claude/scripts/feishu-html-pdf.sh <html路径> <bridge_context 里的 chat_id>`(第 4 参可传修正 css 路径)——自动保留本地单页归档 PDF 和 `*.feishu.pdf`，但默认发到飞书的是逐页图片（绕开飞书 PDF 预览器闪退）；只有明确需要发 PDF 文件时才临时设 `FEISHU_SEND_FORMAT=pdf`
-3. 转完用 pymupdf 渲染低 dpi 缩略图自检一眼(布局没塌、底部没截断),再回复:「🖨 HTML/PDF 已存 <本机路径>,页面图片已发」。不要把 HTML 源码贴进飞书。
+2. 跑 `bash ~/.claude/scripts/feishu-html-pdf.sh <html路径> <bridge_context 里的 chat_id>`(第 4 参可传修正 css 路径)——自动保留本地单页归档 PDF 和 `*.feishu.pdf`，脚本会把 HTML 连同 `.pdf`/`.feishu.pdf`/逐页图/`.feishu-long.jpg` 全部留在本机，并**默认做成一张竖长图发到飞书**（走图片通道不碰 PDF 预览器，绝不闪退；超长或超 9.5MB 自动回退逐页图片）。只有明确要逐页图或 PDF 文件时才临时设 `FEISHU_SEND_FORMAT=images` / `FEISHU_SEND_FORMAT=pdf`
+3. 转完用 pymupdf 渲染低 dpi 缩略图自检一眼(布局没塌、底部没截断),再回复:「🖨 HTML 已存 <本机路径>,长图已发」。不要把 HTML 源码贴进飞书。
 
 ## 🎛 飞书全设备指挥(仅飞书 bot 触发)
 
