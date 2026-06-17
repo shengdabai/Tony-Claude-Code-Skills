@@ -9,9 +9,7 @@
 
 ## 视频工具
 
-- **即梦 (Dreamina)**: `dreamina` — 字节官方 CLI,Skill 在 `~/.dreamina_cli/dreamina/SKILL.md`。文生图/文生视频/图生视频
-- **PixVerse**: `pixverse` — 官方 CLI,需先 `pixverse auth login`。文生视频/转场/唇形同步/音效
-- **LiblibAI**: 无 CLI,有 npm SDK `liblibai`,API 需 HMAC 签名认证
+> 即梦(`dreamina`)/ PixVerse(`pixverse`)/ LiblibAI 近 30 天零触发,详细用法已移出常驻。需用时查:`~/.dreamina_cli/dreamina/SKILL.md`、`pixverse auth login` 后 `pixverse --help`、liblibai npm SDK(HMAC 签名)。
 
 ## Karpathy LLM Wiki
 

@@ -17,9 +17,25 @@ note() { REPORT="${REPORT}${1}\n"; }
 note "[auth-preflight @ $(date '+%H:%M:%S')]"
 
 # 1. gh CLI auth (uses macOS keychain, reliable)
+# Capture once — also surface token SCOPES so a missing scope (e.g. 'user',
+# 'workflow') is caught at SessionStart instead of mid-task 403 (report friction #2).
+# NOTE: do NOT wrap `gh auth status` in `timeout` — on macOS that empirically
+# breaks gh's keychain/keyring read and yields a false "not logged in" every
+# session. gh makes a single bounded API call (its own internal timeouts apply);
+# this direct call is the pre-existing, proven behavior across 200+ sessions.
+# The change below only ADDS scope parsing on the already-captured output.
 if command -v gh >/dev/null 2>&1; then
-  if gh auth status >/dev/null 2>&1; then
+  GH_STATUS="$(gh auth status 2>&1)"
+  if printf '%s' "$GH_STATUS" | grep -q "Logged in"; then
     note "  ✓ gh auth: ok"
+    SCOPES_LINE="$(printf '%s' "$GH_STATUS" | grep -i 'Token scopes:' | head -1)"
+    if [ -n "$SCOPES_LINE" ]; then
+      MISSING=""
+      for need in repo workflow user; do
+        printf '%s' "$SCOPES_LINE" | grep -q "'$need'" || MISSING="${MISSING}${MISSING:+ }$need"
+      done
+      [ -n "$MISSING" ] && note "  ⚠ gh scopes missing: ${MISSING} (gh auth refresh -s ${MISSING// / -s })"
+    fi
   else
     note "  ✗ gh auth: NOT logged in (run: gh auth login)"
   fi
@@ -32,6 +48,7 @@ CONFIG_FILES=(
   "$HOME/.config/lark-mcp/start.sh|Lark MCP launcher"
   "$HOME/.config/github-mcp/start.sh|GitHub MCP launcher"
   "$HOME/.claude/getnote-mcp/start.sh|GetNote MCP launcher"
+  "$HOME/.config/firecrawl/.env|Firecrawl scrape key"
 )
 
 for entry in "${CONFIG_FILES[@]}"; do
