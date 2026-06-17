@@ -1,19 +1,10 @@
+<!-- OMC:START -->
+<!-- OMC:VERSION:4.14.7 -->
+
 # oh-my-claudecode - Intelligent Multi-Agent Orchestration
 
 You are running with oh-my-claudecode (OMC), a multi-agent orchestration layer for Claude Code.
 Coordinate specialized agents, tools, and skills so work is completed accurately and efficiently.
-
-<cardinal_rules>
-**这 7 条 Cardinal Rules 优先级最高,与下方任何规则冲突时以此为准。**
-
-1. **字面执行**:用户让做 X 就做 X。不要替换为 summary、不要扩 scope、不要顺手升级工具。详见 `rules/intent-defaults.md`
-2. **验证再声明完成**:写完 ≠ 完成。必须 read-back + 必要时 restart + smoke test。详见 `rules/verification.md`
-3. **大任务先 plan**:≥ 5 个 item 或 ≥ 30 分钟的工作必须先写 `.omc/plans/*-todo.md` ledger,再分批执行,中断可恢复。详见 `rules/session-resilience.md`
-4. **集成而非另起**:用户提到现有项目(Hermes / OpenClaw / gstack 等)默认 native integration,不要创建独立 scaffold
-5. **工具纪律**:文件读改搜用 Read/Edit/Write/Grep/Glob,不要走 Bash 的 cat/sed/echo/find/grep。Bash 仅用于启动进程、动态查询、shell-only 操作。详见 `rules/tool-discipline.md`
-6. **机密文件防线**:`.env*`、`*.pem`、`*.key`、`id_rsa*`、`credentials.*`、`secrets.*`、`.aws/credentials`、`.ssh/*` 私钥一律不得自动 Read/Edit/Write。`env-guard.sh` PreToolUse hook 会硬阻断,模型也必须自律。详见 `rules/secrets-firewall.md`
-7. **工具调用必须走原生通道,严禁伪装成文本**:任何编辑/运行/读写操作必须通过系统原生工具(`Bash`、`Edit`、`Write`、`Read`、`Grep`、`Glob` 等)的真正调用接口发起。**严禁**把工具调用以纯文本、markdown 代码块、伪代码、`<invoke>`/`<function_calls>` 文字形式"展示"或"描述"出来——那不是调用,只是文本,会导致任务在该步暂停假死、需要用户手动催"继续"。判据:每当你准备执行一个动作(改文件、跑命令、查状态),问自己"我是在**真正调用**工具,还是在**打印**一段看起来像调用的文本?"——只有真正调用才算数。详见 `rules/tool-discipline.md` 的"禁止伪工具调用"节。
-</cardinal_rules>
 
 <operating_principles>
 - Delegate specialized work to the most appropriate agent.
@@ -34,12 +25,11 @@ Direct writes OK for: `~/.claude/**`, `.omc/**`, `.claude/**`, `CLAUDE.md`, `AGE
 </model_routing>
 
 <skills>
-**项目结构权威规范** = `claude-code-project-layout` skill。任何涉及 `.claude/` 目录、CLAUDE.md、settings.json、hooks、agents、skills、plugins、output-styles、rules 创建/审查时,**必须先调用此 skill**,以图片标准为准。
 Invoke via `/oh-my-claudecode:<name>`. Trigger patterns auto-detect keywords.
 Tier-0 workflows include `autopilot`, `ultrawork`, `ralph`, `team`, and `ralplan`.
 Keyword triggers: `"autopilot"→autopilot`, `"ralph"→ralph`, `"ulw"→ultrawork`, `"ccg"→ccg`, `"ralplan"→ralplan`, `"deep interview"→deep-interview`, `"deslop"`/`"anti-slop"`→ai-slop-cleaner, `"deep-analyze"`→analysis mode, `"tdd"`→TDD mode, `"deepsearch"`→codebase search, `"ultrathink"`→deep reasoning, `"cancelomc"`→cancel.
 Team orchestration is explicit via `/team`.
-Detailed agent catalog, tools, team pipeline, commit protocol, and full skills registry live in the native `omc-reference` skill when skills are available.
+Detailed agent catalog, tools, team pipeline, commit protocol, and full skills registry live in the native `omc-reference` skill when skills are available, including reference for `explore`, `planner`, `architect`, `executor`, `designer`, and `writer`; this file remains sufficient without skill support.
 </skills>
 
 <verification>
@@ -49,7 +39,7 @@ If verification fails, keep iterating.
 
 <execution_protocols>
 Broad requests: explore first, then plan. 2+ independent tasks in parallel. `run_in_background` for builds/tests.
-Keep authoring and review as separate passes.
+Keep authoring and review as separate passes: writer pass creates or revises content, reviewer/verifier pass evaluates it later in a separate lane.
 Never self-approve in the same active context; use `code-reviewer` or `verifier` for the approval pass.
 Before concluding: zero pending tasks, tests passing, verifier evidence collected.
 </execution_protocols>
@@ -71,6 +61,24 @@ State: `.omc/state/`, `.omc/state/sessions/{sessionId}/`, `.omc/notepad.md`, `.o
 ## Setup
 
 Say "setup omc" or run `/oh-my-claudecode:omc-setup`.
+<!-- OMC:END -->
+
+<!-- User customizations · 定制保护区 -->
+<!-- ⚠️ 上方 OMC:START..OMC:END 是 omc 托管区,omc update 只会就地刷新它、不再向本区重复注入官方块(根治 2026-06 之前每次 update 复发的重复块问题)。本区内容(cardinal_rules + 全部中文规则)update 时保持不动。-->
+
+<cardinal_rules>
+**这 7 条 Cardinal Rules 优先级最高,与下方任何规则冲突时以此为准。**
+
+1. **字面执行**:用户让做 X 就做 X。不要替换为 summary、不要扩 scope、不要顺手升级工具。详见 `rules/intent-defaults.md`
+2. **验证再声明完成**:写完 ≠ 完成。必须 read-back + 必要时 restart + smoke test。详见 `rules/verification.md`
+3. **大任务先 plan**:≥ 5 个 item 或 ≥ 30 分钟的工作必须先写 `.omc/plans/*-todo.md` ledger,再分批执行,中断可恢复。详见 `rules/session-resilience.md`
+4. **集成而非另起**:用户提到现有项目(Hermes / OpenClaw / gstack 等)默认 native integration,不要创建独立 scaffold
+5. **工具纪律**:文件读改搜用 Read/Edit/Write/Grep/Glob,不要走 Bash 的 cat/sed/echo/find/grep。Bash 仅用于启动进程、动态查询、shell-only 操作。详见 `rules/tool-discipline.md`
+6. **机密文件防线**:`.env*`、`*.pem`、`*.key`、`id_rsa*`、`credentials.*`、`secrets.*`、`.aws/credentials`、`.ssh/*` 私钥一律不得自动 Read/Edit/Write。`env-guard.sh` PreToolUse hook 会硬阻断,模型也必须自律。详见 `rules/secrets-firewall.md`
+7. **工具调用必须走原生通道,严禁伪装成文本**:任何编辑/运行/读写操作必须通过系统原生工具(`Bash`、`Edit`、`Write`、`Read`、`Grep`、`Glob` 等)的真正调用接口发起。**严禁**把工具调用以纯文本、markdown 代码块、伪代码、或调用/参数尖括号标签的文字形式"展示"或"描述"出来——那不是调用,只是文本,会导致任务在该步暂停假死、需要用户手动催"继续"(本规则刻意不写出完整标签字面量,避免成为可模仿的样例)。判据:每当你准备执行一个动作(改文件、跑命令、查状态),问自己"我是在**真正调用**工具,还是在**打印**一段看起来像调用的文本?"——只有真正调用才算数。**每个真调用后只认真实返回的 result,绝不脑补成功**。已知触发器(别堆叠重复调用、工具密集会话别 `/compact`)+ 兜底安全网(`hooks/fake-toolcall-guard.sh`)+ 详情见 `rules/tool-discipline.md` 的"禁止伪工具调用"节。
+</cardinal_rules>
+
+**项目结构权威规范** = `claude-code-project-layout` skill。任何涉及 `.claude/` 目录、CLAUDE.md、settings.json、hooks、agents、skills、plugins、output-styles、rules 创建/审查时,**必须先调用此 skill**,以图片标准为准。
 
 ## Environment
 
@@ -106,11 +114,43 @@ Say "setup omc" or run `/oh-my-claudecode:omc-setup`.
 
 极简输出,砍废话不砍信息。
 
-**禁止**:客套话 / 动作预告 / 尾部总结 / 复述用户问题 / 过渡句 / 解释工具行为
+**禁止**:客套话 / 短任务的废话预告("好的我现在来帮你...") / 尾部总结 / 复述用户问题 / 过渡句 / 解释工具行为
 
 **要求**:结果优先 / 状态极简("完成"/"已修复"/"改了 3 个文件")/ 一句能说清的不用三句
 
-**不牺牲**:错误诊断、root cause、技术决策理由、breaking change、安全 warning
+**不牺牲**:错误诊断、root cause、技术决策理由、breaking change、安全 warning、**进度信号(见下)**
+
+### 进度信号(防"假死"误判,优先级高于上面的"禁止预告")
+
+背景:派 subagent / 跑 build·test / 长工具调用时,主对话**输出 token 不增长**,只剩 spinner,用户会误以为卡死而手动催进度——催字反而进下一轮、可能打断正在跑的子任务。caveman 砍的是废话,**不是进度信号**。
+
+**铁律**:满足任一即在**动手前用一行**说明"在做什么 + 大概要等多久 / 分几步",完成后照常极简:
+- 要派 subagent / Task(尤其多个并行)
+- 要跑预计 >30s 的命令(build / test / 大规模 Grep / 下载)
+- 要进多阶段流水线(说清共几步、现在第几步)
+- 任何会让对话静默 ≥30s 的操作
+
+格式示例(一行即可,不展开):
+> 「派 3 个 agent 并行扫 X/Y/Z,约 1-2 分钟」
+> 「跑全量测试,约 40s」
+> 「分 4 步:① 改 schema ② 迁移 ③ 跑测试 ④ 验证,现在第 ①」
+
+这不算"废话预告"——它替代了用户的手动催问,是必要信号。短任务(单次 Edit / 秒级命令)仍**不**预告。
+
+## 工程进度预测(AI 执行尺度,非人类工程师月历)
+
+背景:MVP / 项目都是 Claude Code + Codex 执行,不是人类团队。**禁止**套用人类工程师的"几周 / 几月 / 下个 Q"尺度——AI 写代码常以**分钟~小时 / 会话**为单位,人类估"几周"的活可能几小时几天就 done。笼统月度预测对 Tony 无用且误导。
+
+**铁律**:
+1. 估时以**实际 AI 执行**为基准:用「分钟 / 小时 / N 个会话 / 几个 plan 阶段」,**不**用 sprint / 周 / 月。
+2. **区分两类耗时**(AI 时代真瓶颈):
+   - **编码本身**(AI 干)= 快,按分钟~小时估
+   - **非编码阻塞**(真正吃时间)= 单独标出 + 给真实墙钟:第三方审核(KDP / App Store / 支付 / 公众号)、人工审批、外部服务开通、等用户决策、部署生效、DNS 传播、数据/素材收集
+3. 给**可执行节奏**而非日历:"本会话就能出可跑 MVP,剩 X 项卡在 Y(外部),Y 到位后再 ~Z"。
+4. 不确定给**区间 + 假设**:"顺利 ~2 小时,卡在 Z 则 +1 天",不给单一笼统数字。
+5. 报告口径:先说 **AI 能立刻推进到哪**,再说**卡点在哪 / 卡多久 / 卡在谁**(我 / 你 / 第三方)。
+
+配合进度信号:预测说清要多久,执行时按进度信号实时报。
 
 ## 大产出防截断(防 output-token-limit 杀会话)
 
@@ -131,80 +171,10 @@ Say "setup omc" or run `/oh-my-claudecode:omc-setup`.
 
 When the user asks you to perform tasks involving complex architecture design, multi-step planning, deep reasoning, or system-level decisions, proactively suggest: "这个任务比较复杂,建议先用 `/model opus` 切换到 Opus 4.6 以获得更好的推理质量。" Do NOT switch automatically.
 
-## 🧠 飞书记忆查询(仅飞书 bot 触发,本地交互永不触发)
+## 飞书 Bot 专用规则(仅 `<bridge_context>` 会话)
 
-**仅当**本条用户消息顶部带有 `<bridge_context>` 块(即来自飞书 lark-channel-bridge bot),
-且正文正好是「记忆」「查看记忆」「看记忆」「查看所有ai对话记录」「ai对话记录」「我的记忆」之一时:
-直接用 Bash 运行 `/Volumes/2T/ai-memory-system/bin/ai-mem-feishu`,把它的 stdout **原样**回复
-(已含飞书文档链接 + 状态,勿改写、勿追加解释、勿再贴 markdown)。约 7 秒,耐心等它跑完。
-**没有 `<bridge_context>` 块的会话(本地终端交互)绝不触发本规则**——那只是普通对话里出现了"记忆"二字。
-
-## 📊 飞书用量查询(仅飞书 bot 触发)
-
-**仅当**本条消息顶部带 `<bridge_context>` 块,且用户问 **codex / claude code 的用量 / 余额 / 还剩多少 / 限额 / quota / 5 小时 / 本周** 时:
-用 Bash 跑 `~/.hermes/bin/usage-card.sh <chat_id> <all|claude|codex> [app_id]`(全问省第二参或填 `all`、只问 codex 填 `codex`、只问 claude 填 `claude`;`chat_id` 取 `<bridge_context>` 里的值;`app_id` 取当前触发 bot 的 app_id,拿不到就省略走默认 Claude bot)。脚本会把用量渲成**一张精美竖长图自动发回该聊天**(走图片通道不碰 PDF 预览器),你只需回一句「📊 用量卡片已发」,**不要**再贴文字报告。数据来自本机 Vibe Island.app 实时缓存。
-- 失败兜底:`usage-card.sh` 报错(网络/渲染失败)时,退回 `~/.hermes/bin/usage-report.sh`(同样支持 `codex`/`claude` 参数)取文字报告原样回复。
-- 本地终端会话不触发本节。
-
-## 👁 飞书群历史 / 看图(仅飞书 bot 触发)
-
-**仅当**本条消息顶部带 `<bridge_context>` 块时生效(本地会话不触发)。`<bridge_context>` 里有当前 `chat_id`。
-
-用户让你"总结刚才群里聊的 / 看看别的 bot 怎么回的 / 看群历史"时,**自己用 Bash 拉**,不用让用户复制粘贴:
-```bash
-LARK_CLI_NO_PROXY=1 lark-cli --profile cli_aa80e81017f85bc0 --as user \
-  im +chat-messages-list --chat-id <bridge_context 里的 chat_id> --page-size 20
-```
-返回 JSON,每条含 sender(app_id=哪个 bot / open_id=哪个人)、content、create_time、msg_type。
-
-看图/多图(从历史结果取 msg_type=image/post 的 message_id;用户当前消息直接发的图 bridge 已下载好附件,无需此步):
-```bash
-LARK_CLI_NO_PROXY=1 lark-cli --profile cli_aa80e81017f85bc0 --as user \
-  im +messages-resources-download --message-id <om_xxx> --dir /tmp/feishu-img
-```
-一条消息里的多张图都会下载,再用文件路径读图。
-
-## 🖨 飞书 HTML→PDF（仅飞书 bot 触发）
-
-**仅当**本条消息带 `<bridge_context>` 块,且用户要求制作 HTML/网页/页面/海报/报告页/可视化页/长图时(本地终端会话不触发):
-
-1. 按 `onepage-pdf` skill 规范生成**桌面布局** HTML(设计宽 1280px;避免 `min-height:100vh` 撑高;`@media (max-width:N≥741px)` 断点会在打印时塌陷,需配 print 修正 css),保存到 `~/Desktop/03-内容创作/16-飞书HTML/<YYYYMMDD>-<标题>.html`
-2. 跑 `bash ~/.claude/scripts/feishu-html-pdf.sh <html路径> <bridge_context 里的 chat_id>`(第 4 参可传修正 css 路径)——自动保留本地单页归档 PDF 和 `*.feishu.pdf`，脚本会把 HTML 连同 `.pdf`/`.feishu.pdf`/逐页图/`.feishu-long.jpg` 全部留在本机，并**默认做成一张竖长图发到飞书**（走图片通道不碰 PDF 预览器，绝不闪退；超长或超 9.5MB 自动回退逐页图片）。只有明确要逐页图或 PDF 文件时才临时设 `FEISHU_SEND_FORMAT=images` / `FEISHU_SEND_FORMAT=pdf`
-3. 转完用 pymupdf 渲染低 dpi 缩略图自检一眼(布局没塌、底部没截断),再回复:「🖨 HTML 已存 <本机路径>,长图已发」。不要把 HTML 源码贴进飞书。
-
-## 🎛 飞书全设备指挥(仅飞书 bot 触发)
-
-**仅当**本条消息带 `<bridge_context>` 块,且用户要求**操作/查看/重启设备、服务器、定时任务、agent、会话、健康状态**(如"看下上海云""重跑日报""服务器状态""Air 在线吗""现在有什么任务在跑""把 X 任务重启")时:
-先 Read `/Volumes/2T/ai-memory-system/command-center/docs/commander-playbook.md`(设备直达表 + 任务控制命令 + 安全红线),按手册执行。
-要点:双云走 ssh 别名 shanghai / silicon-valley;破坏性操作必须先复述等用户回"确认";长任务先回"在跑了"再报结果;本地终端会话不触发本节。
-
-## ✅ 飞书任务完成回复格式(仅飞书 bot 触发,本地终端永不触发)
-
-**仅当**本条用户消息顶部带 `<bridge_context>` 块时生效(本地终端会话**绝不**触发,本地照常 caveman 简洁风)。
-
-通过飞书 bot 完成一个编码/操作类任务后,用户在**手机**上看回复。**绝不**把完整代码、整段 diff、终端日志原文贴回飞书。改用下面这套简洁卡片式摘要,用大白话讲清"做完了什么、结果如何":
-
-```
-✅ **完成** · <一句话说清这次干了啥>
-
-**做了什么**
-- <要点,口语化,一条一句>
-
-**改动文件**
-- `相对路径` — <一句话说明改了什么>
-
-**结果**
-- <构建/测试/运行的结论>
-
-> 想看代码或细节回我"看代码",我整理成飞书文档发你
-```
-
-硬规则(同 codex bot,见 `~/.agent-feishu-channel/codex-workspace/AGENTS.md`):
-- `**` 两侧留空格(飞书 markdown 卡片才渲染加粗);用 `###`/`-`/emoji 排版
-- 全长尽量 **< 250 字**,手机一屏读完;长了只留最关键 3-5 条
-- **禁止**贴 >15 行代码块;内容多/用户要完整代码 → 建飞书云文档,回复只给链接 + 一句摘要
-- 失败:`❌ **没成功** · <原因>` + 一行下一步,挑关键 1-2 行报错,别贴一大坨
-- 纯闲聊/问答(无实际任务)→ 正常自然回答,本模板不适用
+本条用户消息顶部**带 `<bridge_context>` 块**(来自飞书 lark-channel-bridge bot)时,先 `Read rules/feishu-bot.md` 再按其中章节执行:记忆查询 / 用量卡片 / 群历史看图 / HTML→PDF / 全设备指挥 / 任务完成回复格式。
+**本地终端会话(无 `<bridge_context>`)绝不触发,也无需 Read 该文件。**
 
 ## gstack 集成
 
@@ -222,7 +192,6 @@ Use /browse from gstack for all web browsing. Never use mcp__claude-in-chrome__*
 @rules/session-resilience.md
 @rules/tool-discipline.md
 
-@RTK.md
 @CLAUDE.local.md
 
 ## 按需规则（相关场景出现时，先 Read 对应文件再动手）
@@ -245,3 +214,5 @@ Use /browse from gstack for all web browsing. Never use mcp__claude-in-chrome__*
 - **Loop Engineering（循环工程）** → `rules/loop-engineering.md`（重复性任务要 loop 化、设计/启动/审查任何循环、用 /loop /loops:* /loop-design ralph 监工 定时任务时）
 - **Claude × Codex 协同分工** → `rules/claude-codex-collab.md`（调 codex / 委派 codex / 要第二意见 / code review / rescue 解卡 / 双模型 / best-of-N / 跑机械批量或定时自动化时；含通路选择、5 个配合模式、review loop、反模式）
 - **想法工坊 / HTML 深度页与归档** → `rules/ideaforge.md`（做深度 HTML 分析页、或把 html 纳入本地知识系统时；引擎在 `~/Desktop/02-学习资料/00-想法工坊/`，知识库根 = `~/Desktop/02-学习资料/`；写 html 已由 PostToolUse hook 自动归档）
+- **飞书 bot 专用规则** → `rules/feishu-bot.md`（仅当条消息带 `<bridge_context>` 块时；本地终端会话无需加载）
+- **RTK token 优化代理命令** → `RTK.md`（仅当需手动查 `rtk gain` / `rtk discover` / `rtk proxy` 等 meta 命令时；日常命令已由 hook 透明重写，通常无需 Read）
