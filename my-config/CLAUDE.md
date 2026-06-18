@@ -201,7 +201,6 @@ Use /browse from gstack for all web browsing. Never use mcp__claude-in-chrome__*
 - **多 Claude 会话 / cache 卫生** → `rules/multi-claude-cache.md`（开新窗口、并行会话、context 管理时）
 - **代码 API 响应/Hook/Repository 模式模板** → `rules/patterns.md`（写新功能要套现成模式时）
 - **gstack 命令路由 / 设计 skill 选择** → `rules/gstack-routing.md`（plan/review/ship/QA/UI 设计需求时）
-- **gbrain 代码检索 / OPC 跨项目记忆** → `rules/gbrain-routing.md`（"哪里定义X"/"谁调用X"/回忆历史决策时，动手 Grep 前先查 brain）
 - **品牌设计系统参考** → `rules/design-systems.md`（UI/前端任务要加载品牌 DESIGN.md 时）
 - **CLI 工具与外部资源** → `rules/cli-tools.md`（飞书/Obsidian/即梦/PixVerse/Context7/Firecrawl/ports 等工具调用时）
 - **smux 多代理团队协同** → `rules/smux-bridge.md`（tmux team 环境，需 tmux-bridge 调度 Codex/Gemini 时）
