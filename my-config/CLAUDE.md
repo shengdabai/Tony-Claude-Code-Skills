@@ -171,6 +171,14 @@ Say "setup omc" or run `/oh-my-claudecode:omc-setup`.
 
 When the user asks you to perform tasks involving complex architecture design, multi-step planning, deep reasoning, or system-level decisions, proactively suggest: "这个任务比较复杂,建议先用 `/model opus` 切换到 Opus 4.6 以获得更好的推理质量。" Do NOT switch automatically.
 
+## GPT-5.5 Pro 战略层自动调用(gpt5pro)
+
+当 Tony 的消息**意图是要 GPT-5.5 Pro 的回答/看法**(出现「问 gpt / 让 gpt / gpt 怎么说 / 用 5.5 pro / chatgpt 怎么看 / 问问 5.5 / gpt5pro」等,且在**提出一个要它解答的问题**)→ 直接用 Bash 调 `gpt5pro "<把问题+必要本地上下文提炼成自包含 prompt>"`(无需显式 `/strategy`)。拿回答后按 maker/checker 评估(它是第二意见非命令,标分歧、用本地代码校验它的假设),需要落地再交 Codex。
+- Pro 长推理 1–5 分钟,**调用前先报一行进度防假死**;复杂题加 `GPT5PRO_TIMEOUT=900`。
+- 默认走临时聊天**无痕**,不在 ChatGPT 留记录(跨对话记忆已由本机 memory 系统负责,无需 ChatGPT 侧历史)。
+- **防过度触发**:只是在**讨论** chatgpt/codex 的额度/配置/客户端本身,或泛泛提到这些词 ≠ 调用;判据是 Tony 是否想要「5.5 Pro 对某问题的答复」。拿不准先问一句,别空烧 Pro 桶。
+- 实现/维护/selector 漂移修复见 memory `reference_gpt5pro-bridge`。
+
 ## 飞书 Bot 专用规则(仅 `<bridge_context>` 会话)
 
 本条用户消息顶部**带 `<bridge_context>` 块**(来自飞书 lark-channel-bridge bot)时,先 `Read rules/feishu-bot.md` 再按其中章节执行:记忆查询 / 用量卡片 / 群历史看图 / HTML→PDF / 全设备指挥 / 任务完成回复格式。
