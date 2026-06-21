@@ -54,6 +54,23 @@ LOG="$HOME/.claude/logs/daily-article.codex.log"
 TODAY="$(date +%Y-%m-%d)"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG"; }
+TIMEOUT_CMD=""
+if command -v timeout >/dev/null 2>&1; then
+  TIMEOUT_CMD="$(command -v timeout)"
+elif command -v gtimeout >/dev/null 2>&1; then
+  TIMEOUT_CMD="$(command -v gtimeout)"
+elif [ -x /opt/homebrew/bin/gtimeout ]; then
+  TIMEOUT_CMD="/opt/homebrew/bin/gtimeout"
+fi
+run_limited() {
+  local seconds="$1"
+  shift
+  if [ -n "$TIMEOUT_CMD" ]; then
+    "$TIMEOUT_CMD" "$seconds" "$@"
+  else
+    "$@"
+  fi
+}
 # L1 告警:撞 429 时推 ntfy,避免静默漏稿(复用 claude-auto-resume 同款 topic)
 ntfy_send() {
   [ -f "$HOME/.config/ntfy/.env" ] || return 0
@@ -186,12 +203,12 @@ RELAY_JSON="$HOME/.claude/logs/.daily-relay-codex-events.jsonl"
 
 # 撞用量上限检测(ChatGPT 订阅额度 / 429)
 hit_session_limit() {
-  grep -qiE "usage limit|usage_limit_reached|rate.?limit|429|quota" "$RELAY_OUT" "$RELAY_JSON" 2>/dev/null
+  grep -qiE "usage limit reached|usage_limit_reached|rate limit exceeded|429 too many requests|quota exceeded|exceeded your current quota" "$RELAY_OUT" 2>/dev/null
 }
 
 # 第一轮:启动写作,用 --json 捕获 session_id
 log "接力第 1 轮: 启动 Codex 写作..."
-echo "$PROMPT" | timeout 1500 "$CODEX" exec --json "${CODEX_FLAGS[@]}" - \
+echo "$PROMPT" | run_limited 1500 "$CODEX" exec --json "${CODEX_FLAGS[@]}" - \
   > "$RELAY_JSON" 2>"$RELAY_OUT"
 log "  第 1 轮 rc=$? (124=超时)"
 cat "$RELAY_OUT" >> "$LOG"
@@ -237,9 +254,9 @@ for r in $(seq 1 $MAX_RELAYS); do
   fi
   log "接力第 $((r+1)) 轮: resume 续跑..."
   if [ -n "$SID" ]; then
-    echo "$CONT_PROMPT" | timeout 1200 "$CODEX" exec resume "$SID" "${RESUME_FLAGS[@]}" - > "$RELAY_OUT" 2>&1
+    echo "$CONT_PROMPT" | run_limited 1200 "$CODEX" exec resume "$SID" "${RESUME_FLAGS[@]}" - > "$RELAY_OUT" 2>&1
   else
-    echo "$CONT_PROMPT" | timeout 1200 "$CODEX" exec resume --last "${RESUME_FLAGS[@]}" - > "$RELAY_OUT" 2>&1
+    echo "$CONT_PROMPT" | run_limited 1200 "$CODEX" exec resume --last "${RESUME_FLAGS[@]}" - > "$RELAY_OUT" 2>&1
   fi
   cat "$RELAY_OUT" >> "$LOG"
   log "  第 $((r+1)) 轮 rc=$?"

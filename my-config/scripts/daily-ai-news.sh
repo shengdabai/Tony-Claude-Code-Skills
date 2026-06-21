@@ -33,11 +33,29 @@ CODEX_MODEL="gpt-5.5"
 LOG="$HOME/.claude/logs/daily-ai-news.codex.log"
 TODAY="$(date +%Y-%m-%d)"
 WEIXIN_CHANNEL="o9cq80_JAkxB7DYoj-ljixOpFdWY@im.wechat"
+MIN_HOT_ITEMS=5
 
 # Codex 调用公共 flags(首轮用;resume 不接受 -s/sandbox 类,见下)
 CODEX_FLAGS=(--dangerously-bypass-approvals-and-sandbox --skip-git-repo-check -C "$WORK" --add-dir "$WORK" -m "$CODEX_MODEL")
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG"; }
+TIMEOUT_CMD=""
+if command -v timeout >/dev/null 2>&1; then
+  TIMEOUT_CMD="$(command -v timeout)"
+elif command -v gtimeout >/dev/null 2>&1; then
+  TIMEOUT_CMD="$(command -v gtimeout)"
+elif [ -x /opt/homebrew/bin/gtimeout ]; then
+  TIMEOUT_CMD="/opt/homebrew/bin/gtimeout"
+fi
+run_limited() {
+  local seconds="$1"
+  shift
+  if [ -n "$TIMEOUT_CMD" ]; then
+    "$TIMEOUT_CMD" "$seconds" "$@"
+  else
+    "$@"
+  fi
+}
 # L1 告警:撞 429 时推 ntfy,避免静默漏稿(复用 claude-auto-resume 同款 topic)
 ntfy_send() {
   [ -f "$HOME/.config/ntfy/.env" ] || return 0
@@ -83,11 +101,11 @@ for try in 1 2 3 4 5; do
   SZ=$(stat -f%z "$AIHOT_RAW" 2>/dev/null || echo 0)
   ITEM_N=$(python3 -c "import json;print(len(json.load(open('$AIHOT_RAW')).get('items',[])))" 2>/dev/null || echo 0)
   log "  第 $try 次: size=$SZ items=$ITEM_N"
-  [ "$ITEM_N" -ge 5 ] && break
+  [ "$ITEM_N" -ge "$MIN_HOT_ITEMS" ] && break
   sleep $((try*5))
 done
-if [ "$ITEM_N" -lt 5 ]; then
-  log "ERROR: aihot 5 次重试后数据仍不足($ITEM_N 条), 退出待 launchd 下个时刻重试"; exit 1
+if [ "$ITEM_N" -lt "$MIN_HOT_ITEMS" ]; then
+  log "WARN: aihot 5 次重试后只有 $ITEM_N 条, 将交给 Codex 联网搜索补齐到至少 $MIN_HOT_ITEMS 条后继续"
 fi
 
 # 4. 调 Codex(headless), dedao-write 简化模式整理 + 个人化过滤
@@ -100,9 +118,15 @@ PROMPT=$(cat <<PROMPT_EOF
 绝不写进输出正文。"为什么该关心" 一律用通用第二人称 "你/读者",
 写成 "为什么值得关心",而不是 "为什么 Tony 该关心"。
 
-【第一步: 读热点原始数据】
+【第一步: 读热点原始数据 + 不足时联网补全】
 读 $AIHOT_RAW (aihot.virxact.com 返回的 JSON), 提取所有 items。
 每条字段包括: title / chineseTitle / chineseSummary / url / publishedAt / category。
+当前 aihot 原始条数是 ${ITEM_N:-0}, 目标至少 ${MIN_HOT_ITEMS} 条。
+如果原始数据少于 ${MIN_HOT_ITEMS} 条, 不要退出、不要等待下个窗口:
+- 立刻使用 WebSearch / web.run / curl 可访问的公开网页, 搜索过去 24-48 小时内与 AI 相关的热点。
+- 优先补 Claude Code / Anthropic / OpenAI / AI Agent / MCP / AI 编程工具 / 独立开发者 / 国产大模型 / 开源模型 / AI 产品发布。
+- 每条补充热点必须有可打开的原文 URL, 不要用只有二手转述且无来源的内容。
+- 最终尽量保持 5 条; 若公开信息确实不足, 允许 3-4 条简版日报, 但必须成稿、保存、push 并触发推送, 不能因为条数不足退出。
 
 【第二步: 个人化过滤(Tony 的兴趣画像)】
 **Tony 高度关注的方向**(命中加权 +3):
@@ -124,13 +148,13 @@ PROMPT=$(cat <<PROMPT_EOF
 - 通用消费级 AI 玩具
 - 与中文创作者关系不大的纯英文学术论文
 
-按上面规则给每条算分, 选 6-8 条做今天日报。
+按上面规则给每条算分, 选 5-8 条做今天日报。aihot 不足时, 用联网搜索补齐到 5 条后再筛选; 最后兜底才允许 3-4 条简版。
 
 【第三步: 用 dedao-write 整理成日报(简化模式)】
 这是日报而不是长文, 走简化模式, 主会话直接写、不要尝试派发子任务/subagent:
 - **标题**: "AI 圈过去 24 小时 · YYYY-MM-DD"(英文版用 "AI Daily · YYYY-MM-DD")
 - **导语**(1-2 句): 今天最值得关心的核心信号是什么
-- **正文**: 6-8 条精选, 每条:
+- **正文**: 5-8 条精选, 每条:
   - 加粗中文小标题(1 句话说清是什么)
   - 1-2 句"为什么值得关心"——用 跨时空连接 / 工程化破界 / 自进化系统 / 用 AI 让人变强 的价值视角
   - 原文链接([source](url))
@@ -145,7 +169,7 @@ PROMPT=$(cat <<PROMPT_EOF
 - 重建 README: python3 .tools/gen_readme.py
 - git add ai-news/ README.md .gitignore .tools/ → commit → push
 
-完成后报告: 中英版文件名 + 是否推送成功 + 选了哪 6-8 条热点(标题列表)。
+完成后报告: 中英版文件名 + 是否推送成功 + 选了哪 5-8 条热点(标题列表), 以及哪些来自 aihot、哪些来自联网补全。
 PROMPT_EOF
 )
 
@@ -155,12 +179,12 @@ RELAY_JSON="$HOME/.claude/logs/.daily-ai-news-codex-events.jsonl"
 
 # 撞用量上限检测(ChatGPT 订阅额度 / 429)
 hit_session_limit() {
-  grep -qiE "usage limit|usage_limit_reached|rate.?limit|429|quota" "$RELAY_OUT" "$RELAY_JSON" 2>/dev/null
+  grep -qiE "usage limit reached|usage_limit_reached|rate limit exceeded|429 too many requests|quota exceeded|exceeded your current quota" "$RELAY_OUT" 2>/dev/null
 }
 
 # 首轮:用 --json 捕获 codex 生成的 session_id(供后续 resume)。
 # session_id 在 JSONL 事件里(thread.started / session 字段),首轮跑完从 events 解析。
-echo "$PROMPT" | timeout 1500 "$CODEX" exec --json "${CODEX_FLAGS[@]}" - \
+echo "$PROMPT" | run_limited 1500 "$CODEX" exec --json "${CODEX_FLAGS[@]}" - \
   > "$RELAY_JSON" 2>"$RELAY_OUT"
 RC=$?
 cat "$RELAY_OUT" >> "$LOG"
@@ -203,14 +227,14 @@ log "  解析到 session_id=${SID:-<空,后续接力改用 --last>}"
 # 注意:resume 子命令【不支持 -C/--add-dir】(只有顶层 codex exec 有),靠当前进程 cwd 过滤会话;
 #   脚本开头已 cd "$WORK",故 resume 自动定位到本仓库的会话。headless 续跑要跑 git,须带免审批+跳git检查。
 RESUME_FLAGS=(--dangerously-bypass-approvals-and-sandbox --skip-git-repo-check -m "$CODEX_MODEL")
-CONT_PROMPT="继续完成 AI 热点日报: 把双版保存到 ai-news/zh/${TODAY}-*.md 和 ai-news/en/${TODAY}-*.md, 运行 python3 .tools/gen_readme.py, git add ai-news/ README.md → commit → push。"
+CONT_PROMPT="继续完成 AI 热点日报: 如果 aihot 原始数据不足 5 条, 立刻联网搜索过去 24-48 小时 AI 热点补齐, 不要因为条数不足退出。把双版保存到 ai-news/zh/${TODAY}-*.md 和 ai-news/en/${TODAY}-*.md, 运行 python3 .tools/gen_readme.py, git add ai-news/ README.md → commit → push。"
 for r in 1 2; do
   if ls ai-news/zh/${TODAY}-*.md >/dev/null 2>&1 && ls ai-news/en/${TODAY}-*.md >/dev/null 2>&1; then break; fi
   log "接力 +$r 轮..."
   if [ -n "$SID" ]; then
-    echo "$CONT_PROMPT" | timeout 900 "$CODEX" exec resume "$SID" "${RESUME_FLAGS[@]}" - >> "$LOG" 2>&1
+    echo "$CONT_PROMPT" | run_limited 900 "$CODEX" exec resume "$SID" "${RESUME_FLAGS[@]}" - >> "$LOG" 2>&1
   else
-    echo "$CONT_PROMPT" | timeout 900 "$CODEX" exec resume --last "${RESUME_FLAGS[@]}" - >> "$LOG" 2>&1
+    echo "$CONT_PROMPT" | run_limited 900 "$CODEX" exec resume --last "${RESUME_FLAGS[@]}" - >> "$LOG" 2>&1
   fi
 done
 
