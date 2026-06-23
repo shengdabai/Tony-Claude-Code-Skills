@@ -27,6 +27,13 @@ This repository is part of a broader AI local-workbench operating model: reusabl
 - **Visibility:** `PUBLIC`
 - **License:** MIT License
 
+> **License scope:** The top-level MIT LICENSE applies to `my-config/`,
+> `install.sh`, and original tooling in this repo. Several vendored directories
+> retain their own licenses — including top-level `opc-methodology/`
+> (CC-BY-NC-SA 4.0) and various directories under `skills/` (e.g. `skills/gstack/`
+> ships its own LICENSE). See `NOTICE.md` for the full attribution list and always
+> defer to a subdirectory's own LICENSE where one exists.
+
 ## Repository Map
 
 - `Dockerfile`
@@ -44,21 +51,27 @@ This repository is part of a broader AI local-workbench operating model: reusabl
 
 ## Quick Start
 
-Use the commands that match the current project state:
+This repository is a collection of Claude Code skills, agents, commands, and a
+sanitized `~/.claude/` config mirror. It installs into your local `~/.claude/`
+directory via `install.sh` — there is no `npm` build step for the repo itself.
 
 ```bash
-npm install
-npm run dev
-npm start
-npm run build
+# Clone, then run the installer:
+bash install.sh --link    # symlink to repo — assets auto-update on `git pull` (recommended)
+bash install.sh --copy    # copy independent files — no link back to the repo
+bash install.sh --dry-run # preview what would change without writing anything
+bash install.sh --help    # show usage
 ```
 
 | Command | Purpose |
 |---|---|
-| `npm install` | Install project dependencies. |
-| `npm run dev` | bun run browse/src/cli.ts |
-| `npm start` | bun run browse/src/server.ts |
-| `npm run build` | bun run vendor:xterm && bun run gen:skill-docs --host all; bun build --compile browse/src/cli.ts --outfile... |
+| `bash install.sh --link` | Symlink assets (skills, agents, commands, rules, hooks, scripts, output-styles) into `~/.claude/`; `git pull` keeps them current. Existing non-symlink dirs are skipped. |
+| `bash install.sh --copy` | Copy assets into `~/.claude/` as independent files (no auto-update). |
+| `bash install.sh --dry-run` | Show the planned changes without modifying anything. |
+
+> Individual skills under `skills/` may carry their own dependencies (Node.js,
+> Python, Bun, Docker). Those are per-skill and documented inside each skill's
+> own directory — they are not required to install this repository.
 
 ## Operating Notes
 

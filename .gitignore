@@ -3,6 +3,27 @@ node_modules/
 .DS_Store
 *.bak
 
+# 运行时日志 / Python 编译缓存 / 备份(机器专属产物,不进公开仓)
+**/*.log
+**/*.err
+**/*.out
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+*.claude-bak-*
+**/*.claude-bak-*
+
+# 会话元数据(含本机目录结构,不公开)
+**/sessions_extracted.json
+
+# Gumroad 商业运营数据(上架进度/商品清单)
+**/gumroad-data/
+**/gumroad-data-core/
+
+# 内部开发 ledger / 运行时状态(非 skill 源)
+my-config/scripts/gpt5pro/todo.md
+skills/xiaolai/claude-agent-sdk/agent/state.json
+
 # Build / compile artifacts (skill code is source-only, runtime built elsewhere)
 **/dist/
 **/build/

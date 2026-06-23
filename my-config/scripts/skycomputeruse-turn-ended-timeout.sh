@@ -25,10 +25,18 @@ pid=$!
 ) &
 guard=$!
 
+set +e
 wait "$pid"
 rc=$?
+set -e
 
 kill "$guard" 2>/dev/null || true
 wait "$guard" 2>/dev/null || true
+
+# Timeout means the guard did its job. Do not let a stuck notification mark the
+# Codex turn itself as failed.
+if [[ "$rc" == "143" || "$rc" == "137" ]]; then
+  exit 0
+fi
 
 exit "$rc"
