@@ -1,1 +1,1 @@
-$HOME/.claude/plugins/cache/tony/xiaolai-write/0.1.0/commands/xiaolai-write.md
+/Users/tonysheng/.claude/plugins/cache/tony/xiaolai-write/0.1.0/commands/xiaolai-write.md

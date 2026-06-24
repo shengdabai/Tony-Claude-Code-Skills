@@ -1,1 +1,1 @@
-$HOME/.copilot/installed-plugins/omc/oh-my-claudecode/templates/hooks/lib/stdin.mjs
+/Users/tonysheng/.copilot/installed-plugins/omc/oh-my-claudecode/templates/hooks/lib/stdin.mjs

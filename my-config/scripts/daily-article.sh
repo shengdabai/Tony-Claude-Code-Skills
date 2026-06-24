@@ -52,6 +52,14 @@ CODEX="$HOME/.nvm/versions/node/v24.14.0/bin/codex"
 CODEX_MODEL="gpt-5.5"
 LOG="$HOME/.claude/logs/daily-article.codex.log"
 TODAY="$(date +%Y-%m-%d)"
+RUN_STATE_DIR="$HOME/.claude/logs"
+DONE_MARK="$RUN_STATE_DIR/.daily-article-done-${TODAY}"
+BLOCKED_MARK="$RUN_STATE_DIR/.daily-article-blocked-${TODAY}"
+BLOCKER_SNIPPET="$RUN_STATE_DIR/.daily-article-blocker-${TODAY}.txt"
+DAILY_ARTICLE_FORCE="${DAILY_ARTICLE_FORCE:-0}"
+# This background job has its own logs and final digest. Suppress generic
+# Codex Stop-hook Feishu progress messages so relay attempts do not spam chat.
+export CODEX_NOTIFY_DISABLE="${CODEX_NOTIFY_DISABLE:-1}"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG"; }
 TIMEOUT_CMD=""
@@ -78,8 +86,31 @@ ntfy_send() {
   [ -n "${NTFY_CLAUDE_TOPIC:-}" ] || return 0
   curl -s -m 3 -d "$1" "ntfy.sh/${NTFY_CLAUDE_TOPIC}" >/dev/null 2>&1 || true
 }
+terminal_blocker_seen() {
+  grep -qiE "GetNote.*未授权|未授权.*GetNote|GetNote unavailable|401[^[:alnum:]]*/?[^[:alnum:]]*未授权|没有.*当前文章|没有文章草稿|当前没有文章草稿|缺少合法输入|无法读取今天笔记|无法取得今天笔记|硬编造|硬写并推送|伪造来源|今日无合适选题|no article was generated" \
+    "$RELAY_OUT" "$RELAY_JSON" 2>/dev/null
+}
+mark_terminal_blocker() {
+  local reason="$1"
+  log "STOP: 非重试型阻塞(${reason}), 今日不再接力/重试。可在修复后用 DAILY_ARTICLE_FORCE=1 手动重跑。"
+  {
+    echo "date=${TODAY}"
+    echo "reason=${reason}"
+    echo "created_at=$(date '+%Y-%m-%d %H:%M:%S')"
+    echo "rerun=DAILY_ARTICLE_FORCE=1 bash $HOME/.claude/scripts/daily-article.sh"
+    echo
+    echo "--- recent output ---"
+    { tail -n 80 "$RELAY_OUT" 2>/dev/null; tail -n 80 "$RELAY_JSON" 2>/dev/null; } | sed -n '1,120p'
+  } > "$BLOCKER_SNIPPET"
+  touch "$BLOCKED_MARK"
+}
 
 log "===== 开始每日文章任务(Codex 版) $TODAY ====="
+
+if [ -f "$BLOCKED_MARK" ] && [ "$DAILY_ARTICLE_FORCE" != "1" ]; then
+  log "今日已有非重试型阻塞标记, 跳过。修复 GetNote/草稿后可 DAILY_ARTICLE_FORCE=1 手动重跑。marker=$BLOCKED_MARK"
+  exit 0
+fi
 
 # 1. 同步仓库
 cd "$WORK" || { log "FATAL: 工作目录不存在 $WORK"; exit 1; }
@@ -90,6 +121,7 @@ cat > .gitignore <<'GI'
 ruvector.db
 *.db
 .tools/__pycache__/
+.tools/daily-post-failures.md
 GI
 git rm -r --cached --ignore-unmatch ruvector.db "*.db" ".omc" >/dev/null 2>&1 || true
 rm -f ruvector.db ./*.db 2>/dev/null || true
@@ -107,7 +139,7 @@ for i in 1 2 3; do
 done
 
 # 2. 幂等:今天已成功生成过就跳过
-if [ -f "$HOME/.claude/logs/.daily-article-done-${TODAY}" ] || \
+if [ -f "$DONE_MARK" ] || \
    { ls articles/en/${TODAY}-*.md >/dev/null 2>&1 && ls articles/zh/${TODAY}-*.md >/dev/null 2>&1; }; then
   log "今日中英双版已完成, 跳过"
   exit 0
@@ -213,8 +245,12 @@ echo "$PROMPT" | run_limited 1500 "$CODEX" exec --json "${CODEX_FLAGS[@]}" - \
 log "  第 1 轮 rc=$? (124=超时)"
 cat "$RELAY_OUT" >> "$LOG"
 if hit_session_limit; then
-  log "  撞用量上限, 止损退出, 后续 launchd 时刻(reset 后)自动重试"
-  ntfy_send "⚠️ daily-article 撞 Codex 429 限额(首轮), 今日($TODAY)文章暂未出, 等下个 launchd 窗口(5h窗重置后)自动重试。如需立即出稿可手动跑或临时切 API key。"
+  log "  撞用量上限, 止损退出。当前 launchd 每天只跑一次, 可在 reset 后手动重跑"
+  ntfy_send "⚠️ daily-article 撞 Codex 429 限额(首轮), 今日($TODAY)文章暂未出。可在额度 reset 后手动重跑: DAILY_ARTICLE_FORCE=1 bash ~/.claude/scripts/daily-article.sh"
+  exit 0
+fi
+if terminal_blocker_seen; then
+  mark_terminal_blocker "first-round-terminal-blocker"
   exit 0
 fi
 
@@ -261,8 +297,12 @@ for r in $(seq 1 $MAX_RELAYS); do
   cat "$RELAY_OUT" >> "$LOG"
   log "  第 $((r+1)) 轮 rc=$?"
   if hit_session_limit; then
-    log "  撞用量上限, 止损退出, 后续 launchd 时刻(reset 后)自动重试"
-    ntfy_send "⚠️ daily-article 撞 Codex 429 限额(接力轮), 今日($TODAY)文章暂未出, 等下个 launchd 窗口自动重试。"
+    log "  撞用量上限, 止损退出。当前 launchd 每天只跑一次, 可在 reset 后手动重跑"
+    ntfy_send "⚠️ daily-article 撞 Codex 429 限额(接力轮), 今日($TODAY)文章暂未出。可在额度 reset 后手动重跑: DAILY_ARTICLE_FORCE=1 bash ~/.claude/scripts/daily-article.sh"
+    exit 0
+  fi
+  if terminal_blocker_seen; then
+    mark_terminal_blocker "relay-${r}-terminal-blocker"
     exit 0
   fi
 done
@@ -283,7 +323,7 @@ if [ -n "$EN_FILE" ] && [ -n "$ZH_FILE" ]; then
   done
   ZH_T=$(head -1 "$ZH_FILE" | sed 's/^#[[:space:]]*//')
   grep -qxF "$ZH_T" .tools/published-topics.log 2>/dev/null || echo "$ZH_T" >> .tools/published-topics.log
-  git add articles/ README.md .gitignore .tools/ 2>/dev/null
+  git add articles/ README.md .gitignore .tools/gen_readme.py .tools/published-topics.log 2>/dev/null
   if [ -n "$(git diff --cached --name-only)" ]; then
     git commit -q -m "post: ${TODAY} 中英双版" 2>>"$LOG" || true
     for i in 1 2 3; do
@@ -292,14 +332,19 @@ if [ -n "$EN_FILE" ] && [ -n "$ZH_FILE" ]; then
     done
   fi
   if gh api repos/shengdabai/Tony-Articles/contents/articles/zh 2>/dev/null | grep -q "${TODAY}"; then
-    touch "$HOME/.claude/logs/.daily-article-done-${TODAY}"
+    touch "$DONE_MARK"
+    rm -f "$BLOCKED_MARK" "$BLOCKER_SNIPPET"
     log "已验证远端含今日中文版, 标记完成"
     bash "$HOME/.claude/scripts/daily-digest.sh" >/dev/null 2>&1 || true
   else
     log "WARN: 远端未确认今日文章, 不标记完成, 后续重试"
   fi
 else
-  log "ERROR: 今日双版未齐(en=${EN_FILE:-无} zh=${ZH_FILE:-无}), launchd 将稍后重试"
+  if terminal_blocker_seen; then
+    mark_terminal_blocker "missing-files-after-terminal-blocker"
+  else
+    log "ERROR: 今日双版未齐(en=${EN_FILE:-无} zh=${ZH_FILE:-无}), 未设置 blocker; 下次定时任务再尝试"
+  fi
 fi
 
 log "===== 任务结束 ====="

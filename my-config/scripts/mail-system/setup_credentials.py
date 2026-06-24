@@ -50,7 +50,7 @@ def main() -> None:
 
     qq_email = _ask("QQ 邮箱地址", keep("QQ_EMAIL") or "1090826911@qq.com")
     qq_code = _ask("QQ 授权码", keep("QQ_AUTH_CODE"), secret=True).replace(" ", "")
-    gmail_email = _ask("Gmail 地址", keep("GMAIL_EMAIL") or "EMAIL_REDACTED")
+    gmail_email = _ask("Gmail 地址", keep("GMAIL_EMAIL") or "<email-redacted>")
     gmail_pw = _ask("Gmail 应用专用密码", keep("GMAIL_APP_PASSWORD"), secret=True).replace(" ", "")
     digest_to = _ask("总结发送到", keep("DIGEST_TO") or qq_email)
 
