@@ -56,6 +56,7 @@ for sub in rules commands agents hooks output-styles mcp-servers scripts; do
       --exclude='credentials.*' \
       --exclude='secrets.*' \
       --exclude='settings.local.json' \
+      --exclude='getnote-only.json' \
       "$SRC/$sub/" "$DST/$sub/"
   fi
 done
@@ -68,12 +69,17 @@ if [ -f "$SRC/RTK.md" ]; then
   cp "$SRC/RTK.md" "$DST/RTK.md"
 fi
 
-# --- 3. 脱敏:替换路径里的 Tony 个人标识 ---
-find "$DST/rules" "$DST/commands" "$DST/agents" -name "*.md" -print0 2>/dev/null | \
+# --- 3. 脱敏:替换路径/邮箱里的个人标识 ---
+# 覆盖所有同步的文本目录(不只 rules/commands/agents 的 .md,scripts/hooks/mcp-servers 也含 PII)
+# specific 规则在前(Documents/Tony),再做通用 $HOME→$HOME;邮箱用通用 gmail 模式
+find "$DST/rules" "$DST/commands" "$DST/agents" "$DST/hooks" "$DST/scripts" "$DST/mcp-servers" \
+  -type f \( -name "*.md" -o -name "*.sh" -o -name "*.py" -o -name "*.mjs" -o -name "*.js" \
+             -o -name "*.json" -o -name "*.txt" -o -name "*.ts" \) -print0 2>/dev/null | \
   xargs -0 sed -i '' \
     -e 's|$HOME/Documents/Tony|~/Documents/<obsidian-vault>|g' \
+    -e 's|$HOME|$HOME|g' \
+    -e 's|[A-Za-z0-9._%+-]\{1,\}@gmail\.com|<email-redacted>|g' \
     -e 's|Tony 反复反馈过|用户反复反馈过|g' \
-    -e 's|EMAIL_REDACTED@gmail\.com|<email-redacted>|g' \
     2>/dev/null || true
 
 # --- 4. 拆嵌套 .git(my-config/skills/_collections/* 下的)---
@@ -91,7 +97,7 @@ if git diff --quiet -- "$DST_REL" \
 fi
 
 # --- 6. 隐私硬扫(即将 commit 范围) ---
-patterns='sk-(proj|ant|live)-[a-zA-Z0-9_-]{40,}|ghp_[a-zA-Z0-9]{36}|AKIA[A-Z0-9]{16}|AIza[a-zA-Z0-9_-]{30,}|xoxb-[a-zA-Z0-9-]{20,}|cli_a[0-9a-f]{30}'
+patterns='sk-(proj|ant|live)-[a-zA-Z0-9_-]{40,}|ghp_[a-zA-Z0-9]{36}|AKIA[A-Z0-9]{16}|AIza[a-zA-Z0-9_-]{30,}|xoxb-[a-zA-Z0-9-]{20,}|gk_live_[a-zA-Z0-9]{20,}|cli_[0-9a-f]{30}'
 git add -A -- "$DST_REL"
 hits=$(git diff --cached --name-only | xargs grep -lE "$patterns" 2>/dev/null \
   | grep -vE "_repos/|_collections/|THIRD_PARTY|NOTICE|hooks/secret-scan|hooks/sync-skills|cso/SKILL\.md|CHANGELOG|placeholder|YOUR_|<your|REDACTED|/test/|/tests/|\.test\.|\.spec\." \
