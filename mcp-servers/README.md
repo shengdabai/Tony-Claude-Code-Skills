@@ -35,8 +35,8 @@ Add to `~/.claude/settings.json`:
 {
   "mcpServers": {
     "context7": {
-      "command": "/Users/adam/.nvm/versions/node/v24.14.0/bin/node",
-      "args": ["/Users/adam/.nvm/versions/node/v24.14.0/lib/node_modules/@upstash/context7-mcp/dist/index.js"],
+      "command": "$HOME/.nvm/versions/node/v24.14.0/bin/node",
+      "args": ["$HOME/.nvm/versions/node/v24.14.0/lib/node_modules/@upstash/context7-mcp/dist/index.js"],
       "type": "stdio"
     }
   }
