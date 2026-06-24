@@ -73,7 +73,7 @@ npm run build
 GETNOTE_API_KEY=your_api_key GETNOTE_CLIENT_ID=your_client_id node dist/index.js
 
 # 持久化（添加到 ~/.zshrc 或 ~/.bashrc）
-export GETNOTE_API_KEY=GETNOTE_KEY_REDACTED
+export GETNOTE_API_KEY=gk_live_xxx
 export GETNOTE_CLIENT_ID=cli_xxx
 ```
 

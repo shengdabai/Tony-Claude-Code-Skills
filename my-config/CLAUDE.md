@@ -75,7 +75,7 @@ Say "setup omc" or run `/oh-my-claudecode:omc-setup`.
 4. **集成而非另起**:用户提到现有项目(Hermes / OpenClaw / gstack 等)默认 native integration,不要创建独立 scaffold
 5. **工具纪律**:文件读改搜用 Read/Edit/Write/Grep/Glob,不要走 Bash 的 cat/sed/echo/find/grep。Bash 仅用于启动进程、动态查询、shell-only 操作。详见 `rules/tool-discipline.md`
 6. **机密文件防线**:`.env*`、`*.pem`、`*.key`、`id_rsa*`、`credentials.*`、`secrets.*`、`.aws/credentials`、`.ssh/*` 私钥一律不得自动 Read/Edit/Write。`env-guard.sh` PreToolUse hook 会硬阻断,模型也必须自律。详见 `rules/secrets-firewall.md`
-7. **工具调用必须走原生通道,严禁伪装成文本**:任何编辑/运行/读写操作必须通过系统原生工具(`Bash`、`Edit`、`Write`、`Read`、`Grep`、`Glob` 等)的真正调用接口发起。**严禁**把工具调用以纯文本、markdown 代码块、伪代码、或调用/参数尖括号标签的文字形式"展示"或"描述"出来——那不是调用,只是文本,会导致任务在该步暂停假死、需要用户手动催"继续"(本规则刻意不写出完整标签字面量,避免成为可模仿的样例)。判据:每当你准备执行一个动作(改文件、跑命令、查状态),问自己"我是在**真正调用**工具,还是在**打印**一段看起来像调用的文本?"——只有真正调用才算数。**每个真调用后只认真实返回的 result,绝不脑补成功**。已知触发器(别堆叠重复调用、工具密集会话别 `/compact`)+ 兜底安全网(`hooks/fake-toolcall-guard.sh`)+ 详情见 `rules/tool-discipline.md` 的"禁止伪工具调用"节。
+7. **工具调用走原生通道,严禁伪装成文本**:编辑/运行/读写必须经真正的工具调用接口发起。**严禁**把调用写成纯文本/markdown/伪代码"展示"出来——那不执行、会假死、要用户手动催"继续"。判据:动手前问"我是在**真正调用**,还是在**打印**像调用的文本?"。**每个真调用只认真实 result,绝不脑补成功**。触发器规避(别堆叠重复调用、工具密集会话别 `/compact`)+ 兜底 `hooks/fake-toolcall-guard.sh` + 详情见 `rules/tool-discipline.md`「禁止伪工具调用」节。
 </cardinal_rules>
 
 **项目结构权威规范** = `claude-code-project-layout` skill。任何涉及 `.claude/` 目录、CLAUDE.md、settings.json、hooks、agents、skills、plugins、output-styles、rules 创建/审查时,**必须先调用此 skill**,以图片标准为准。
@@ -218,6 +218,7 @@ Use /browse from gstack for all web browsing. Never use mcp__claude-in-chrome__*
 - **Spec-Driven Trio（OpenSpec+Superpowers+Agent-Skills）** → `rules/spec-driven-trio.md`（"写 spec"/"propose"/SDD 项目/新功能规划时）
 - **编码风格（不可变/小文件/错误处理/校验）** → `rules/coding-style.md`(写或重构代码前先 Read)
 - **Git 工作流 + commit 安全门** → `rules/git-workflow.md`(commit/push/建 PR 前必先 Read，含 secret 预检)
+- **网络/配置诊断自检** → `rules/diagnose-network-selfcheck.md`（修网络/代理/多 profile 工具故障前先 Read：别用坏链路修坏链路 + 锁定生效 profile + 抖动下落盘必复核）
 - **Loop Engineering（循环工程）** → `rules/loop-engineering.md`（重复性任务要 loop 化、设计/启动/审查任何循环、用 /loop /loops:* /loop-design ralph 监工 定时任务时）
 - **Claude × Codex 协同分工** → `rules/claude-codex-collab.md`（调 codex / 委派 codex / 要第二意见 / code review / rescue 解卡 / 双模型 / best-of-N / 跑机械批量或定时自动化时；含通路选择、5 个配合模式、review loop、反模式）
 - **想法工坊 / HTML 深度页与归档** → `rules/ideaforge.md`（做深度 HTML 分析页、或把 html 纳入本地知识系统时；引擎在 `~/Desktop/02-学习资料/00-想法工坊/`，知识库根 = `~/Desktop/02-学习资料/`；写 html 已由 PostToolUse hook 自动归档）

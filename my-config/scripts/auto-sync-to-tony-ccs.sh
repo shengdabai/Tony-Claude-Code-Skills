@@ -76,10 +76,10 @@ find "$DST/rules" "$DST/commands" "$DST/agents" "$DST/hooks" "$DST/scripts" "$DS
   -type f \( -name "*.md" -o -name "*.sh" -o -name "*.py" -o -name "*.mjs" -o -name "*.js" \
              -o -name "*.json" -o -name "*.txt" -o -name "*.ts" \) -print0 2>/dev/null | \
   xargs -0 sed -i '' \
-    -e 's|$HOME/Documents/Tony|~/Documents/<obsidian-vault>|g' \
+    -e 's|~/Documents/<obsidian-vault>|~/Documents/<obsidian-vault>|g' \
     -e 's|$HOME|$HOME|g' \
     -e 's|[A-Za-z0-9._%+-]\{1,\}@gmail\.com|<email-redacted>|g' \
-    -e 's|Tony 反复反馈过|用户反复反馈过|g' \
+    -e 's|用户反复反馈过|用户反复反馈过|g' \
     2>/dev/null || true
 
 # --- 4. 拆嵌套 .git(my-config/skills/_collections/* 下的)---
