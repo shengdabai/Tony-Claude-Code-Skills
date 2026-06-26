@@ -26,6 +26,13 @@ if [ ! -f "$CLI" ]; then
   CLI="$HOME/Desktop/01-项目开发/00-Home-Projects/gbrain/src/cli.ts"
 fi
 
+if [ ! -f "$CLI" ]; then
+  echo "gbrain cli not found: $CLI" >&2
+  exit 78
+fi
+
+cd "$(dirname "$CLI")/.." || exit 78
+
 # 清掉任何残留 serve(本 wrapper argv 是 "sh .../gbrain-http-serve.sh",
 # 不含 "gbrain/src/cli.ts serve",不会自杀)。
 pkill -f "gbrain/src/cli.ts serve" 2>/dev/null
