@@ -34,6 +34,8 @@ LONG_IMG="${HTML%.html}.feishu-long.jpg"
 MODE="${FEISHU_PDF_MODE:-safe}"
 SEND_FORMAT="${FEISHU_SEND_FORMAT:-longimage}"
 HTMLW="${FEISHU_HTML_WIDTH:-1280}"   # 渲染画布宽度;设窄(如 720)= 手机竖版长图
+# 收件人类型: 默认 chat_id(群/p2p chat,$CHAT 传 oc_ 开头);设 union_id/open_id 时 $CHAT 传对应用户 ID,直投个人私聊
+RECEIVE_ID_TYPE="${FEISHU_RECEIVE_ID_TYPE:-chat_id}"
 
 args=("$HTML" -o "$PDF" --width "$HTMLW")
 [ -n "$CSS" ] && args=("${args[@]}" --extra-css "$CSS")
@@ -92,7 +94,7 @@ ik=(d.get('data') or {}).get('image_key') or ''
 if not ik: print('ERR: 图片上传未返回 image_key', file=sys.stderr); sys.exit(1)
 print(ik)")
   SEND_BODY=$(curl -sS --fail-with-body --retry 2 --retry-all-errors --connect-timeout 10 --max-time 30 --noproxy '*' \
-    -X POST 'https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id' \
+    -X POST "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=$RECEIVE_ID_TYPE" \
     -H "Authorization: Bearer $TOK" -H 'Content-Type: application/json' \
     -d "{\"receive_id\":\"$CHAT\",\"msg_type\":\"image\",\"content\":\"{\\\"image_key\\\":\\\"$IK\\\"}\"}")
   RES=$(printf '%s' "$SEND_BODY" | "$PY" -c "import sys,json; raw=sys.stdin.read();
@@ -154,7 +156,7 @@ if not fk: print('ERR: 文件上传未返回 file_key', file=sys.stderr); sys.ex
 print(fk)")
 
 SEND_BODY=$(curl -sS --fail-with-body --retry 2 --retry-all-errors --connect-timeout 10 --max-time 30 --noproxy '*' \
-  -X POST 'https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id' \
+  -X POST "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=$RECEIVE_ID_TYPE" \
   -H "Authorization: Bearer $TOK" -H 'Content-Type: application/json' \
   -d "{\"receive_id\":\"$CHAT\",\"msg_type\":\"file\",\"content\":\"{\\\"file_key\\\":\\\"$FK\\\"}\"}")
 RES=$(printf '%s' "$SEND_BODY" | "$PY" -c "import sys,json; raw=sys.stdin.read();

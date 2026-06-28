@@ -1,1 +1,0 @@
-/Users/tonysheng/.copilot/installed-plugins/omc/oh-my-claudecode/templates/hooks/lib/stdin.mjs
