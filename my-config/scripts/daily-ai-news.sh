@@ -10,7 +10,7 @@
 #   - --permission-mode bypassPermissions → --dangerously-bypass-approvals-and-sandbox
 #   - --add-dir $WORK                     → -C $WORK + --add-dir $WORK + --skip-git-repo-check
 #   - 默认 Opus                           → -m gpt-5.5(ChatGPT 订阅 auth 只能 5.5/5.2)
-#   - 末尾仍触发 daily-digest.sh,微信推送链路不变
+#   - 末尾仍触发 daily-digest.sh,合并推送只走飞书
 # 已知限制:dedao-write 在 Codex 是软链 SKILL.md(~/Projects/gbrain/skills/dedao-write),
 #   Codex skill≈prompt 注入(无 subagent 编排)。本脚本用简化模式整理,prompt 已把过滤+整理步骤写死,
 #   不依赖 skill 自动展开 subagent,故 dedao 缺编排能力影响小。
@@ -32,7 +32,6 @@ CODEX="$HOME/.nvm/versions/node/v24.14.0/bin/codex"
 CODEX_MODEL="gpt-5.5"
 LOG="$HOME/.claude/logs/daily-ai-news.codex.log"
 TODAY="$(date +%Y-%m-%d)"
-WEIXIN_CHANNEL="o9cq80_JAkxB7DYoj-ljixOpFdWY@im.wechat"
 MIN_HOT_ITEMS=5
 
 # Codex 调用公共 flags(首轮用;resume 不接受 -s/sandbox 类,见下)
@@ -238,7 +237,7 @@ for r in 1 2; do
   fi
 done
 
-# 5. 兜底: 验证双版 + push + Hermes 推微信
+# 5. 兜底: 验证双版 + push + 触发飞书合并推送
 ZH_FILE=$(ls ai-news/zh/${TODAY}-*.md 2>/dev/null | head -1)
 EN_FILE=$(ls ai-news/en/${TODAY}-*.md 2>/dev/null | head -1)
 if [ -n "$ZH_FILE" ] && [ -n "$EN_FILE" ]; then
@@ -252,7 +251,7 @@ if [ -n "$ZH_FILE" ] && [ -n "$EN_FILE" ]; then
   fi
   touch "$DONE_MARK"
 
-  # 6. 微信推送由 daily-digest.sh 统一处理(思考+热点合并成一条, 国内快链)。
+  # 6. 飞书推送由 daily-digest.sh 统一处理(思考+热点合并成一条, 国内快链)。
   bash "$HOME/.claude/scripts/daily-digest.sh" >/dev/null 2>&1 || true
 else
   log "ERROR: AI 热点双版未齐(zh=${ZH_FILE:-无} en=${EN_FILE:-无})"

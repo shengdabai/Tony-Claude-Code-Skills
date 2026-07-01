@@ -33,7 +33,7 @@
 #   --permission-mode bypassPermissions → --dangerously-bypass-approvals-and-sandbox
 #   --add-dir $WORK                     → -C $WORK + --add-dir $WORK + --skip-git-repo-check
 #   默认 Opus                           → -m gpt-5.5
-#   末尾仍触发 daily-digest.sh,微信推送链路不变
+#   末尾仍触发 daily-digest.sh,合并推送只走飞书
 # ============================================================================
 set -uo pipefail
 # --- 共享互斥锁:daily-article 与 daily-ai-news 都调用推理 session,排队避免并发抢占 ---
