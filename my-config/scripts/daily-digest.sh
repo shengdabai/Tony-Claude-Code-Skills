@@ -1,14 +1,13 @@
 #!/bin/bash
 # 每日合并推送: 思考(daily-article) + AI 热点(daily-ai-news) 两篇都齐后,
-# 渲染国内静态站 → 推【一条】微信(双篇摘要 + 国内秒开全文链接)。
-# 幂等 + 限流退避重试。由 launchd 定时触发,也由两个创作脚本结尾顺手调用。
+# 渲染国内静态站 → 只推【一条】飞书(双篇摘要 + 国内秒开全文链接)。
+# 幂等 + 飞书送达回查。由 launchd 定时触发,也由两个创作脚本结尾顺手调用。
 set -uo pipefail
 
 WORK="$HOME/.local/share/tony-articles"
 LOG="$HOME/.claude/logs/daily-digest.log"
 TODAY="$(date +%Y-%m-%d)"
 SITE_BASE="http://111.229.77.103:8080"
-WEIXIN_CHANNEL="o9cq80_JAkxB7DYoj-ljixOpFdWY@im.wechat"
 # 飞书主送达通道(可靠)。若目标不对,改这一行即可:
 #   军团群 = feishu:oc_2c48fc2edefd4d3d82c4bbd54d2e9680
 #   另一个 DM = feishu:oc_b4cc31551e0d67fb5888edcbfcfb7f20
@@ -17,7 +16,7 @@ HERMES="$HOME/.local/bin/hermes"
 RENDER="$HOME/.claude/scripts/render-site.py"
 DONE="$HOME/.claude/logs/.daily-digest-done-${TODAY}"
 FEISHU_DONE="$HOME/.claude/logs/.daily-digest-feishu-${TODAY}"
-WECHAT_DONE="$HOME/.claude/logs/.daily-digest-wechat-${TODAY}"
+WECHAT_DISABLED="$HOME/.claude/logs/.daily-digest-wechat-disabled-${TODAY}"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG"; }
 log "===== digest $TODAY ====="
@@ -99,21 +98,13 @@ else
   log "飞书今日已送达, 跳过"
 fi
 
-# --- 微信(尽力;每次 tick 仅 1 发, 全天靠 launchd 多时刻重试拉高命中)---
-if [ ! -f "$WECHAT_DONE" ]; then
-  OUT="$("$HERMES" send -t "weixin:$WEIXIN_CHANNEL" "$MSG" 2>&1)"; rc=$?
-  if [ "$rc" -eq 0 ] && ! echo "$OUT" | grep -qiE "fail|error|rate.?limit|surrogate"; then
-    touch "$WECHAT_DONE"; log "微信推送成功"
-  else
-    log "微信本次未通(尽力, 后续 tick 再试): ${OUT:-<空>}"
-  fi
-else
-  log "微信今日已送达, 跳过"
-fi
+# 微信通道已按 2026-07-01 要求关闭:文章合并推送只走飞书。
+touch "$WECHAT_DISABLED"
+log "微信通道已关闭,只走飞书"
 
-# 整体完成 = 飞书已送达(可靠通道);微信通不通不阻塞
+# 整体完成 = 飞书已送达(可靠通道)
 if [ -f "$FEISHU_DONE" ]; then
-  touch "$DONE"; log "已标记今日完成(飞书送达; 微信 $([ -f "$WECHAT_DONE" ] && echo 已通 || echo 仍尽力))"
+  touch "$DONE"; log "已标记今日完成(飞书送达; 只走飞书)"
 else
   log "飞书未送达, 不标记完成, 后续 launchd 时刻重试"
 fi
