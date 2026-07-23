@@ -36,6 +36,15 @@
 
 **铁律**：ChatGPT 账号**只能 `gpt-5.5`**（`gpt-5.2`/`-codex` 后缀 400 拒，[[reference_codex-mcp-chatgpt-account-model]]）。sub-agent 报 "Codex unavailable" 几乎都是没 `ToolSearch` 加载 deferred 工具，不是真不可用——主会话直调正常。
 
+## 交接班协议（Claude ⇄ Codex 换手必走，2026-07-23 增补）
+
+换手锚点在**仓库文件**不在聊天记录，两侧命令同源（`~/.claude/commands/{handoff,pickup}.md`，symlink 到 `~/.codex/prompts/`，两边都用 `/handoff` `/pickup` 调用）：
+- **收工/换工具/额度快到/预感封号** → `/handoff`：交接单插 `.omc/handoffs/HANDOFF.md` 顶部（分支/已完成/进行中/下一步/坑/验证方式），同步勾 ledger，未提交改动打 WIP commit（`wip: xxx [cc]`/`[codex]`，不 push）。来不及跑命令时手写两行「在干嘛/下一步」也比不留强。
+- **开工/接手另一工具的活** → `/pickup`：git status/log → 读交接单 → 读 ledger → ≤5 句汇报后直接从「下一步」继续（仅高风险动作等确认）。
+- 交接单不进 git（全局 gitignore 已含 `.omc/handoffs/`）；与 `.omc/plans/` ledger 分工：ledger 管任务清单进度，交接单管「现场快照 + 坑 + 下一步」。
+- **一支笔原则**：同一时刻同一分支只有一个工具在写；第二个工具只读（评审/答疑）或去独立 worktree（与"同文件并发 stomp"反模式同源）。
+- Codex 侧同款协议已写入 `~/.codex/AGENTS.md`「跨工具交接协议」节——改本节时两边同步（防 convention 漂移）。
+
 ## 5 个默契配合模式
 
 **1. Implement→Review 握手（最高频，默认开启）**
