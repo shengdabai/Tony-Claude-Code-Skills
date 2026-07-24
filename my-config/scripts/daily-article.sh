@@ -335,7 +335,11 @@ if [ -n "$EN_FILE" ] && [ -n "$ZH_FILE" ]; then
     touch "$DONE_MARK"
     rm -f "$BLOCKED_MARK" "$BLOCKER_SNIPPET"
     log "已验证远端含今日中文版, 标记完成"
-    bash "$HOME/.claude/scripts/daily-digest.sh" >/dev/null 2>&1 || true
+    if [ "${DAILY_DIGEST_SKIP:-0}" = "1" ]; then
+      log "按 DAILY_DIGEST_SKIP=1 跳过自动 digest；由当前会话定向发送"
+    else
+      bash "$HOME/.claude/scripts/daily-digest.sh" >/dev/null 2>&1 || true
+    fi
   else
     log "WARN: 远端未确认今日文章, 不标记完成, 后续重试"
   fi
