@@ -32,12 +32,14 @@ except Exception:
 # 文件不存在(可能被 rm) → 跳过
 [ ! -f "$FILE_PATH" ] && exit 0
 
+SIZE=$(stat -f%z "$FILE_PATH" 2>/dev/null || stat -c%s "$FILE_PATH" 2>/dev/null || echo 0)
+
 # 只检查配置类文件,避免代码文件误报
 case "$FILE_PATH" in
-    *.json|*.yaml|*.yml|*.toml|*.plist|*CLAUDE.md|*settings.json|*config|*.conf|*.ini|*.env.example)
+    *.json|*.yaml|*.yml|*.toml|*.plist|*CLAUDE.md|*config|*.conf|*.ini|*.env.example)
         ;;
     *)
-        # 非配置文件,只做最基础的 size=0 检测
+        # 非配置文件: size=0 告警 + 大文件字节数回执(防静默写失败 / 半截写入)
         if [ ! -s "$FILE_PATH" ]; then
             cat >&1 <<EOF
 <system-reminder>
@@ -46,14 +48,20 @@ case "$FILE_PATH" in
 如果你预期这是空文件请忽略;否则下一轮请 Read 该文件确认内容是否真的写入。
 </system-reminder>
 EOF
+        elif [ "$SIZE" -gt 10240 ]; then
+            LINES=$(wc -l < "$FILE_PATH" 2>/dev/null | tr -d ' ')
+            cat >&1 <<EOF
+<system-reminder>
+📏 verify-on-stop: 大文件已落盘 $FILE_PATH — ${SIZE} 字节 / ${LINES} 行(磁盘实测值,非工具回执)。
+向用户报告时引用此数字;若与预期差距明显(截断/半写),下一轮 Read 复核后再声明完成。
+</system-reminder>
+EOF
         fi
         exit 0
         ;;
 esac
 
 # === 检测 1: 文件大小 ===
-SIZE=$(stat -f%z "$FILE_PATH" 2>/dev/null || stat -c%s "$FILE_PATH" 2>/dev/null || echo 0)
-
 if [ "$SIZE" -eq 0 ]; then
     cat >&1 <<EOF
 <system-reminder>

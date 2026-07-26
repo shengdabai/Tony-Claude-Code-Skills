@@ -30,11 +30,11 @@
 | **Codex MCP** | 默认 | 对话内第二意见/review/咨询，求快 | `mcp__plugin_nlpm_codex-cli__codex`（deferred，**先 `ToolSearch` select schema 再调**）。必传 `model: "gpt-5.5"`；**默认 `sandbox: "read-only"`**——Codex 是顾问不是改文件的手。`config: {model_reasoning_effort: "high"}` 做深活。**要 Codex 实际改文件 → 只在隔离 worktree 或明确划定的生成文件里 `workspace-write`；主工作区的修复由 Claude 评估后亲自落（防 stomp）** |
 | **`codex:rescue` agent** | 默认 | Claude 卡住、要独立诊断、要第二实现 | Agent `subagent_type: "codex:codex-rescue"` 或 `/codex:rescue` |
 | **`codex exec`（shell）** | 默认 | 严格超时/审计/CI gate/无人值守批量 | 绝对路径 `$HOME/.nvm/versions/node/v24.14.0/bin/codex exec "<prompt>" -m gpt-5.5 -s read-only 2>&1 \| head -200`。**前台**、abspath、`head` 限流（[[feedback_codex-gemini-foreground]]）。续轮 `codex exec resume <SID>` 不接受 `-C/--add-dir`，脚本须先 `cd $WORK`（[[reference_codex-exec-resume-flags]]） |
-| **cc-suite 命令** | 进阶 | 项目级长任务分解/实现/计划评审 | `/cc-suite:review-plan` `/cc-suite:implement` `/cc-suite:bug-analyze` `/cc-suite:continue` 等 |
+| **cc-suite 命令** | 进阶 | **只做两件事**:①审 NLP 工件(`/cc-suite:audit-skill\|-rules\|-command\|-plugin\|-nlp`) ②Codex job 管理(`/cc-suite:status\|result\|cancel\|continue`)。编码协作流程一律让位给 `cc`(cc-suite 无风险分级/无 VERDICT 闸门/无 UNKNOWN≠通过)。桥接必走 `~/.claude/scripts/cc-suite-bridge.sh`,详见 `rules/cc-suite.md` | 见 `rules/cc-suite.md` 裁决表 |
 | **`/oh-my-claudecode:ccg`** | 进阶 | 要 Claude+Codex+Gemini 三方意见再综合 | tri-model 编排 |
 | **worktree best-of-N** | 进阶 | 高价值/方案不明，多实现择优 | Agent `isolation: "worktree"` 跑 N 个独立实现 → meta-judge |
 
-**铁律**：ChatGPT 账号**只能 `gpt-5.5`**（`gpt-5.2`/`-codex` 后缀 400 拒，[[reference_codex-mcp-chatgpt-account-model]]）。sub-agent 报 "Codex unavailable" 几乎都是没 `ToolSearch` 加载 deferred 工具，不是真不可用——主会话直调正常。
+**铁律**：ChatGPT 账号可用 `gpt-5.5`/`gpt-5.6` 系（以 `~/.codex/config.toml` 当前 `model` 为准；`gpt-5.2` 等旧型号与 `-codex` 后缀 400 拒，[[reference_codex-mcp-chatgpt-account-model]]）。sub-agent 报 "Codex unavailable" 几乎都是没 `ToolSearch` 加载 deferred 工具，不是真不可用——主会话直调正常。
 
 ## 交接班协议（Claude ⇄ Codex 换手必走，2026-07-23 增补）
 

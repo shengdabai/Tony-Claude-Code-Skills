@@ -3,8 +3,7 @@
 ## 数据背景（来自 insights 报告）
 
 - **7 次 overlap events** / 11 sessions involved / 17% messages 来自并行会话
-- 每开一个新 Claude Code 窗口 = **冷启动** = 全部 prompt cache 失效
-- 你的 CLAUDE.md 已 344 行 + 8 个 rules = 每次冷启动重算 ~10K tokens
+- 每开一个新 Claude Code 窗口 = **冷启动** = 全部 prompt cache 失效,CLAUDE.md + 强制 rules 全量重算(数 KB 级)
 
 ## Iron Law: 优先 attach 已有会话，不要随手开新窗口
 

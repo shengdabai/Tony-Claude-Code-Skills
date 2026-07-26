@@ -1,70 +1,9 @@
 # Coding Style
 
-## Immutability (CRITICAL)
+短原则(通用写法交给模型判断力,这里只留本机偏好):
 
-ALWAYS create new objects, NEVER mutate:
-
-```javascript
-// WRONG: Mutation
-function updateUser(user, name) {
-  user.name = name  // MUTATION!
-  return user
-}
-
-// CORRECT: Immutability
-function updateUser(user, name) {
-  return {
-    ...user,
-    name
-  }
-}
-```
-
-## File Organization
-
-MANY SMALL FILES > FEW LARGE FILES:
-- High cohesion, low coupling
-- 200-400 lines typical, 800 max
-- Extract utilities from large components
-- Organize by feature/domain, not by type
-
-## Error Handling
-
-ALWAYS handle errors comprehensively:
-
-```typescript
-try {
-  const result = await riskyOperation()
-  return result
-} catch (error) {
-  console.error('Operation failed:', error)
-  throw new Error('Detailed user-friendly message')
-}
-```
-
-## Input Validation
-
-ALWAYS validate user input:
-
-```typescript
-import { z } from 'zod'
-
-const schema = z.object({
-  email: z.string().email(),
-  age: z.number().int().min(0).max(150)
-})
-
-const validated = schema.parse(input)
-```
-
-## Code Quality Checklist
-
-Before marking work complete:
-- [ ] Code is readable and well-named
-- [ ] Functions are small (<50 lines)
-- [ ] Files are focused (<800 lines)
-- [ ] No deep nesting (>4 levels)
-- [ ] Proper error handling
-- [ ] No console.log statements
-- [ ] No hardcoded values
-- [ ] No mutation (immutable patterns used)
+- **不可变优先**:返回新对象,不 mutate 入参。
+- **小文件高内聚**:200-400 行典型,800 行上限;按 feature/domain 组织,不按 type。
+- **错误与校验**:外部输入必校验(zod 优先);catch 带上下文重新抛出,不静默吞错。
+- **完成自查**:无 console.log/print 调试残留、无硬编码值、无 >4 层嵌套、函数 <50 行。
+- **新功能先找轮子**:实现较大新功能前先搜 battle-tested 骨架项目/现成模式,评估后在成熟结构内迭代,不从零造。
