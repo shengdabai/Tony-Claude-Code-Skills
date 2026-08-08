@@ -70,86 +70,62 @@ Say "setup omc" or run `/oh-my-claudecode:omc-setup`.
 
 <!-- OMC:END -->
 
-<!-- User customizations -->
 <!-- User customizations · 定制保护区 -->
-<!-- ⚠️ 上方 OMC:START..OMC:END 是 omc 托管区,omc update 只会就地刷新它、不再向本区重复注入官方块(根治 2026-06 之前每次 update 复发的重复块问题)。本区内容(cardinal_rules + 全部中文规则)update 时保持不动。-->
+<!-- ⚠️ 上方 OMC:START..OMC:END 是 omc 托管区,omc update 只会就地刷新它,本区 update 时保持不动。-->
+<!-- 设计原则(2026-08-08 奥卡姆剃刀改造):大本营越简单越好。本区只放「模型判断力覆盖不了 + 跨项目通用」的内容;
+     领域专家能力一律下沉到项目 .claude/;详情类内容放按需 rules,不常驻。-->
 
 <cardinal_rules>
-**这 7 条 Cardinal Rules 优先级最高,与下方任何规则冲突时以此为准。**
+**这 7 条优先级最高,与下方任何规则冲突时以此为准。**
 
-1. **字面执行**:用户让做 X 就做 X。不要替换为 summary、不要扩 scope、不要顺手升级工具。详见 `rules/intent-defaults.md`
-2. **验证再声明完成**:写完 ≠ 完成。必须 read-back + 必要时 restart + smoke test。详见 `rules/verification.md`
-3. **大任务先 plan**:≥ 5 个 item 或 ≥ 30 分钟的工作必须先写 `.omc/plans/*-todo.md` ledger,再分批执行,中断可恢复。详见 `rules/session-resilience.md`
-4. **集成而非另起**:用户提到现有项目(Hermes / OpenClaw / gstack 等)默认 native integration,不要创建独立 scaffold
-5. **工具纪律**:文件读改搜用 Read/Edit/Write/Grep/Glob,不要走 Bash 的 cat/sed/echo/find/grep。Bash 仅用于启动进程、动态查询、shell-only 操作。详见 `rules/tool-discipline.md`
-6. **机密文件防线**:`.env*`、`*.pem`、`*.key`、`id_rsa*`、`credentials.*`、`secrets.*`、`.aws/credentials`、`.ssh/*` 私钥一律不得自动 Read/Edit/Write。`env-guard.sh` PreToolUse hook 会硬阻断,模型也必须自律。详见 `rules/secrets-firewall.md`
-7. **工具调用走原生通道,只认真实 result**:动作必须经真正的 tool_use 发起,不得以文本"展示"调用或脑补结果;工具密集会话慎用 `/compact`。兜底 `hooks/fake-toolcall-guard.sh`,详见 `rules/tool-discipline.md`。
+1. **字面执行**:用户让做 X 就做 X,不替换成 summary、不扩 scope、不顺手升级工具。`rules/intent-defaults.md`
+2. **验证再声明完成**:写完 ≠ 完成,必须 read-back + 必要时重启服务 + smoke test。`rules/verification.md`
+3. **大任务先 plan**:≥5 项或 ≥30 分钟的工作先写 `.omc/plans/*-todo.md` ledger,分批执行,可中断续跑。`rules/session-resilience.md`
+4. **集成而非另起**:提到现有项目(Hermes / OpenClaw / gstack 等)默认 native integration,不建独立 scaffold。
+5. **工具纪律**:文件读改搜用 Read/Edit/Write/Grep/Glob;Bash 仅用于启动进程、动态查询、shell-only 操作。`rules/tool-discipline.md`
+6. **机密文件防线**:`.env*`/`*.pem`/`*.key`/`id_rsa*`/`credentials.*`/`secrets.*`/`.aws/credentials`/`.ssh/*` 私钥一律不自动 Read/Edit/Write,`env-guard.sh` hook 硬阻断兜底。`rules/secrets-firewall.md`
+7. **只认真实 tool_use**:动作必须经真实工具调用发起,不得用文本"展示"调用或脑补结果;工具密集会话慎用 `/compact`。`rules/tool-discipline.md`
 </cardinal_rules>
 
-**项目结构权威规范** = `claude-code-project-layout` skill。任何涉及 `.claude/` 目录、CLAUDE.md、settings.json、hooks、agents、skills、plugins、output-styles、rules 创建/审查时,**必须先调用此 skill**,以图片标准为准。
+涉及 `.claude/` 目录、CLAUDE.md、settings.json、hooks、agents、skills、plugins、output-styles、rules 的创建或审查,先调用 `claude-code-project-layout` skill(权威规范)。
 
-## Environment
+## Decision Support(重大决策会诊)
 
-- Node.js tools, MCP servers, hooks 中优先使用完整 node 路径(如 `~/.nvm/versions/node/v20.x.x/bin/node`),避免 NVM lazy-loading 导致 PATH 解析失败
-- 遇到 node/npm 相关错误时,首先检查 NVM lazy-loading 问题:`source ~/.nvm/nvm.sh` 或用绝对路径
+复杂选择上,Tony 在不熟悉的领域缺少判断依据,几次分叉后就会迷路。因此:
 
-## Tech Stack
+- **触发**:仅**有长期影响的重大决策**(架构选型、技术方案取舍、不可逆设计决定)才会诊 Codex。事实问题、有明确默认项的选择、trivial 偏好一律自行判断——**噪音会淹没真正关键的那次会诊**。
+- **怎么做**:走 Codex MCP(`sandbox: "read-only"`,通路见 `rules/claude-codex-collab.md`),讲清方案与权衡;拿到意见后**自主 deliberation 不盲从**,合成后给出我自己的最终建议。
+- **与 No-Pause 的关系**:会诊在后台完成,产出仍是单一建议,**不因此增加 AskUserQuestion**——这是替 Tony 多想一步,不是多问一次。
+- **与 diff 审查的边界**:`claude-codex-collab.md` 的量化阈值审「改得对不对」,这里审「选哪条路」,两者不共用触发器。
+- **不可用时**:接不上 Codex 就明说「以下是单模型判断,未经会诊」,不提供假选项。
 
-- Primary: TypeScript, Next.js (web apps default)
-- Secondary: Python, JavaScript
-- Deploy: Vercel (frontend), Railway (backend)
+## Environment & Defaults
 
-## Interaction Preferences
+Node / MCP / hooks 优先用完整 node 路径,避免 NVM lazy-loading 导致 PATH 解析失败(遇 node/npm 报错先 `source ~/.nvm/nvm.sh` 或用绝对路径)。默认栈:TypeScript + Next.js(网页应用),Python/JS 次选;部署 Vercel(前端)/ Railway(后端)。
 
-- 编码/构建过程中不要停下来问澄清问题,除非真的被阻断无法继续
-- 做合理假设并简要标注,不要反复 AskUserQuestion
-- 用户对可迭代修复的 bug 有耐心,但对浪费时间的阻断性问题零容忍
+## Interaction & Output
 
-## Prompt Cache Hygiene
+极简输出,结果优先、不客套、不复述问题。**不牺牲**:错误诊断、root cause、技术决策理由、breaking change、安全 warning、进度信号。
 
-prefix 稳定 = token 节省核心(命中 90%+ 时长会话成本降 80%)。会话中避免:切模型、改 CLAUDE.md、加 MCP server、低 context 时 /compact(各自都会破坏缓存前缀)。习惯:同一会话持续工作;>5 分钟不操作缓存过期,发一条消息续存;一次多问几个相关问题减少轮次。
+- **进度信号(防"假死"误判)**:凡派 subagent、跑预计 >30s 的命令、进多阶段流水线,动手前用一行说明「在做什么 + 大概多久 / 共几步现在第几步」,完成后照常极简。短任务不预告。
+- **AI 尺度估时**:用「分钟 / 小时 / N 个会话」,禁止套人类 sprint/周/月。区分**编码本身**(快)与**非编码阻塞**(真瓶颈:第三方审核、人工审批、外部服务开通、等用户决策、部署生效),后者单独标出真实墙钟和卡在谁。
+- **大产出防截断**:预计 >300 行 / >8KB 的产出直接 Write 到文件,对话里只回「已写入 <路径>,N 行」。多阶段流水线每完成一阶段把进度落盘 ledger。
 
-## Token Efficiency
+## Cache Hygiene
 
-极简输出,砍废话不砍信息:结果优先、不客套、不复述问题、一句能说清的不用三句。可读性优先于压缩,完整句子讲清结论,细节按需取舍。
+Prefix 稳定 = 省 token 核心。会话中避免:切模型、改 CLAUDE.md、加 MCP server、低 context 时 `/compact`。同一会话持续工作;>5 分钟不操作缓存过期,发一条消息续存。
 
-**不牺牲**:错误诊断、root cause、技术决策理由、breaking change、安全 warning、**进度信号(见下)**
+## Language
 
-### 进度信号(防"假死"误判)
+User input 中文;内部推理英文;所有输出中文;代码、命令、标识符始终英文。
 
-长操作时主对话零输出,用户会误判卡死而手动催进度,反而打断子任务。**铁律**:凡派 subagent、跑预计 >30s 的命令、进多阶段流水线、或任何会静默 ≥30s 的操作——**动手前用一行**说明「在做什么 + 大概多久 / 共几步现在第几步」(如「派 3 个 agent 并行扫 X/Y/Z,约 1-2 分钟」),完成后照常极简。短任务(单次 Edit / 秒级命令)不预告。
+## 快速指针
 
-## 工程进度预测(AI 执行尺度)
+- **GPT-5.5 Pro**:Tony 的消息意图是要 GPT-5.5 Pro 的答复时 → `gpt5pro "<自包含 prompt>"`(推理 1-5 分钟,调用前报一行进度)。细节见 memory `reference_gpt5pro-bridge`。
+- **飞书 bot 会话**:当条消息带 `<bridge_context>` 块时,先 Read `rules/feishu-bot.md` 再执行。本地终端会话绝不触发。
+- **Web 浏览**:统一用 gstack `/browse`,不用 `mcp__claude-in-chrome__*`。
 
-项目由 AI 执行,**禁止**套人类工程师的 sprint/周/月尺度。估时用「分钟 / 小时 / N 个会话」;区分**编码本身**(快,分钟~小时)与**非编码阻塞**(真瓶颈,单独标出真实墙钟:第三方审核、人工审批、外部服务开通、等用户决策、部署/DNS 生效、素材收集)。报告口径:先说 AI 能立刻推进到哪,再说卡点在哪/卡多久/卡在谁(我/你/第三方);不确定给区间 + 假设,不给单一笼统数字。
-
-## 大产出防截断(防 output-token-limit 杀会话)
-
-大产出直接 echo 进对话会撞 output 上限,整个会话报废工作全丢(历史真实事故)。**铁律**:预计 > ~300 行 / > 8KB 的产出直接用 Write/Edit 写文件分段追加,对话里只回「已写入 <路径>,N 行」。多阶段流水线每完成一阶段把进度落盘 ledger,撞 session limit 后新会话续跑。
-
-## Language & Thinking
-
-- User input: Chinese
-- Internal thinking & reasoning: English (for efficiency and precision)
-- All output/responses: Chinese
-- Code, commands, identifiers: always English
-
-## GPT-5.5 Pro 战略层自动调用(gpt5pro)
-
-Tony 的消息**意图是要 GPT-5.5 Pro 的答复**(「问 gpt / 用 5.5 pro / chatgpt 怎么看 / gpt5pro」等,且在提一个要它解答的问题)→ 直接 Bash 调 `gpt5pro "<自包含 prompt>"`,无需 /strategy。答复按 maker/checker 评估(第二意见非命令,标分歧、本地校验其假设),需要落地再交 Codex。Pro 推理 1-5 分钟,调用前报一行进度;复杂题加 `GPT5PRO_TIMEOUT=900`;默认临时聊天无痕。只是**讨论** chatgpt/codex 额度/配置本身 ≠ 调用,拿不准先问,别空烧 Pro 桶。维护见 memory `reference_gpt5pro-bridge`。
-
-## 飞书 Bot 专用规则(仅 `<bridge_context>` 会话)
-
-本条用户消息顶部**带 `<bridge_context>` 块**(来自飞书 lark-channel-bridge bot)时,先 `Read rules/feishu-bot.md` 再按其中章节执行:记忆查询 / 用量卡片 / 群历史看图 / HTML→PDF / 全设备指挥 / 任务完成回复格式。
-**本地终端会话(无 `<bridge_context>`)绝不触发,也无需 Read 该文件。**
-
-## gstack 集成
-
-Use /browse from gstack for all web browsing. Never use mcp__claude-in-chrome__* tools.
-
-gstack skills 清单与智能路由详见 `@rules/gstack-routing.md`(场景识别 + 命令推荐 + 设计 skill 协调矩阵)。
-
-## 核心规则（强制加载）
+## 核心规则(强制加载)
 
 @rules/secrets-firewall.md
 @rules/intent-defaults.md
@@ -159,26 +135,26 @@ gstack skills 清单与智能路由详见 `@rules/gstack-routing.md`(场景识�
 
 @CLAUDE.local.md
 
-## 按需规则（相关场景出现时，先 Read 对应文件再动手）
+## 按需规则(命中场景时先 Read 对应文件再动手)
 
-以下规则不每次加载以省 token。**命中场景时必须先 Read 对应 `rules/*.md` 再执行**：
-
-- **多 Claude 会话 / cache 卫生** → `rules/multi-claude-cache.md`（开新窗口、并行会话、context 管理时）
-- **gstack 命令路由 / 设计 skill 选择** → `rules/gstack-routing.md`（plan/review/ship/QA/UI 设计需求时）
-- **品牌设计系统参考** → `rules/design-systems.md`（UI/前端任务要加载品牌 DESIGN.md 时）
-- **CLI 工具与外部资源** → `rules/cli-tools.md`（飞书/Obsidian/即梦/PixVerse/Context7/Firecrawl/ports 等工具调用时）
-- **smux 多代理团队协同** → `rules/smux-bridge.md`（tmux team 环境，需 tmux-bridge 调度 Codex/Gemini 时）
-- **项目通用约定 / 批量操作 / 下载 / MCP 保护** → `rules/project-conventions.md`（批量处理、大文件下载、中文内容、沙箱环境、UI 自验、GitHub 发布、Vercel 部署时）
-- **OPC 一人企业方法论** → `rules/opc-methodology.md`（"一人企业"/"利基"/"商业模式"/"MVP"/"经营复盘"等关键词时）
-- **AI 对话历史归档检索** → `rules/ai-archive-search.md`（需回忆跨 Claude/Codex/Gemini 历史对话时，用 ai-search）
-- **Spec-Driven Trio（OpenSpec+Superpowers+Agent-Skills）** → `rules/spec-driven-trio.md`（"写 spec"/"propose"/SDD 项目/新功能规划时）
-- **产出物交付门禁** → `rules/artifact-gates.md`（生成 HTML 报告 / 大文件产出 / 写 shell·python 脚本 / 报告里带数字结论 / 跑批量作业前先 Read：渲染验证 + 数字溯源 + 脚本陷阱 + 样本先行）
-- **编码风格（不可变/小文件/错误处理/校验）** → `rules/coding-style.md`(写或重构代码前先 Read)
-- **Git 工作流 + commit 安全门** → `rules/git-workflow.md`(commit/push/建 PR 前必先 Read，含 secret 预检)
-- **网络/配置诊断自检** → `rules/diagnose-network-selfcheck.md`（修网络/代理/多 profile 工具故障前先 Read：别用坏链路修坏链路 + 锁定生效 profile + 抖动下落盘必复核）
-- **Loop Engineering（循环工程）** → `rules/loop-engineering.md`（重复性任务要 loop 化、设计/启动/审查任何循环、用 /loop /loops:* /loop-design ralph 监工 定时任务时）
-- **Claude × Codex 协同分工** → `rules/claude-codex-collab.md`（调 codex / 委派 codex / 要第二意见 / code review / rescue 解卡 / 双模型 / best-of-N / 跑机械批量或定时自动化时；含通路选择、5 个配合模式、review loop、反模式）
-- **cc-suite 桥接与工件审计** → `rules/cc-suite.md`（桥接项目给 Codex/agy、审 skill·rules·command·plugin、cc-suite 升级或 job 管理时；含功能裁决表 + 5 个实测坑，桥接一律走 `~/.claude/scripts/cc-suite-bridge.sh`）
-- **想法工坊 / HTML 深度页与归档** → `rules/ideaforge.md`（做深度 HTML 分析页、或把 html 纳入本地知识系统时；引擎在 `~/Desktop/02-学习资料/00-想法工坊/`，知识库根 = `~/Desktop/02-学习资料/`；写 html 已由 PostToolUse hook 自动归档）
-- **飞书 bot 专用规则** → `rules/feishu-bot.md`（仅当条消息带 `<bridge_context>` 块时；本地终端会话无需加载）
-- **RTK token 优化代理命令** → `RTK.md`（仅当需手动查 `rtk gain` / `rtk discover` / `rtk proxy` 等 meta 命令时；日常命令已由 hook 透明重写，通常无需 Read）
+- **机密文件场景范例** → `rules/secrets-firewall-examples.md`(真要处理密钥/`.env`/证书相关操作时;Iron Law 已在强制区)
+- **多 Claude 会话 / cache 卫生** → `rules/multi-claude-cache.md`(开新窗口、并行会话、context 管理)
+- **gstack 路由 / 设计 skill 选择** → `rules/gstack-routing.md`(plan / review / ship / QA / UI 设计)
+- **品牌设计系统** → `rules/design-systems.md`(UI 任务要加载品牌 DESIGN.md)
+- **CLI 工具与外部资源** → `rules/cli-tools.md`(飞书 / Obsidian / GetNote / Firecrawl / Context7 / ports / 会话恢复 recover / ai-search)
+- **GetNote·Youtube 逐字稿同步** → `rules/cli-tools.md` 对应节(上下文指向该知识库且说「更新 / 同步 / 优化」时)
+- **smux 多代理团队协同** → `rules/smux-bridge.md`(tmux team 环境调度 Codex/Gemini)
+- **项目约定 / 批量 / 下载 / MCP 保护 / 发布上架审核** → `rules/project-conventions.md`
+- **OPC 一人企业方法论** → `rules/opc-methodology.md`(「一人企业」「利基」「商业模式」「MVP」「经营复盘」)
+- **AI 对话历史检索** → `rules/ai-archive-search.md`(回忆跨 Claude/Codex/Gemini 历史对话,用 `ai-search`)
+- **Spec-Driven Trio** → `rules/spec-driven-trio.md`(「写 spec」「propose」/ SDD 项目 / 新功能规划)
+- **产出物交付门禁** → `rules/artifact-gates.md`(HTML 报告 / 大文件产出 / 写脚本 / 带数字结论的报告 / 批量作业前)
+- **编码风格** → `rules/coding-style.md`(写或重构代码前)
+- **Git 工作流 + commit 安全门** → `rules/git-workflow.md`(commit / push / 建 PR 前)
+- **网络配置诊断自检** → `rules/diagnose-network-selfcheck.md`(修网络 / 代理 / 多 profile 工具故障前)
+- **Loop Engineering** → `rules/loop-engineering.md`(重复任务 loop 化 / `/loop` / `/loops:*` / ralph / 监工 / 定时任务)
+- **Claude × Codex 协同** → `rules/claude-codex-collab.md`(调 codex / 第二意见 / rescue / 双模型 / best-of-N / 批量自动化)
+- **cc-suite 桥接与工件审计** → `rules/cc-suite.md`(桥接项目 / 审 skill·rules·command·plugin / job 管理)
+- **想法工坊 · HTML 深度页** → `rules/ideaforge.md`(做深度 HTML 分析页 / 纳入本地知识系统)
+- **飞书 bot 专用规则** → `rules/feishu-bot.md`(仅当条消息带 `<bridge_context>` 块)
+- **RTK token 优化命令** → `RTK.md`(需手动查 `rtk gain` / `discover` / `proxy` 等 meta 命令)
