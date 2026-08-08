@@ -63,3 +63,14 @@
 
 - `vercel link` 裸跑会误建空项目
 - codebase 目录名 ≠ Vercel 项目名时,必须 `--project <真名> --scope <team>`
+
+## 产品上架双审核(全局强制)
+
+任何公开发布、生产部署、包发布、GitHub Release、应用商店提交或客户正式交付前,必须先在产品根目录运行 `product-release-audit audit .`;高风险、认证、支付、文件上传或外部 API 产品用 `product-release-audit audit . --deep`。
+
+只有 NLPM 与 Codex Security **均通过**且 `product-release-audit verify .` 成功,才可执行上架命令。源码改动会使收据立即失效,必须重跑。
+
+- NLPM → prompts/skills/agents/hooks/manifest 等自然语言程序的 score/check/fix/trend/test 与 security-scan
+- Codex Security → 代码漏洞发现、验证、diff/deep scan、attack path、threat model、修复与 finding 生命周期
+
+不得以普通 lint、测试通过或人工口头确认替代任一审核。

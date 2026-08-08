@@ -52,3 +52,13 @@ API key 存在 `~/.config/firecrawl/.env`,settings.json 启动 MCP 时自动 sou
 ## 通知系统
 
 A macOS notification is sent automatically when Claude finishes a task (Stop hook).
+
+## 会话恢复 / 归档(本机工具)
+
+- `recover` — 重开重启前所有 Claude tab。菜单模式(默认,粘贴 cd+resume)或 `recover --auto`(模拟键盘自动开,需辅助功能授权)。详见 memory `reference_ghostty-session-recover`
+- `ai-search "关键词"` — 跨 Claude/Codex 历史全文搜。详见 memory `reference_ai-archive-system`
+- 注:两者都依赖 hook/launchd,新开会话才登记;改 settings.json 后当前会话不生效
+
+## GetNote · YouTube 逐字稿一句话同步
+
+当上下文指向 GetNote 知识库 `Youtube视频逐字稿`,Tony 只说「更新」「同步」「优化该知识库」或同义表达时,直接加载并完整执行 `~/.agents/skills/youtube-script-sync/SKILL.md`。目标固定 `topic_id=YkWaVRqY`;先 dry-run,再顺序创建或更新父录音笔记的 `YT逐字稿` 子笔记,最后回读并做 missing/duplicate/幂等核验。不得覆盖源录音,不得把第三方录音写成 Tony 第一人称,不得承诺播放量或涨粉。
