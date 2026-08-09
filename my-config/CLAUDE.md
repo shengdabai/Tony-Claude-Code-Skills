@@ -1,5 +1,5 @@
 <!-- OMC:START -->
-<!-- OMC:VERSION:4.15.7 -->
+<!-- OMC:VERSION:4.15.8 -->
 
 # oh-my-claudecode - Intelligent Multi-Agent Orchestration
 
@@ -69,6 +69,8 @@ State root: `.omc/` by default, or `$OMC_STATE_DIR/{project-id}/` when `OMC_STAT
 Say "setup omc" or run `/oh-my-claudecode:omc-setup`.
 
 <!-- OMC:END -->
+
+<!-- User customizations -->
 
 <!-- User customizations · 定制保护区 -->
 <!-- ⚠️ 上方 OMC:START..OMC:END 是 omc 托管区,omc update 只会就地刷新它,本区 update 时保持不动。-->
