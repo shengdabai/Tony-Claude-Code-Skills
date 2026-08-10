@@ -89,6 +89,10 @@ Say "setup omc" or run `/oh-my-claudecode:omc-setup`.
 7. **只认真实 tool_use**:动作必须经真实工具调用发起,不得用文本"展示"调用或脑补结果;工具密集会话慎用 `/compact`。`rules/tool-discipline.md`
 </cardinal_rules>
 
+## 强制 Skill 路由
+
+Tony 的当条消息出现中文词“需求”或独立英文单词 `needs`（大小写不敏感）时，第一步必须调用 `needs-analysis` skill；它优先于 `superpowers:brainstorming` 等通用构思/规划 skill。完成需求真伪、证据和广泛/刚需/高频判断后，才可按任务需要继续调用其他 skill。
+
 涉及 `.claude/` 目录、CLAUDE.md、settings.json、hooks、agents、skills、plugins、output-styles、rules 的创建或审查,先调用 `claude-code-project-layout` skill(权威规范)。
 
 ## Decision Support(重大决策会诊)
