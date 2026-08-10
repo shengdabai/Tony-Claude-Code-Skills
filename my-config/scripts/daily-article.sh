@@ -33,18 +33,26 @@
 #   --permission-mode bypassPermissions → --dangerously-bypass-approvals-and-sandbox
 #   --add-dir $WORK                     → -C $WORK + --add-dir $WORK + --skip-git-repo-check
 #   默认 Opus                           → -m gpt-5.5
-#   末尾仍触发 daily-digest.sh,合并推送只走飞书
+#   完成条件只认 GitHub origin/main；不再触发飞书/微信分发
 # ============================================================================
 set -uo pipefail
 # --- 共享互斥锁:daily-article 与 daily-ai-news 都调用推理 session,排队避免并发抢占 ---
 CLAUDE_SESSION_LOCK="/tmp/daily-claude-session.lock"
-_waited=0
-while ! mkdir "$CLAUDE_SESSION_LOCK" 2>/dev/null; do
-  _waited=$((_waited+30))
-  [ "$_waited" -gt 1800 ] && { echo "[lock] waited 30min, proceeding anyway" >&2; break; }
-  sleep 30
-done
-trap 'rmdir "$CLAUDE_SESSION_LOCK" 2>/dev/null' EXIT
+if ! mkdir "$CLAUDE_SESSION_LOCK" 2>/dev/null; then
+  _lock_pid=$(cat "$CLAUDE_SESSION_LOCK/pid" 2>/dev/null || true)
+  if [ -n "$_lock_pid" ] && kill -0 "$_lock_pid" 2>/dev/null; then
+    echo "[lock] another daily generation is running (PID $_lock_pid); retry slot skips" >&2
+    exit 0
+  fi
+  rm -f "$CLAUDE_SESSION_LOCK/pid" 2>/dev/null || true
+  rmdir "$CLAUDE_SESSION_LOCK" 2>/dev/null || true
+  mkdir "$CLAUDE_SESSION_LOCK" 2>/dev/null || {
+    echo "[lock] cannot acquire shared lock; retry slot skips" >&2
+    exit 0
+  }
+fi
+echo $$ > "$CLAUDE_SESSION_LOCK/pid"
+trap 'rm -f "$CLAUDE_SESSION_LOCK/pid"; rmdir "$CLAUDE_SESSION_LOCK" 2>/dev/null' EXIT
 # --- 锁结束 ---
 
 WORK="$HOME/.local/share/tony-articles"
@@ -87,8 +95,51 @@ ntfy_send() {
   curl -s -m 3 -d "$1" "ntfy.sh/${NTFY_CLAUDE_TOPIC}" >/dev/null 2>&1 || true
 }
 terminal_blocker_seen() {
-  grep -qiE "GetNote.*未授权|未授权.*GetNote|GetNote unavailable|401[^[:alnum:]]*/?[^[:alnum:]]*未授权|没有.*当前文章|没有文章草稿|当前没有文章草稿|缺少合法输入|无法读取今天笔记|无法取得今天笔记|硬编造|硬写并推送|伪造来源|今日无合适选题|no article was generated" \
-    "$RELAY_OUT" "$RELAY_JSON" 2>/dev/null
+  # 只检查 agent 回复与纯文本接力输出。整份 JSONL 还包含 prompt、memory 和
+  # tool 输出，直接 grep 会把规则里的“今日无合适选题”误判成真实 blocker。
+  {
+    python3 - "$RELAY_JSON" <<'PY' 2>/dev/null
+import json, sys
+last_text = ""
+try:
+    for line in open(sys.argv[1], encoding="utf-8", errors="replace"):
+        try:
+            ev = json.loads(line)
+        except Exception:
+            continue
+        item = ev.get("item") if isinstance(ev, dict) else None
+        if isinstance(item, dict) and item.get("type") == "agent_message":
+            text = item.get("text")
+            if isinstance(text, str):
+                last_text = text
+except Exception:
+    pass
+print(last_text)
+PY
+    tail -n 160 "$RELAY_OUT" 2>/dev/null
+  } | grep -qiE "GetNote.*未授权|未授权.*GetNote|GetNote unavailable|401[^[:alnum:]]*/?[^[:alnum:]]*未授权|没有.*当前文章|没有文章草稿|当前没有文章草稿|缺少合法输入|无法读取今天笔记|无法取得今天笔记|硬编造|硬写并推送|伪造来源|今日无合适选题|no article was generated"
+}
+
+sync_main_checkout() {
+  cd "$WORK" || return 1
+  if [ -n "$(git status --porcelain)" ]; then
+    log "WARN: 主发布 checkout 有未提交改动，跳过自动切分支/快进"
+    return 1
+  fi
+  git fetch -q origin main 2>>"$LOG" || return 1
+  if [ "$(git symbolic-ref --short HEAD 2>/dev/null)" != "main" ]; then
+    git switch -q main 2>>"$LOG" || return 1
+  fi
+  git merge -q --ff-only origin/main 2>>"$LOG" || return 1
+}
+
+release_audit_ok() {
+  command -v product-release-audit >/dev/null 2>&1 || {
+    log "FATAL: product-release-audit 不可用，拒绝公开发布"
+    return 1
+  }
+  product-release-audit audit . >>"$LOG" 2>&1 &&
+    product-release-audit verify . >>"$LOG" 2>&1
 }
 mark_terminal_blocker() {
   local reason="$1"
@@ -107,13 +158,9 @@ mark_terminal_blocker() {
 
 log "===== 开始每日文章任务(Codex 版) $TODAY ====="
 
-if [ -f "$BLOCKED_MARK" ] && [ "$DAILY_ARTICLE_FORCE" != "1" ]; then
-  log "今日已有非重试型阻塞标记, 跳过。修复 GetNote/草稿后可 DAILY_ARTICLE_FORCE=1 手动重跑。marker=$BLOCKED_MARK"
-  exit 0
-fi
-
 # 1. 同步仓库
 cd "$WORK" || { log "FATAL: 工作目录不存在 $WORK"; exit 1; }
+sync_main_checkout || log "WARN: 启动时未能把主发布 checkout 快进到 origin/main；后续发布将 fail-closed"
 cat > .gitignore <<'GI'
 .DS_Store
 .omc/
@@ -138,10 +185,58 @@ for i in 1 2 3; do
   sleep $((i*3))
 done
 
-# 2. 幂等:今天已成功生成过就跳过
-if [ -f "$DONE_MARK" ] || \
-   { ls articles/en/${TODAY}-*.md >/dev/null 2>&1 && ls articles/zh/${TODAY}-*.md >/dev/null 2>&1; }; then
+# 2. 幂等:完成标记存在才直接跳过；若文件已存在但上次在标记前中断，先回查远端。
+if [ -f "$DONE_MARK" ]; then
   log "今日中英双版已完成, 跳过"
+  exit 0
+fi
+if ls articles/en/${TODAY}-*.md >/dev/null 2>&1 && ls articles/zh/${TODAY}-*.md >/dev/null 2>&1; then
+  EXISTING_EN=$(ls articles/en/${TODAY}-*.md 2>/dev/null | head -1)
+  EXISTING_ZH=$(ls articles/zh/${TODAY}-*.md 2>/dev/null | head -1)
+  git fetch -q origin main 2>>"$LOG" || true
+  if git cat-file -e "origin/main:${EXISTING_EN}" 2>/dev/null &&
+     git cat-file -e "origin/main:${EXISTING_ZH}" 2>/dev/null; then
+    touch "$DONE_MARK"
+    rm -f "$BLOCKED_MARK" "$BLOCKER_SNIPPET"
+    log "今日双版已在 origin/main；补写完成标记"
+    exit 0
+  fi
+  log "WARN: 本地已有今日双版但 origin/main 未齐，直接重试审核/提交/push，不重新生成"
+  python3 .tools/gen_readme.py >>"$LOG" 2>&1 || true
+  EXISTING_ZH_T=$(head -1 "$EXISTING_ZH" | sed 's/^#[[:space:]]*//')
+  grep -qxF "$EXISTING_ZH_T" .tools/published-topics.log 2>/dev/null || echo "$EXISTING_ZH_T" >> .tools/published-topics.log
+  git add "$EXISTING_EN" "$EXISTING_ZH" README.md .gitignore .tools/gen_readme.py .tools/published-topics.log 2>/dev/null
+  if ! release_audit_ok; then
+    log "FATAL: release audit 未通过，不 commit、不 push；等待下一补偿时刻"
+    exit 1
+  fi
+  if [ -n "$(git diff --cached --name-only)" ]; then
+    git commit -q -m "post: ${TODAY} 中英双版" 2>>"$LOG" || {
+      log "ERROR: retry commit 失败；等待下一补偿时刻"
+      exit 1
+    }
+  fi
+  for i in 1 2 3; do
+    if git push -q origin HEAD:main 2>>"$LOG"; then
+      log "retry push 成功"
+      break
+    fi
+    log "retry push 第 $i 次失败"
+    sleep $((i*5))
+  done
+  git fetch -q origin main 2>>"$LOG" || true
+  if git cat-file -e "origin/main:${EXISTING_EN}" 2>/dev/null &&
+     git cat-file -e "origin/main:${EXISTING_ZH}" 2>/dev/null; then
+    touch "$DONE_MARK"
+    rm -f "$BLOCKED_MARK" "$BLOCKER_SNIPPET"
+    log "retry 已确认 origin/main 双版齐全，标记完成"
+    exit 0
+  fi
+  log "ERROR: retry 后 origin/main 仍未齐；不标记完成，等待下一补偿时刻"
+  exit 1
+fi
+if [ -f "$BLOCKED_MARK" ] && [ "$DAILY_ARTICLE_FORCE" != "1" ]; then
+  log "今日已有非重试型阻塞标记且远端双版未齐, 跳过。修复 GetNote/草稿后可 DAILY_ARTICLE_FORCE=1 手动重跑。marker=$BLOCKED_MARK"
   exit 0
 fi
 LOCK="$HOME/.claude/logs/.daily-article.codex.lock"
@@ -150,7 +245,7 @@ if [ -f "$LOCK" ] && kill -0 "$(cat "$LOCK" 2>/dev/null)" 2>/dev/null; then
   exit 0
 fi
 echo $$ > "$LOCK"
-trap 'rm -f "$LOCK"; rmdir "$CLAUDE_SESSION_LOCK" 2>/dev/null' EXIT
+trap 'rm -f "$LOCK" "$CLAUDE_SESSION_LOCK/pid"; rmdir "$CLAUDE_SESSION_LOCK" 2>/dev/null' EXIT
 mkdir -p articles/en articles/zh
 
 # 已发布主题持久 log(选题去重防重发)
@@ -219,7 +314,10 @@ PROMPT=$(cat <<'PROMPT_EOF'
   ---
 (互链对方语言版本)
 - 重建 README:在仓库根目录运行 python3 .tools/gen_readme.py
-- git add -A && git commit -m "post: <slug> 中英双版 (TODAY)" && git push origin main
+- git add -A && git commit -m "post: <slug> 中英双版 (TODAY)"
+- 用户已明确授权这项每日自动任务公开发布到 GitHub main。完成脱敏检查并运行
+  product-release-audit audit . 与 product-release-audit verify . 后，必须执行
+  git push origin HEAD:main。只 push 到 ai/* 分支或只给 PR 链接不算完成。
 
 完成后用一句话报告:文章标题(中/英)+ 两版是否都已推送成功。
 PROMPT_EOF
@@ -282,7 +380,7 @@ PY
 log "本次接力 session-id=${SID:-<空,接力改用 --last>}"
 
 # 后续接力:resume 续跑,收敛判据 = 双版是否已落地(Codex 无 .state.json,故不做 phase 推进检测)
-CONT_PROMPT="继续完成当前文章:把英文版保存到 articles/en/、中文版保存到 articles/zh/(中英互链),运行 python3 .tools/gen_readme.py 重建 README,然后 git add/commit/push。全程不要停下问我,不要派 subagent。"
+CONT_PROMPT="继续完成当前文章:把英文版保存到 articles/en/、中文版保存到 articles/zh/(中英互链),运行 python3 .tools/gen_readme.py 重建 README,git add/commit，完成脱敏与 product-release-audit 后执行 git push origin HEAD:main。用户已明确授权每日公开发布；只推 ai/* 分支或给 PR 链接不算完成。全程不要停下问我,不要派 subagent。"
 MAX_RELAYS=12
 for r in $(seq 1 $MAX_RELAYS); do
   if ls "$WORK"/articles/en/${TODAY}-*.md >/dev/null 2>&1 && ls "$WORK"/articles/zh/${TODAY}-*.md >/dev/null 2>&1; then
@@ -309,6 +407,7 @@ done
 
 # 4. 兜底确认双版是否真的推送了
 cd "$WORK"
+sync_main_checkout || true
 EN_FILE=$(ls articles/en/${TODAY}-*.md 2>/dev/null | head -1)
 ZH_FILE=$(ls articles/zh/${TODAY}-*.md 2>/dev/null | head -1)
 if [ -n "$EN_FILE" ] && [ -n "$ZH_FILE" ]; then
@@ -325,21 +424,22 @@ if [ -n "$EN_FILE" ] && [ -n "$ZH_FILE" ]; then
   grep -qxF "$ZH_T" .tools/published-topics.log 2>/dev/null || echo "$ZH_T" >> .tools/published-topics.log
   git add articles/ README.md .gitignore .tools/gen_readme.py .tools/published-topics.log 2>/dev/null
   if [ -n "$(git diff --cached --name-only)" ]; then
+    if ! release_audit_ok; then
+      log "FATAL: release audit 未通过，不 commit、不 push"
+      exit 1
+    fi
     git commit -q -m "post: ${TODAY} 中英双版" 2>>"$LOG" || true
     for i in 1 2 3; do
       git push -q origin main 2>>"$LOG" && { log "push 成功"; break; }
       log "push 第 $i 次失败"; sleep $((i*5))
     done
   fi
-  if gh api repos/shengdabai/Tony-Articles/contents/articles/zh 2>/dev/null | grep -q "${TODAY}"; then
+  git fetch -q origin main 2>>"$LOG" || true
+  if git cat-file -e "origin/main:${ZH_FILE}" 2>/dev/null && git cat-file -e "origin/main:${EN_FILE}" 2>/dev/null; then
     touch "$DONE_MARK"
     rm -f "$BLOCKED_MARK" "$BLOCKER_SNIPPET"
     log "已验证远端含今日中文版, 标记完成"
-    if [ "${DAILY_DIGEST_SKIP:-0}" = "1" ]; then
-      log "按 DAILY_DIGEST_SKIP=1 跳过自动 digest；由当前会话定向发送"
-    else
-      bash "$HOME/.claude/scripts/daily-digest.sh" >/dev/null 2>&1 || true
-    fi
+    log "GitHub origin/main 是唯一完成通道；不再触发飞书/微信"
   else
     log "WARN: 远端未确认今日文章, 不标记完成, 后续重试"
   fi

@@ -10,7 +10,7 @@
 #   - --permission-mode bypassPermissions → --dangerously-bypass-approvals-and-sandbox
 #   - --add-dir $WORK                     → -C $WORK + --add-dir $WORK + --skip-git-repo-check
 #   - 默认 Opus                           → -m gpt-5.5(ChatGPT 订阅 auth 只能 5.5/5.2)
-#   - 末尾仍触发 daily-digest.sh,合并推送只走飞书
+#   - 完成条件只认 GitHub origin/main；不再触发飞书/微信分发
 # 已知限制:dedao-write 在 Codex 是软链 SKILL.md(~/Projects/gbrain/skills/dedao-write),
 #   Codex skill≈prompt 注入(无 subagent 编排)。本脚本用简化模式整理,prompt 已把过滤+整理步骤写死,
 #   不依赖 skill 自动展开 subagent,故 dedao 缺编排能力影响小。
@@ -18,13 +18,21 @@ set -uo pipefail
 # --- 共享互斥锁:daily-article 与 daily-ai-news 都调用推理 session,排队避免并发抢占 ---
 # 注意:沿用同一把锁名,使 Codex 版与 Claude 版互斥(同机不会两个引擎同时抢额度/工作区)
 CLAUDE_SESSION_LOCK="/tmp/daily-claude-session.lock"
-_waited=0
-while ! mkdir "$CLAUDE_SESSION_LOCK" 2>/dev/null; do
-  _waited=$((_waited+30))
-  [ "$_waited" -gt 1800 ] && { echo "[lock] waited 30min, proceeding anyway" >&2; break; }
-  sleep 30
-done
-trap 'rmdir "$CLAUDE_SESSION_LOCK" 2>/dev/null' EXIT
+if ! mkdir "$CLAUDE_SESSION_LOCK" 2>/dev/null; then
+  _lock_pid=$(cat "$CLAUDE_SESSION_LOCK/pid" 2>/dev/null || true)
+  if [ -n "$_lock_pid" ] && kill -0 "$_lock_pid" 2>/dev/null; then
+    echo "[lock] another daily generation is running (PID $_lock_pid); retry slot skips" >&2
+    exit 0
+  fi
+  rm -f "$CLAUDE_SESSION_LOCK/pid" 2>/dev/null || true
+  rmdir "$CLAUDE_SESSION_LOCK" 2>/dev/null || true
+  mkdir "$CLAUDE_SESSION_LOCK" 2>/dev/null || {
+    echo "[lock] cannot acquire shared lock; retry slot skips" >&2
+    exit 0
+  }
+fi
+echo $$ > "$CLAUDE_SESSION_LOCK/pid"
+trap 'rm -f "$CLAUDE_SESSION_LOCK/pid"; rmdir "$CLAUDE_SESSION_LOCK" 2>/dev/null' EXIT
 # --- 锁结束 ---
 
 WORK="$HOME/.local/share/tony-articles"
@@ -38,6 +46,27 @@ MIN_HOT_ITEMS=5
 CODEX_FLAGS=(--dangerously-bypass-approvals-and-sandbox --skip-git-repo-check -C "$WORK" --add-dir "$WORK" -m "$CODEX_MODEL")
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG"; }
+sync_main_checkout() {
+  cd "$WORK" || return 1
+  if [ -n "$(git status --porcelain)" ]; then
+    log "WARN: 主发布 checkout 有未提交改动，跳过自动切分支/快进"
+    return 1
+  fi
+  git fetch -q origin main 2>>"$LOG" || return 1
+  if [ "$(git symbolic-ref --short HEAD 2>/dev/null)" != "main" ]; then
+    git switch -q main 2>>"$LOG" || return 1
+  fi
+  git merge -q --ff-only origin/main 2>>"$LOG" || return 1
+}
+
+release_audit_ok() {
+  command -v product-release-audit >/dev/null 2>&1 || {
+    log "FATAL: product-release-audit 不可用，拒绝公开发布"
+    return 1
+  }
+  product-release-audit audit . >>"$LOG" 2>&1 &&
+    product-release-audit verify . >>"$LOG" 2>&1
+}
 TIMEOUT_CMD=""
 if command -v timeout >/dev/null 2>&1; then
   TIMEOUT_CMD="$(command -v timeout)"
@@ -66,6 +95,7 @@ log "===== 开始每日 AI 热点任务(Codex 版) $TODAY ====="
 
 # 1. 同步仓库
 cd "$WORK" || { log "FATAL: $WORK 不存在"; exit 1; }
+sync_main_checkout || log "WARN: 启动时未能把主发布 checkout 快进到 origin/main；后续发布将 fail-closed"
 rm -f ruvector.db ./*.db 2>/dev/null
 git rm --cached --ignore-unmatch ruvector.db "*.db" >/dev/null 2>&1
 for i in 1 2 3; do
@@ -74,18 +104,59 @@ for i in 1 2 3; do
   sleep $((i*3))
 done
 
-# 2. 幂等
+# 2. 幂等:完成标记存在才直接跳过；若文件已存在但上次在标记前中断，先回查远端。
 DONE_MARK="$HOME/.claude/logs/.daily-ai-news-done-${TODAY}"
-if [ -f "$DONE_MARK" ] || \
-   { ls ai-news/zh/${TODAY}-*.md >/dev/null 2>&1 && ls ai-news/en/${TODAY}-*.md >/dev/null 2>&1; }; then
-  log "今日 AI 热点双版已完成, 跳过"; exit 0
+if [ -f "$DONE_MARK" ]; then
+  log "今日 AI 热点双版已完成, 跳过"
+  exit 0
+fi
+if ls ai-news/zh/${TODAY}-*.md >/dev/null 2>&1 && ls ai-news/en/${TODAY}-*.md >/dev/null 2>&1; then
+  EXISTING_ZH=$(ls ai-news/zh/${TODAY}-*.md 2>/dev/null | head -1)
+  EXISTING_EN=$(ls ai-news/en/${TODAY}-*.md 2>/dev/null | head -1)
+  git fetch -q origin main 2>>"$LOG" || true
+  if git cat-file -e "origin/main:${EXISTING_ZH}" 2>/dev/null &&
+     git cat-file -e "origin/main:${EXISTING_EN}" 2>/dev/null; then
+    touch "$DONE_MARK"
+    log "今日 AI 热点双版已在 origin/main；补写完成标记"
+    exit 0
+  fi
+  log "WARN: 本地已有今日 AI 热点双版但 origin/main 未齐，直接重试审核/提交/push，不重新生成"
+  python3 .tools/gen_readme.py >>"$LOG" 2>&1 || true
+  git add "$EXISTING_ZH" "$EXISTING_EN" README.md .gitignore .tools/gen_readme.py 2>/dev/null
+  if ! release_audit_ok; then
+    log "FATAL: release audit 未通过，不 commit、不 push；等待下一补偿时刻"
+    exit 1
+  fi
+  if [ -n "$(git diff --cached --name-only)" ]; then
+    git commit -q -m "post(ai-news): ${TODAY} AI 圈过去 24 小时热点" 2>>"$LOG" || {
+      log "ERROR: retry commit 失败；等待下一补偿时刻"
+      exit 1
+    }
+  fi
+  for i in 1 2 3; do
+    if git push -q origin HEAD:main 2>>"$LOG"; then
+      log "retry push 成功"
+      break
+    fi
+    log "retry push 第 $i 次失败"
+    sleep $((i*5))
+  done
+  git fetch -q origin main 2>>"$LOG" || true
+  if git cat-file -e "origin/main:${EXISTING_ZH}" 2>/dev/null &&
+     git cat-file -e "origin/main:${EXISTING_EN}" 2>/dev/null; then
+    touch "$DONE_MARK"
+    log "retry 已确认 origin/main 双版齐全，标记完成"
+    exit 0
+  fi
+  log "ERROR: retry 后 origin/main 仍未齐；不标记完成，等待下一补偿时刻"
+  exit 1
 fi
 LOCK="$HOME/.claude/logs/.daily-ai-news.codex.lock"
 if [ -f "$LOCK" ] && kill -0 "$(cat "$LOCK" 2>/dev/null)" 2>/dev/null; then
   log "上一次任务仍在运行 (PID $(cat "$LOCK")), 本次跳过"; exit 0
 fi
 echo $$ > "$LOCK"
-trap 'rm -f "$LOCK"; rmdir "$CLAUDE_SESSION_LOCK" 2>/dev/null' EXIT
+trap 'rm -f "$LOCK" "$CLAUDE_SESSION_LOCK/pid"; rmdir "$CLAUDE_SESSION_LOCK" 2>/dev/null' EXIT
 mkdir -p ai-news/zh ai-news/en
 
 # 3. 拉 aihot 过去 24h 精选数据 → 写到临时文件供 codex 读
@@ -125,7 +196,7 @@ PROMPT=$(cat <<PROMPT_EOF
 - 立刻使用 WebSearch / web.run / curl 可访问的公开网页, 搜索过去 24-48 小时内与 AI 相关的热点。
 - 优先补 Claude Code / Anthropic / OpenAI / AI Agent / MCP / AI 编程工具 / 独立开发者 / 国产大模型 / 开源模型 / AI 产品发布。
 - 每条补充热点必须有可打开的原文 URL, 不要用只有二手转述且无来源的内容。
-- 最终尽量保持 5 条; 若公开信息确实不足, 允许 3-4 条简版日报, 但必须成稿、保存、push 并触发推送, 不能因为条数不足退出。
+- 最终尽量保持 5 条; 若公开信息确实不足, 允许 3-4 条简版日报, 但必须成稿、保存并发布到 GitHub main, 不能因为条数不足退出。
 
 【第二步: 个人化过滤(Tony 的兴趣画像)】
 **Tony 高度关注的方向**(命中加权 +3):
@@ -166,7 +237,10 @@ PROMPT=$(cat <<PROMPT_EOF
 - 英文: ai-news/en/${TODAY}-ai-news-daily.md
 - 两版开头加: # 标题  > 发布日期:${TODAY} · 类型:AI 热点日报  ---
 - 重建 README: python3 .tools/gen_readme.py
-- git add ai-news/ README.md .gitignore .tools/ → commit → push
+- git add ai-news/ README.md .gitignore .tools/ → commit
+- 用户已明确授权这项每日自动任务公开发布到 GitHub main。完成脱敏检查并运行
+  product-release-audit audit . 与 product-release-audit verify . 后，必须执行
+  git push origin HEAD:main。只 push 到 ai/* 分支或只给 PR 链接不算完成。
 
 完成后报告: 中英版文件名 + 是否推送成功 + 选了哪 5-8 条热点(标题列表), 以及哪些来自 aihot、哪些来自联网补全。
 PROMPT_EOF
@@ -226,7 +300,7 @@ log "  解析到 session_id=${SID:-<空,后续接力改用 --last>}"
 # 注意:resume 子命令【不支持 -C/--add-dir】(只有顶层 codex exec 有),靠当前进程 cwd 过滤会话;
 #   脚本开头已 cd "$WORK",故 resume 自动定位到本仓库的会话。headless 续跑要跑 git,须带免审批+跳git检查。
 RESUME_FLAGS=(--dangerously-bypass-approvals-and-sandbox --skip-git-repo-check -m "$CODEX_MODEL")
-CONT_PROMPT="继续完成 AI 热点日报: 如果 aihot 原始数据不足 5 条, 立刻联网搜索过去 24-48 小时 AI 热点补齐, 不要因为条数不足退出。把双版保存到 ai-news/zh/${TODAY}-*.md 和 ai-news/en/${TODAY}-*.md, 运行 python3 .tools/gen_readme.py, git add ai-news/ README.md → commit → push。"
+CONT_PROMPT="继续完成 AI 热点日报: 如果 aihot 原始数据不足 5 条, 立刻联网搜索过去 24-48 小时 AI 热点补齐, 不要因为条数不足退出。把双版保存到 ai-news/zh/${TODAY}-*.md 和 ai-news/en/${TODAY}-*.md, 运行 python3 .tools/gen_readme.py, git add/commit，完成脱敏与 product-release-audit 后执行 git push origin HEAD:main。用户已明确授权每日公开发布；只推 ai/* 分支或给 PR 链接不算完成。"
 for r in 1 2; do
   if ls ai-news/zh/${TODAY}-*.md >/dev/null 2>&1 && ls ai-news/en/${TODAY}-*.md >/dev/null 2>&1; then break; fi
   log "接力 +$r 轮..."
@@ -237,7 +311,8 @@ for r in 1 2; do
   fi
 done
 
-# 5. 兜底: 验证双版 + push + 触发飞书合并推送
+# 5. 兜底: 验证双版 + push；GitHub origin/main 是唯一完成通道
+sync_main_checkout || true
 ZH_FILE=$(ls ai-news/zh/${TODAY}-*.md 2>/dev/null | head -1)
 EN_FILE=$(ls ai-news/en/${TODAY}-*.md 2>/dev/null | head -1)
 if [ -n "$ZH_FILE" ] && [ -n "$EN_FILE" ]; then
@@ -246,13 +321,22 @@ if [ -n "$ZH_FILE" ] && [ -n "$EN_FILE" ]; then
   python3 .tools/gen_readme.py >>"$LOG" 2>&1 || true
   git add ai-news/ README.md .gitignore .tools/ 2>/dev/null
   if [ -n "$(git diff --cached --name-only)" ]; then
+    if ! release_audit_ok; then
+      log "FATAL: release audit 未通过，不 commit、不 push"
+      exit 1
+    fi
     git commit -q -m "post(ai-news): ${TODAY} AI 圈过去 24 小时热点" 2>>"$LOG"
     for i in 1 2 3; do git push -q origin main 2>>"$LOG" && { log "push 成功"; break; }; sleep $((i*5)); done
   fi
-  touch "$DONE_MARK"
-
-  # 6. 飞书推送由 daily-digest.sh 统一处理(思考+热点合并成一条, 国内快链)。
-  bash "$HOME/.claude/scripts/daily-digest.sh" >/dev/null 2>&1 || true
+  git fetch -q origin main 2>>"$LOG" || true
+  if git cat-file -e "origin/main:${ZH_FILE}" 2>/dev/null && git cat-file -e "origin/main:${EN_FILE}" 2>/dev/null; then
+    touch "$DONE_MARK"
+    log "已验证 origin/main 含今日 AI 热点双版，标记完成"
+    log "GitHub origin/main 是唯一完成通道；不再触发飞书/微信"
+  else
+    log "ERROR: 本地有 AI 热点，但 origin/main 未同时包含双版；不标记完成，等待下一补偿时刻"
+    exit 1
+  fi
 else
   log "ERROR: AI 热点双版未齐(zh=${ZH_FILE:-无} en=${EN_FILE:-无})"
 fi
