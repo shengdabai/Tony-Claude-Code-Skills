@@ -33,7 +33,7 @@
 #   --permission-mode bypassPermissions → --dangerously-bypass-approvals-and-sandbox
 #   --add-dir $WORK                     → -C $WORK + --add-dir $WORK + --skip-git-repo-check
 #   默认 Opus                           → -m gpt-5.5
-#   完成条件只认 GitHub origin/main；不再触发飞书/微信分发
+#   发布完成先认 GitHub origin/main；随后触发幂等飞书合并分发，微信保持关闭
 # ============================================================================
 set -uo pipefail
 # --- 共享互斥锁:daily-article 与 daily-ai-news 都调用推理 session,排队避免并发抢占 ---
@@ -439,7 +439,8 @@ if [ -n "$EN_FILE" ] && [ -n "$ZH_FILE" ]; then
     touch "$DONE_MARK"
     rm -f "$BLOCKED_MARK" "$BLOCKER_SNIPPET"
     log "已验证远端含今日中文版, 标记完成"
-    log "GitHub origin/main 是唯一完成通道；不再触发飞书/微信"
+    log "已验证 GitHub origin/main 含今日双版；触发幂等飞书合并分发"
+    bash "$HOME/.claude/scripts/daily-digest.sh" >/dev/null 2>&1 || true
   else
     log "WARN: 远端未确认今日文章, 不标记完成, 后续重试"
   fi

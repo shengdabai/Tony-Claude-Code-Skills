@@ -93,6 +93,8 @@ Say "setup omc" or run `/oh-my-claudecode:omc-setup`.
 
 Tony 的当条消息出现中文词“需求”或独立英文单词 `needs`（大小写不敏感）时，第一步必须调用 `needs-analysis` skill；它优先于 `superpowers:brainstorming` 等通用构思/规划 skill。完成需求真伪、证据和广泛/刚需/高频判断后，才可按任务需要继续调用其他 skill。
 
+Tony 的当条消息涉及 GEO（Generative Engine Optimization / 生成式引擎优化）、AI 搜索优化或可见度、AI 答案中的品牌/页面引用表现，或 GEO 发现、诊断、内容、离线测量、相关 SEO 规划时，必须调用 `geo` skill，并先让 GEOHub 路由器选择最小可执行能力；它优先于通用 SEO、内容和 `superpowers:brainstorming`。若同时命中“需求”或独立英文 `needs`，先 `needs-analysis`，再 `geo`。单纯地理、定位、地图、GIS、GeoJSON 或 geospatial 任务不触发 `geo`；planned 能力只报告边界，不得模拟执行。
+
 涉及 `.claude/` 目录、CLAUDE.md、settings.json、hooks、agents、skills、plugins、output-styles、rules 的创建或审查,先调用 `claude-code-project-layout` skill(权威规范)。
 
 ## Decision Support(重大决策会诊)
