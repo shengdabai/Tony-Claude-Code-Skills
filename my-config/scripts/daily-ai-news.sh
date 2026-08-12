@@ -10,7 +10,7 @@
 #   - --permission-mode bypassPermissions → --dangerously-bypass-approvals-and-sandbox
 #   - --add-dir $WORK                     → -C $WORK + --add-dir $WORK + --skip-git-repo-check
 #   - 默认 Opus                           → -m gpt-5.5(ChatGPT 订阅 auth 只能 5.5/5.2)
-#   - 完成条件只认 GitHub origin/main；不再触发飞书/微信分发
+#   - 发布完成先认 GitHub origin/main；随后触发幂等飞书合并分发，微信保持关闭
 # 已知限制:dedao-write 在 Codex 是软链 SKILL.md(~/Projects/gbrain/skills/dedao-write),
 #   Codex skill≈prompt 注入(无 subagent 编排)。本脚本用简化模式整理,prompt 已把过滤+整理步骤写死,
 #   不依赖 skill 自动展开 subagent,故 dedao 缺编排能力影响小。
@@ -311,7 +311,7 @@ for r in 1 2; do
   fi
 done
 
-# 5. 兜底: 验证双版 + push；GitHub origin/main 是唯一完成通道
+# 5. 兜底: 验证双版 + push；GitHub origin/main 通过后触发飞书合并分发
 sync_main_checkout || true
 ZH_FILE=$(ls ai-news/zh/${TODAY}-*.md 2>/dev/null | head -1)
 EN_FILE=$(ls ai-news/en/${TODAY}-*.md 2>/dev/null | head -1)
@@ -332,7 +332,8 @@ if [ -n "$ZH_FILE" ] && [ -n "$EN_FILE" ]; then
   if git cat-file -e "origin/main:${ZH_FILE}" 2>/dev/null && git cat-file -e "origin/main:${EN_FILE}" 2>/dev/null; then
     touch "$DONE_MARK"
     log "已验证 origin/main 含今日 AI 热点双版，标记完成"
-    log "GitHub origin/main 是唯一完成通道；不再触发飞书/微信"
+    log "已验证 GitHub origin/main 含今日 AI 热点双版；触发幂等飞书合并分发"
+    bash "$HOME/.claude/scripts/daily-digest.sh" >/dev/null 2>&1 || true
   else
     log "ERROR: 本地有 AI 热点，但 origin/main 未同时包含双版；不标记完成，等待下一补偿时刻"
     exit 1
