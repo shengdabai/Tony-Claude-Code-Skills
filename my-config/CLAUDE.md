@@ -87,6 +87,7 @@ Say "setup omc" or run `/oh-my-claudecode:omc-setup`.
 5. **工具纪律**:文件读改搜用 Read/Edit/Write/Grep/Glob;Bash 仅用于启动进程、动态查询、shell-only 操作。`rules/tool-discipline.md`
 6. **机密文件防线**:`.env*`/`*.pem`/`*.key`/`id_rsa*`/`credentials.*`/`secrets.*`/`.aws/credentials`/`.ssh/*` 私钥一律不自动 Read/Edit/Write,`env-guard.sh` hook 硬阻断兜底。`rules/secrets-firewall.md`
 7. **只认真实 tool_use**:动作必须经真实工具调用发起,不得用文本"展示"调用或脑补结果;工具密集会话慎用 `/compact`。`rules/tool-discipline.md`
+8. **多 Agent 启动门**:默认单 Agent；只有用户或适用 Skill 明确要求时才启用。最多 3 个子 Agent，研究/审查只读，写入按文件或 worktree 隔离，主 Agent 独占合并与裁决；冲突立即停火。完整规则见下方强制加载。
 </cardinal_rules>
 
 ## 强制 Skill 路由
@@ -140,6 +141,7 @@ User input 中文;内部推理英文;所有输出中文;代码、命令、标识
 @rules/verification.md
 @rules/session-resilience.md
 @rules/tool-discipline.md
+@../.config/ai-governance/MULTI_AGENT_GOVERNANCE.md
 
 @CLAUDE.local.md
 
