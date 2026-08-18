@@ -1,4 +1,12 @@
+---
+description: CLI 工具与外部资源速查：飞书、Obsidian、GetNote、Context7、Firecrawl、端口管理、会话恢复与归档检索。
+---
+
 # CLI Tools 与外部资源
+
+**用外部资源前先按本表选工具,并确认该工具在本机真的装着;本表没列的能力不要凭印象编命令。**
+
+**Why**:这些工具的命令名、参数和认证方式各不相同且会变,凭印象编出来的命令要么报错要么静默做错事(典型:用 WebFetch 抓微信链接,拿回一张反爬提示页当正文)。本表只记「本机实测可用」的入口,失效的显式标注。
 
 ## 文字工具
 
@@ -9,17 +17,13 @@
 
 ## 视频工具
 
-> 即梦(`dreamina`)/ PixVerse(`pixverse`)/ LiblibAI 近 30 天零触发,详细用法已移出常驻。需用时查:`~/.dreamina_cli/dreamina/SKILL.md`、`pixverse auth login` 后 `pixverse --help`、liblibai npm SDK(HMAC 签名)。
+> 即梦(`dreamina`)/ PixVerse(`pixverse`)/ LiblibAI 近 30 天零触发,详细用法已移出常驻。用前先 `which dreamina pixverse` 确认装没装——`~/.dreamina_cli/` 已不存在(2026-08-18 核实)。PixVerse:`pixverse auth login` 后 `pixverse --help`;LiblibAI:npm SDK,HMAC 签名。
 
-## Karpathy LLM Wiki
+## Karpathy LLM Wiki(⚠️ 未建,2026-08-18 核实)
 
-个人知识库在 `~/wiki/`,基于 Karpathy 的 LLM Wiki 模式。
+`~/wiki/` **不存在**,本机没有这套知识库。要用时先建目录再回来启用本节;在那之前**不要**输出任何 `~/wiki/...` 路径的读写指令。
 
-- `raw/` — 不可变原始素材(文章、论文、录音转录)
-- `wiki/` — LLM 生成维护的结构化页面(实体、概念、摘要、对比、分析)
-- 三大操作:**Ingest**(摄入源文件→更新 wiki 多个页面)、**Query**(基于 wiki 回答问题)、**Lint**(健康检查)
-- Schema 定义在 `~/wiki/CLAUDE.md`
-- 搭配 Obsidian 实时浏览图谱视图
+替代:本机现成的知识库是 Obsidian vault(`~/Documents/Tony`,走 `mcp__obsidian`)和想法工坊(`~/Desktop/02-学习资料/00-想法工坊/`,走 `forge`),两者都实测可用。
 
 ## Context7 MCP
 

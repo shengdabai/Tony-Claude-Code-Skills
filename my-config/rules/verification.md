@@ -1,3 +1,7 @@
+---
+description: 声明完成前的三步验证：read-back、restart-aware、smoke test。任何配置或代码修改在说"已完成"之前强制生效。
+---
+
 # Verification Before "Done"
 
 ## Iron Law: 写完 ≠ 完成

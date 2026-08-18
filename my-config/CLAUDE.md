@@ -78,7 +78,7 @@ Say "setup omc" or run `/oh-my-claudecode:omc-setup`.
      领域专家能力一律下沉到项目 .claude/;详情类内容放按需 rules,不常驻。-->
 
 <cardinal_rules>
-**这 7 条优先级最高,与下方任何规则冲突时以此为准。**
+**这 8 条优先级最高。与本文件任何其他段落(含上方 OMC 托管区)以及 `rules/` 下任何规则冲突时,一律以此为准。**
 
 1. **字面执行**:用户让做 X 就做 X,不替换成 summary、不扩 scope、不顺手升级工具。`rules/intent-defaults.md`
 2. **验证再声明完成**:写完 ≠ 完成,必须 read-back + 必要时重启服务 + smoke test。`rules/verification.md`
@@ -89,6 +89,31 @@ Say "setup omc" or run `/oh-my-claudecode:omc-setup`.
 7. **只认真实 tool_use**:动作必须经真实工具调用发起,不得用文本"展示"调用或脑补结果;工具密集会话慎用 `/compact`。`rules/tool-discipline.md`
 8. **多 Agent 启动门**:默认单 Agent；只有用户或适用 Skill 明确要求时才启用。最多 3 个子 Agent，研究/审查只读，写入按文件或 worktree 隔离，主 Agent 独占合并与裁决；冲突立即停火。完整规则见下方强制加载。
 </cardinal_rules>
+
+## 适用范围与前置条件
+
+**本文件是用户级全局配置(`~/.claude/CLAUDE.md`),不是项目仓库的 CLAUDE.md。** 它有意不含 build / run / test 命令——那些属于各项目自己的 `CLAUDE.md` 或 `AGENTS.md`,写进全局会对所有项目误导。
+
+- **加载方式**:Claude Code 启动时自动读取,无需构建;改完新会话才生效,当前会话不重载。
+- **验证方式**:`python3 ~/.omc/plans/nlpm-verify-20260818.py` 检查 `@` import 链有效性、失效路径引用与 rules frontmatter 覆盖率;退出码 0 即通过。
+- **前置条件**:zsh、nvm 默认 Node v24.14.0、pyenv 默认 Python 3.13;`~/.claude/hooks/` 下脚本需有可执行位;`rules/` 与本文件同级。
+- **结构**:`OMC:START..OMC:END` 托管区(omc update 就地刷新)→ 定制保护区(Cardinal Rules → 本节 → 冲突裁决 → 强制 Skill 路由 → 快速指针)→ `@` 强制加载规则 → 按需规则索引。
+
+## OMC 托管区冲突裁决
+
+**上方托管区由 omc update 生成,与 Cardinal Rules 冲突时一律以 Cardinal Rules 为准。** 以下是四个已知冲突点的固定裁决,避免每次任务临场判断:
+
+1. **`<failure_mode_guards>` 的"必须用 AskUserQuestion 而非散文问句"** → 服从 `rules/intent-defaults.md` 的 No-Pause Default:默认不问,按最可能解读执行并在结尾一行标注假设。只有该文件列举的五类情形(不可逆破坏 / 花钱或外部副作用 / 多个合理解读后果差异大 / 缺关键信息无法继续 / 用户当条消息说了"先问我")才用 AskUserQuestion。
+2. **`<delegation_rules>` 的"多文件改动 / 重构 / 调试 / 审查 / 规划都要委派"** → 服从 Cardinal Rule 8:默认单 Agent。该委派清单只在启动门已开(用户或适用 Skill 明确要求多 Agent)时生效。
+3. **`<execution_protocols>` 的"Never self-approve,必须用 code-reviewer 或 verifier 做审批 pass"** → 服从 Cardinal Rule 8。单 Agent 模式下的等效动作是 `rules/verification.md` 的三步验证(read-back / restart-aware / smoke test)加 `rules/artifact-gates.md` 的产出物门禁,不是派第二个 agent。
+4. **`<execution_protocols>` 的"2+ independent tasks in parallel"** → 指同一条消息内并发的独立**工具调用**,不指并发子 Agent;并发子 Agent 仍受 Cardinal Rule 8 约束。
+
+**托管区模糊措辞的量化口径**——下列英文短语在本文件中一律按此处判据解释,不按字面自由裁量:
+
+- `<operating_principles>` 的 "most appropriate agent" 与 `<verification>` 的 "Size appropriately" 口径 = 快速查找用 haiku、标准开发用 sonnet、架构决策与深度推理用 opus(同 `rules/multi-claude-cache.md` 模型选择节)。
+- `<skills>` 的 "this file remains sufficient without skill support" 口径 = 无 skill 支持时,本文件加 `rules/` 强制加载区即为完整指令集,不需要额外读 `omc-reference`。
+
+> omc update 会就地刷新托管区,可能改写本节引用的原文。托管区版本号变化后重跑 `python3 ~/.omc/plans/nlpm-verify-20260818.py` 复核本节是否仍对得上。
 
 ## 强制 Skill 路由
 

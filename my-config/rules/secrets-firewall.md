@@ -1,3 +1,7 @@
+---
+description: 机密文件零信任铁律。触及 .env* / *.pem / *.key / id_rsa* / credentials.* / secrets.* / .ssh 私钥的任何读写前强制生效；含双重防线与已写入密钥的事后处理。
+---
+
 # Secrets Firewall
 
 ## Iron Law: 机密文件零信任

@@ -1,3 +1,7 @@
+---
+description: Claude × Codex 双模型协同：按 benchmark 强项分工、通路选择表、交接班协议、5 个配合模式、review loop 与反模式。调 codex / 要第二意见 / 批量自动化时加载。
+---
+
 # Claude × Codex 协同（专业分工 + 默契配合）
 
 > 提炼自 2026 工程界实践（Slot Machine / SmartScope review-loop / Ralph / Osmani Loop Engineering）
@@ -54,7 +58,7 @@ Claude 收到 REVISE 后按 receiving-code-review 纪律评估（先验证对不
 **复杂/高风险 diff 的边界**：Claude 做主语义评审（懂全局意图），Codex 做独立对抗式 bug/安全 pass，**两者分歧处 = 重点复核清单**。
 
 **2. Rescue 触发器（换模型解卡）**
-同一 bug 修 **2 次失败** → 自动派 Codex 做**独立**根因诊断（给它现象+相关文件，不给我的失败假设，避免污染）。**Codex 答复不直接采纳**——Claude 合成"原问题 + Codex 逐字结论 + 与我自己分析是否一致"后二次裁决。
+同一 bug 修 **2 次失败** → 用 Codex MCP 只读做**独立**根因诊断（起 rescue sub-agent 需 Tony 点头，见下方启动门边界表）（给它现象+相关文件，不给我的失败假设，避免污染）。**Codex 答复不直接采纳**——Claude 合成"原问题 + Codex 逐字结论 + 与我自己分析是否一致"后二次裁决。
 
 **3. 对抗式 diff（高风险变更）**
 关键重构让两边各出独立方案 → diff 两份输出，**分歧处就是风险点**，重点审分歧。
@@ -89,12 +93,22 @@ Claude 收到 REVISE 后按 receiving-code-review 纪律评估（先验证对不
 
 ## 默认触发（什么时候主动派 Codex，不用等用户说）
 
-**自动 Codex 审查的量化阈值**（满足任一即派，避免"重要代码"过于模糊导致过/欠触发）：
+**与 Cardinal Rule 8「多 Agent 启动门」的边界（先读这条再看阈值）**：启动门管的是**子 Agent 并发**，不是跨模型咨询。两者不冲突，因为触发的是不同东西：
+
+| 通路 | 是否受启动门约束 | 说明 |
+|------|----------------|------|
+| Codex MCP（`sandbox: read-only`）、`codex exec -s read-only` | **不受约束** | 单进程只读咨询，不并发、不写文件、不产生第二个决策主体；等同于查文档 |
+| `codex:codex-rescue` sub-agent、worktree best-of-N、`/oh-my-claudecode:ccg` | **受约束** | 这些真的起子 Agent，需用户或适用 Skill 明确要求才启用 |
+| Codex `workspace-write`（让 Codex 实际改文件） | **受约束** | 产生第二个写入主体，必须走隔离 worktree 且由 Tony 明确要求 |
+
+下面的自动触发阈值**只对第一行的只读通路生效**；命中第二、三行时改为向 Tony 说明"建议派 X，需要你点头"，不自行启用。
+
+**自动 Codex 只读审查的量化阈值**（满足任一即派，避免"重要代码"过于模糊导致过/欠触发）：
 - 改动 **> 80 行**，或
 - 触及 **安全/认证/支付/数据库/文件系统/网络** 任一，或
 - 产出**公开资产**（要 push/发布的代码），或
 - **改了测试**，或
-- 同一 bug 已 **≥2 次** 修复失败（→ 走 rescue 而非普通 review）
+- 同一 bug 已 **≥2 次** 修复失败（→ 先用 Codex MCP 只读诊断；要起 `codex:codex-rescue` sub-agent 需 Tony 点头）
 
 以上之外的小改动，Claude 自审即可，不为仪式感派 Codex。
 机械批量 / 定时自动化 / 长 headless 跑批 → 默认 `codex exec`。

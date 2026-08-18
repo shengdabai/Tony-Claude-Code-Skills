@@ -1,3 +1,7 @@
+---
+description: 大任务先建可恢复 ledger。命中条件：≥5 个独立文件或子任务、预计 ≥30 分钟、多轮 sub-agent、用户说 audit/批量/全部/所有。
+---
+
 # Session Resilience: Plan-Then-Execute
 
 ## Iron Law: 大任务先建可恢复 ledger

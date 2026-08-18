@@ -1,3 +1,7 @@
+---
+description: 多 Claude 会话与 prompt cache 卫生。开新窗口、并行会话、context 接近上限时加载，决定 attach 还是新开。
+---
+
 # Multi-Claude Session & KV Cache Hygiene
 
 ## 数据背景（来自 insights 报告）

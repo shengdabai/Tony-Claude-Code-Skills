@@ -1,3 +1,7 @@
+---
+description: OpenSpec + Superpowers + Agent-Skills 三层分工、SDD 项目自动检测协议、Constitution Gate 与触发关键词清单。
+---
+
 # Spec-Driven Trio: OpenSpec + Superpowers + Agent-Skills
 
 ## 三件套定位

@@ -1,4 +1,12 @@
+---
+description: 工具选择纪律：文件读改搜列用 Read/Edit/Write/Grep/Glob，Bash 仅限启动进程与动态查询；禁止把工具调用写成纯文本伪调用。
+---
+
 # Tool Discipline
+
+**文件读改搜列一律走 Read/Edit/Write/Grep/Glob;Bash 只在没有对应专用工具时用。**
+
+**Why**:专用工具有结构化返回、行号锚点和写入前状态校验,Bash 的 cat/sed 没有——用 Bash 改文件时,harness 无法在改坏时拦住你。另一半原因是伪工具调用:把命令写成文本"展示"而不真调,会话会静默假死,而这类错误在长会话里最难自查。
 
 ## Bash 是最后选择
 文件读/改/搜/列一律用 Read/Edit/Write/Grep/Glob,不走 Bash 的 cat/sed/echo/find/grep/ls;输出文字直接说话,不 echo。Bash 只用于:启动进程、动态状态查询(git status / docker ps / ports)、编译测试、系统级命令、真正需要的多步管道。例外:用户明确要求 bash、一次性诊断(which/stat)、无对应 dedicated tool(chmod 等)。

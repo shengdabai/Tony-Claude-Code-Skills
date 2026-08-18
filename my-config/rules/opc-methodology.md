@@ -1,7 +1,19 @@
+---
+description: OPC 一人企业方法论 9 个 skill 的触发条件与项目集成约定。出现"一人企业 / 利基 / 商业模式 / MVP / 经营复盘"时加载。
+---
+
 # OPC 一人企业方法论 Skills
 
-Easy（@easychen）的《一人企业方法论 2.1》配套 9 个 Claude Code skills,已全局软链到 `~/.claude/skills/opc-*`。
-源位置：`~/Desktop/01-项目开发/01-Claude生态/Tony-Claude-Code-Skills/opc-methodology/`(已并入 Tony-CCS 主仓,与 Easy 上游脱钩,需要时手工 diff 同步)。
+**命中一人企业类话题时,先确认 opc-* skill 是否真的装着;没装就用本文件的方法论骨架自己走流程,不要输出无法执行的 `/opc-*` 命令。**
+
+**Why**:这套 skill 的价值在于阶段边界和共创式问询节奏,不在于命令本身。命令不存在时照样推荐,会让 Tony 输入一个报错的 slash command,比不推荐更糟。
+
+## ⚠️ 安装状态(2026-08-18 核实)
+
+`~/.claude/skills/opc-*` **9 个软链全部不存在**,源目录 `Tony-Claude-Code-Skills/opc-methodology/` 也不存在。**当前所有 `/opc-*` 命令均不可调用。**
+
+- 恢复方式:从 <https://github.com/easychen/opc-methodology> 克隆到 `~/Desktop/01-项目开发/01-Claude生态/Tony-Claude-Code-Skills/opc-methodology/`,再把 `skills/opc-*` 软链到 `~/.claude/skills/`。
+- 恢复前的替代:按下方阶段表自己走流程,产物照常写进项目的 `opc-doc/`;需要外部视角时用 `liuxiaopai-methodology`(教练)或 `liuxiaopai-design`(泼冷水),这两个 skill 本机已装且可用。
 
 ## Skills 清单
 

@@ -1,23 +1,18 @@
 #!/usr/bin/env bash
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
-# ai-archive-daily.sh — launchd 每日驱动:增量导出 + 轻量备份 + 备份轮转
+# ai-archive-daily.sh — launchd 每日驱动:轻量备份 + 备份轮转
+# 会话归一化与搜索已统一交给 /Volumes/2T/03-ai-memory-system/bin/ai-mem；
+# 此任务不再写入 ~/AI-Archive/normalized，避免长期生成第二套会话库。
 # 用绝对路径,避免 nvm/pyenv lazy-load 在 launchd 环境 PATH 缺失
 set -Eeuo pipefail
 
 HOME_DIR="$HOME"
-# python3 多级回退(2026-06-12 修复:homebrew 无版本 symlink 消失,导出连续静默失败半个月)
-PYTHON=""
-for p in /opt/homebrew/bin/python3 /opt/homebrew/bin/python3.13 /usr/bin/python3; do
-  [ -x "$p" ] && PYTHON="$p" && break
-done
-[ -n "$PYTHON" ] || { echo "FATAL: no python3 found" >&2; exit 1; }
 LOG="$HOME_DIR/AI-Archive/daily.log"
 mkdir -p "$HOME_DIR/AI-Archive"
 
 {
   echo "===== $(date -Iseconds) ====="
-  echo "[1/3] 增量导出 ..."
-  "$PYTHON" "$HOME_DIR/.claude/scripts/ai-export.py" 2>&1 || echo "导出失败(非致命)"
+  echo "[1/3] 旧归一化导出已停用（统一索引由 com.tony.ai-mem-fast 维护）"
 
   echo "[2/3] 轻量备份 ..."
   /bin/bash "$HOME_DIR/.claude/scripts/ai-backup.sh" 2>&1 || echo "备份失败(非致命)"

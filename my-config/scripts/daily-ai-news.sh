@@ -41,6 +41,7 @@ CODEX_MODEL="gpt-5.5"
 LOG="$HOME/.claude/logs/daily-ai-news.codex.log"
 TODAY="$(date +%Y-%m-%d)"
 MIN_HOT_ITEMS=5
+TASK_BRIDGE="$HOME/Desktop/01-项目开发/15-飞书桥接/task-progress-bridge.py"
 
 # Codex 调用公共 flags(首轮用;resume 不接受 -s/sandbox 类,见下)
 CODEX_FLAGS=(--dangerously-bypass-approvals-and-sandbox --skip-git-repo-check -C "$WORK" --add-dir "$WORK" -m "$CODEX_MODEL")
@@ -82,6 +83,47 @@ run_limited() {
     "$TIMEOUT_CMD" "$seconds" "$@"
   else
     "$@"
+  fi
+}
+
+# Headless Codex turns are implementation details of this one daily job. Suppress
+# their per-turn hook receipts and send one deduplicated, actionable failure for
+# the whole day instead.
+notify_daily_failure_once() {
+  local summary="$1"
+  local stable_id="daily-ai-news-${TODAY}"
+  if [ ! -f "$TASK_BRIDGE" ] || ! command -v jq >/dev/null 2>&1; then
+    log "WARN: 飞书任务汇报器不可用，无法发送日报失败摘要"
+    return 0
+  fi
+  jq -nc \
+    --arg session_id "$stable_id" \
+    --arg turn_id "$stable_id" \
+    --arg cwd "$WORK" \
+    --arg prompt "每日 AI 热点自动任务 · ${TODAY}" \
+    '{session_id:$session_id,turn_id:$turn_id,cwd:$cwd,prompt:$prompt}' |
+    env CODEX_NOTIFY_DISABLE=0 AI_TASK_NOTIFY_DISABLE=0 \
+      /usr/bin/python3 "$TASK_BRIDGE" --source codex --event UserPromptSubmit >/dev/null 2>&1 || true
+  jq -nc \
+    --arg session_id "$stable_id" \
+    --arg turn_id "$stable_id" \
+    --arg cwd "$WORK" \
+    --arg summary "$summary" \
+    '{session_id:$session_id,turn_id:$turn_id,cwd:$cwd,last_assistant_message:$summary}' |
+    env CODEX_NOTIFY_DISABLE=0 AI_TASK_NOTIFY_DISABLE=0 \
+      /usr/bin/python3 "$TASK_BRIDGE" --source codex --event StopFailure >/dev/null 2>&1 || true
+  log "已请求发送按日去重的飞书失败摘要"
+}
+
+codex_infrastructure_failure() {
+  if grep -qiE 'invalid_refresh_token|access token could not be refreshed|log out and sign in again|401 Unauthorized' \
+    "$RELAY_OUT" "$RELAY_JSON" 2>/dev/null; then
+    printf '%s\n' 'Codex CLI 登录已失效（401 / invalid_refresh_token）。请重新登录 Codex；任务将在下一定时窗口自动补偿。'
+  elif grep -qiE '502 Bad Gateway|504 Gateway Timeout|stream disconnected|Reconnecting\.\.\.' \
+    "$RELAY_OUT" "$RELAY_JSON" 2>/dev/null; then
+    printf '%s\n' 'Codex 上游代理连接失败（502/504 或连接中断）。本窗口已停止重复轰炸式重试，下一定时窗口会自动补偿。'
+  else
+    return 1
   fi
 }
 # L1 告警:撞 429 时推 ntfy,避免静默漏稿(复用 claude-auto-resume 同款 topic)
@@ -252,20 +294,29 @@ RELAY_JSON="$HOME/.claude/logs/.daily-ai-news-codex-events.jsonl"
 
 # 撞用量上限检测(ChatGPT 订阅额度 / 429)
 hit_session_limit() {
-  grep -qiE "usage limit reached|usage_limit_reached|rate limit exceeded|429 too many requests|quota exceeded|exceeded your current quota" "$RELAY_OUT" 2>/dev/null
+  grep -qiE "usage limit reached|usage_limit_reached|rate limit exceeded|429 too many requests|quota exceeded|exceeded your current quota" "$RELAY_OUT" "$RELAY_JSON" 2>/dev/null
 }
 
 # 首轮:用 --json 捕获 codex 生成的 session_id(供后续 resume)。
 # session_id 在 JSONL 事件里(thread.started / session 字段),首轮跑完从 events 解析。
-echo "$PROMPT" | run_limited 1500 "$CODEX" exec --json "${CODEX_FLAGS[@]}" - \
+echo "$PROMPT" | run_limited 1500 env CODEX_NOTIFY_DISABLE=1 "$CODEX" exec --json "${CODEX_FLAGS[@]}" - \
   > "$RELAY_JSON" 2>"$RELAY_OUT"
 RC=$?
 cat "$RELAY_OUT" >> "$LOG"
 log "  Codex 首轮调用 rc=$RC (124=超时)"
 if hit_session_limit; then
   log "  撞用量上限, 止损退出, 后续 launchd 时刻自动重试"
+  notify_daily_failure_once "Codex 本窗口触发用量或速率限制；下一定时窗口会自动补偿。"
   ntfy_send "⚠️ daily-ai-news 撞 Codex 429 限额, 今日($TODAY)日报暂未出, 等下个 launchd 窗口(5h窗重置后)自动重试。如需立即出稿可手动跑或临时切 API key。"
   exit 0
+fi
+if [ "$RC" -ne 0 ]; then
+  INFRA_FAILURE=$(codex_infrastructure_failure || true)
+  if [ -n "$INFRA_FAILURE" ]; then
+    log "  基础设施故障，跳过同窗口 resume 重试: $INFRA_FAILURE"
+    notify_daily_failure_once "$INFRA_FAILURE"
+    exit 1
+  fi
 fi
 
 # 从 JSONL 事件解析 session_id(字段名随 codex 版本可能变,做多键兜底)
@@ -305,9 +356,9 @@ for r in 1 2; do
   if ls ai-news/zh/${TODAY}-*.md >/dev/null 2>&1 && ls ai-news/en/${TODAY}-*.md >/dev/null 2>&1; then break; fi
   log "接力 +$r 轮..."
   if [ -n "$SID" ]; then
-    echo "$CONT_PROMPT" | run_limited 900 "$CODEX" exec resume "$SID" "${RESUME_FLAGS[@]}" - >> "$LOG" 2>&1
+    echo "$CONT_PROMPT" | run_limited 900 env CODEX_NOTIFY_DISABLE=1 "$CODEX" exec resume "$SID" "${RESUME_FLAGS[@]}" - >> "$LOG" 2>&1
   else
-    echo "$CONT_PROMPT" | run_limited 900 "$CODEX" exec resume --last "${RESUME_FLAGS[@]}" - >> "$LOG" 2>&1
+    echo "$CONT_PROMPT" | run_limited 900 env CODEX_NOTIFY_DISABLE=1 "$CODEX" exec resume --last "${RESUME_FLAGS[@]}" - >> "$LOG" 2>&1
   fi
 done
 
@@ -323,6 +374,7 @@ if [ -n "$ZH_FILE" ] && [ -n "$EN_FILE" ]; then
   if [ -n "$(git diff --cached --name-only)" ]; then
     if ! release_audit_ok; then
       log "FATAL: release audit 未通过，不 commit、不 push"
+      notify_daily_failure_once "AI 热点双版已生成，但公开发布审计未通过；本次未 commit、未 push。"
       exit 1
     fi
     git commit -q -m "post(ai-news): ${TODAY} AI 圈过去 24 小时热点" 2>>"$LOG"
@@ -336,10 +388,13 @@ if [ -n "$ZH_FILE" ] && [ -n "$EN_FILE" ]; then
     bash "$HOME/.claude/scripts/daily-digest.sh" >/dev/null 2>&1 || true
   else
     log "ERROR: 本地有 AI 热点，但 origin/main 未同时包含双版；不标记完成，等待下一补偿时刻"
+    notify_daily_failure_once "AI 热点双版已在本地生成，但 origin/main 验证未通过；下一定时窗口会自动补偿发布。"
     exit 1
   fi
 else
   log "ERROR: AI 热点双版未齐(zh=${ZH_FILE:-无} en=${EN_FILE:-无})"
+  notify_daily_failure_once "Codex 已结束，但 AI 热点中英双版未生成齐全；下一定时窗口会自动补偿。"
+  exit 1
 fi
 
 log "===== 任务结束 ====="
