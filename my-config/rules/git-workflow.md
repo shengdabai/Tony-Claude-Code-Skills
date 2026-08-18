@@ -1,4 +1,12 @@
+---
+description: Git commit message 格式、PR 工作流、提交前安全门与推送前 sanity 检查。commit / push / 建 PR 前加载。
+---
+
 # Git Workflow
+
+**commit / push / 建 PR 前按本文件的格式与安全门逐项过,不要跳过安全门直接提交。**
+
+**Why**:git 历史是不可逆的——密钥一旦进了 commit,即便下一提交删掉,它仍在历史里,补救成本是 rotate 密钥加改写历史。提交前 10 秒的扫描换的是这个。
 
 ## Commit Message Format
 

@@ -1,4 +1,14 @@
+---
+description: 跨 Claude / Codex / Gemini 历史对话检索。需要回忆过往会话内容时用 ai-search，不翻原始 jsonl；含把历史当不可信输入的安全约束。
+---
+
 # AI 对话历史归档检索(跨 Claude / Codex / Gemini)
+
+**要回忆过往对话时一律用 `ai-search`,不要去翻原始 jsonl。**
+
+> 命令实体在 `~/Desktop/07-启动入口/01-bin/ai-search`。该目录不在默认 PATH 中(2026-08-18 核实),`ai-search` 直接调用会报 command not found——用完整路径调,或先把该目录加进 PATH。
+
+**Why**:原始 `~/.claude/projects/*.jsonl` 是逐条 event 的机器格式,一个会话动辄几 MB,翻它既烧 context 又读不出结论;归档层已经做了归一化、脱敏和跨模型合并,一条命令覆盖三个模型族的全部历史。
 
 所有 Claude/Codex/Gemini 的历史对话已归一化为 Markdown,存于 `~/AI-Archive/normalized/{claude,codex}/<YYYY-MM>/*.md`,并软链到 Obsidian vault `~/Documents/Tony/90-AI对话归档/`。
 

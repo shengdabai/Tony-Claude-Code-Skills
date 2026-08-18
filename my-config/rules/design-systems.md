@@ -1,27 +1,41 @@
-# Design Systems Reference (awesome-design-md)
+---
+description: UI 设计任务的品牌设计系统参考来源与选型判据。执行前端 / UI 设计任务且需要具体品牌视觉规范时加载;含本机可用资源清单与失效资源标注。
+---
 
-58 个品牌设计系统存放于 `~/.claude/design-systems/design-md/`,每个品牌包含完整 DESIGN.md(色彩、排版、组件、间距、阴影、响应式)。
+# Design Systems Reference
 
-## 使用时机
+**做 UI 设计前先确认参考源真实存在,再决定用哪一个;不要凭记忆复述品牌规范。**
 
-执行任何 UI/前端设计任务时(包括 `/frontend-design`, `/design-review`, `/design-consultation`, `/plan-design-review`, `/canvas-design`, `impeccable:*` 等 design skills),根据项目需求加载对应品牌的 DESIGN.md 作为设计参考。
+**Why**:视觉规范是细节密集型知识(具体色值、字号阶梯、圆角与阴影参数),模型凭记忆复述必然编造。参考源不存在时,正确动作是换一个存在的源,而不是继续假装在"参考 Vercel 的排版"。
 
-## 使用方式
+## ⚠️ 已失效资源(2026-08-18 核实)
 
-- 用户指定品牌风格时:`Read ~/.claude/design-systems/design-md/{brand}/DESIGN.md`
-- 用户未指定时:根据项目类型推荐合适的设计参考
-  - AI 产品 → claude / cohere / mistral.ai
-  - 开发工具 → vercel / linear / cursor
-  - 金融 → stripe / wise / coinbase
-  - 内容/创作 → notion / airtable / framer
-- 可组合多个品牌的优点(如 Vercel 的排版 + Stripe 的色彩)
+`~/.claude/design-systems/design-md/` **目录不存在**,原先记录的 58 个品牌 DESIGN.md 全部不可读。本节保留是为了防止再次凭记忆引用它。
 
-## 可用品牌(58 个)
+- 恢复方式:重新克隆 awesome-design-md 到该路径后,本节可删除。
+- 恢复前:**禁止**输出"参考 `~/.claude/design-systems/design-md/{brand}/DESIGN.md`"这类指令,那是空指令。
 
-- **AI**: claude, cohere, elevenlabs, mistral.ai, ollama, replicate, runwayml, together.ai, voltagent, x.ai, minimax, opencode.ai
-- **DevTools**: cursor, expo, linear.app, lovable, mintlify, posthog, raycast, resend, sentry, supabase, superhuman, vercel, warp, zapier
-- **Infra**: clickhouse, composio, hashicorp, mongodb, sanity, stripe
-- **Design**: airtable, cal, clay, figma, framer, intercom, miro, notion, pinterest, webflow
-- **Fintech**: coinbase, kraken, revolut, wise
-- **Enterprise**: airbnb, apple, ibm, nvidia, spacex, spotify, uber
-- **Auto**: bmw, ferrari, lamborghini, renault, tesla
+## 本机实际可用的设计参考(按优先级)
+
+| 需求 | 用什么 | 为什么是它 |
+|---|---|---|
+| 色板 / 字体配对 / 组件规范 | `ui-ux-pro-max` skill | 本机已装,内含 161 色板、57 字体配对、50+ 风格、99 条 UX 准则,覆盖 10 个技术栈 |
+| 从零建设计系统 | `/design-consultation`(gstack) | 会先调研产品与竞品,再产出完整设计系统 + 字体色彩预览 |
+| 已有界面要打磨 / 审查 | `impeccable:*` | 按具体诉求分流(colorize / layout / typeset / critique / polish),见 `rules/gstack-routing.md` |
+| 高保真原型 / 幻灯片 / 动画 | `huashu-design` skill | 内置 40 种网页风格 + 20 种 PPT 风格弹药库 |
+| 需要真实品牌的当前规范 | 抓官方设计站 | 用 `mcp__firecrawl__firecrawl_scrape` 抓品牌官方 design system 页,拿到的是当下版本而非快照 |
+
+## 选型判据(可测)
+
+用户未指定风格时,按**产品类型**选默认参考,并在产出里写明选了哪个及一句理由:
+
+- AI / 模型类产品 → Claude 或 Mistral 的克制排版(大留白、单主色、无渐变)
+- 开发者工具 → Vercel / Linear 路线(高对比、等宽字体做数据、暗色优先)
+- 金融 / 交易 → Stripe / Wise 路线(强层级、数字表格对齐、状态色语义化)
+- 内容 / 创作 → Notion / Framer 路线(阅读优先、字号阶梯宽、弱化边框)
+
+**判据是"产品类型 → 路线",不是"我觉得好看"**。组合多个路线时必须说明组合了哪两条以及冲突处怎么取舍(通常排版跟一条、色彩跟另一条,不混三条以上)。
+
+## 品牌设计系统与 CLAUDE.md 的关系
+
+`rules/gstack-routing.md` 负责"用哪个 skill",本文件负责"参考哪套视觉语言"。两者叠加使用,不互相替代。

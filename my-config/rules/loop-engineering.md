@@ -1,3 +1,7 @@
+---
+description: 循环工程：重复 ≥2 次的任务必须 loop 化，五要素（Trigger / Work / Verify / Exit / Budget）缺一不启动。命中 /loop、ralph、监工、定时任务时加载。
+---
+
 # Loop Engineering（循环工程）
 
 > 范式来源：2026-06 Addy Osmani / Boris Cherny（Claude Code 负责人）——

@@ -1,6 +1,12 @@
+---
+description: smux 多代理团队协同：在 tmux team 会话中用 tmux-bridge 调度真实 Codex CLI 与 Gemini CLI，而非内置 Agent tool。
+---
+
 # smux 多代理团队协同
 
-当你在 tmux team 会话中运行时(通过 `smux` 或 `team-start` 启动),**必须使用 tmux-bridge 调度真实的 Codex CLI 和 Gemini CLI**,而不是用内置 Agent tool 生成子 agent。
+**在 tmux team 会话中(通过 `smux` 或 `team-start` 启动),必须用 tmux-bridge 调度真实的 Codex CLI 和 Gemini CLI,不要用内置 Agent tool 生成子 agent。**
+
+**Why**:team 会话里那几个 pane 已经是启动好的真实 CLI 进程,各自带独立额度和独立模型族。再用内置 Agent tool 起子 agent,等于在 Claude 额度里重跑一份同样的活,既浪费已开的进程,又把跨模型族互审退化成同族自审。
 
 ## 检测方法
 
@@ -37,4 +43,4 @@ tmux-bridge read <pane-label> 50
 - 派任务前先 read 目标 pane,确认它处于空闲状态(在提示符处)
 - 如果目标 pane 中的 AI 正忙,等它完成再派新任务
 - 任务描述要清晰完整,包含目标、范围、输出格式
-- 参考 `~/TEAM_ROLES.md` 了解各角色职责与权限边界
+- 角色职责与权限边界以 `~/.config/ai-governance/MULTI_AGENT_GOVERNANCE.md` 为准(`~/TEAM_ROLES.md` 已不存在,2026-08-18 核实;`team-start` 若重新生成该文件,以生成版为准)
