@@ -137,17 +137,26 @@ graceful_quit() {
 # 获取当前 swap 使用百分比
 get_swap_pct() {
     local line used total
-    line=$(sysctl -n vm.swapusage)
+    line=$(sysctl -n vm.swapusage 2>/dev/null || true)
     used=$(echo "$line" | awk '{print $6}' | tr -d 'M')
     total=$(echo "$line" | awk '{print $3}' | tr -d 'M')
-    awk "BEGIN{printf \"%.0f\", $used/$total*100}"
+    awk -v used="$used" -v total="$total" 'BEGIN {
+        if (used == "" || total == "" || (total + 0) <= 0) {
+            print 0
+            exit
+        }
+        printf "%.0f", (used + 0) / (total + 0) * 100
+    }'
 }
 
 # 获取 compressor MB
 get_compressor_mb() {
     local pages
     pages=$(vm_stat | awk '/Pages occupied by compressor/ {gsub(/\./,"",$5); print $5}')
-    echo $((pages * 16 / 1024))
+    case "$pages" in
+        ''|*[!0-9]*) echo 0 ;;
+        *) echo $((pages * 16 / 1024)) ;;
+    esac
 }
 
 # 是否仍超阈值(swap 或 compressor 任一超标都算"仍有压力")。
@@ -169,13 +178,12 @@ main() {
     swap_pct=$(get_swap_pct)
     comp_mb=$(get_compressor_mb)
 
-    log_info "swap=${swap_pct}% compressor=${comp_mb}MB threshold_swap=${SWAP_THRESHOLD}% threshold_comp=${COMP_THRESHOLD_MB}MB dry_run=${DRY_RUN}"
-
     # 未达到阈值，静默退出
     if [ "$swap_pct" -lt "$SWAP_THRESHOLD" ] && [ "$comp_mb" -lt "$COMP_THRESHOLD_MB" ]; then
         return 0
     fi
 
+    log_info "swap=${swap_pct}% compressor=${comp_mb}MB threshold_swap=${SWAP_THRESHOLD}% threshold_comp=${COMP_THRESHOLD_MB}MB dry_run=${DRY_RUN}"
     log_warn "触发阈值: swap=${swap_pct}% comp=${comp_mb}MB — 开始清理"
 
     # 依次尝试退出可回收应用
