@@ -35,18 +35,16 @@ echo $$ > "$CLAUDE_SESSION_LOCK/pid"
 trap 'rm -f "$CLAUDE_SESSION_LOCK/pid"; rmdir "$CLAUDE_SESSION_LOCK" 2>/dev/null' EXIT
 # --- 锁结束 ---
 
-WORK="${TONY_ARTICLES_WORK:-$HOME/.local/share/tony-articles}"
+WORK="$HOME/.local/share/tony-articles"
 CODEX="$HOME/.nvm/versions/node/v24.14.0/bin/codex"
 CODEX_MODEL="gpt-5.5"
-CODEX_REASONING_EFFORT="xhigh"
 LOG="$HOME/.claude/logs/daily-ai-news.codex.log"
 TODAY="$(date +%Y-%m-%d)"
-STAGE_DIR="$HOME/.claude/logs/daily-ai-news-stage-${TODAY}"
 MIN_HOT_ITEMS=5
 TASK_BRIDGE="$HOME/Desktop/01-项目开发/15-飞书桥接/task-progress-bridge.py"
 
 # Codex 调用公共 flags(首轮用;resume 不接受 -s/sandbox 类,见下)
-CODEX_FLAGS=(--dangerously-bypass-approvals-and-sandbox --skip-git-repo-check -C "$STAGE_DIR" --add-dir "$STAGE_DIR" -m "$CODEX_MODEL" -c "model_reasoning_effort=\"$CODEX_REASONING_EFFORT\"")
+CODEX_FLAGS=(--dangerously-bypass-approvals-and-sandbox --skip-git-repo-check -C "$WORK" --add-dir "$WORK" -m "$CODEX_MODEL")
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG"; }
 sync_main_checkout() {
@@ -56,47 +54,19 @@ sync_main_checkout() {
     return 1
   fi
   git fetch -q origin main 2>>"$LOG" || return 1
+  if [ "$(git symbolic-ref --short HEAD 2>/dev/null)" != "main" ]; then
+    git switch -q main 2>>"$LOG" || return 1
+  fi
   git merge -q --ff-only origin/main 2>>"$LOG" || return 1
 }
 
 release_audit_ok() {
-  local audit_dir supplied source relative rc
   command -v product-release-audit >/dev/null 2>&1 || {
     log "FATAL: product-release-audit 不可用，拒绝公开发布"
     return 1
   }
-  [ "$#" -ge 1 ] || { log "FATAL: release audit 未指定当天文件"; return 1; }
-  audit_dir="$(mktemp -d "${TMPDIR:-/tmp}/tony-ai-news-audit.${TODAY}.XXXXXX")" || return 1
-  rc=1
-  for supplied in "$@"; do
-    case "$supplied" in
-      ai-news/en/${TODAY}-*.md|ai-news/zh/${TODAY}-*.md)
-        relative="$supplied"; source="$WORK/$supplied" ;;
-      "$STAGE_DIR"/ai-news/en/${TODAY}-*.md)
-        relative="ai-news/en/$(basename "$supplied")"; source="$supplied" ;;
-      "$STAGE_DIR"/ai-news/zh/${TODAY}-*.md)
-        relative="ai-news/zh/$(basename "$supplied")"; source="$supplied" ;;
-      *) log "FATAL: release audit 拒绝非当天 AI 热点路径: $supplied"; rm -rf -- "$audit_dir"; return 1 ;;
-    esac
-    [ -f "$source" ] || { log "FATAL: 待审计文件不存在: $relative"; rm -rf -- "$audit_dir"; return 1; }
-    [ -s "$source" ] || { log "FATAL: 待审计文件为空: $relative"; rm -rf -- "$audit_dir"; return 1; }
-    head -1 "$source" | grep -q '^# ' || { log "FATAL: 标题格式错误: $relative"; rm -rf -- "$audit_dir"; return 1; }
-    grep -q "$TODAY" "$source" || { log "FATAL: 正文缺少发布日期 $TODAY: $relative"; rm -rf -- "$audit_dir"; return 1; }
-    if grep -Eq '(/Users/|/Volumes/|sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|[A-Za-z0-9_]*(TOKEN|SECRET|API_KEY)[[:space:]]*[=:])' "$source"; then
-      log "FATAL: 脱敏检查命中内部路径或凭据模式: $relative"; rm -rf -- "$audit_dir"; return 1
-    fi
-    mkdir -p "$audit_dir/$(dirname "$relative")"
-    cp -p "$source" "$audit_dir/$relative" || { rm -rf -- "$audit_dir"; return 1; }
-  done
-  if run_limited 600 product-release-audit audit --max-cost 1.5 "$audit_dir" >>"$LOG" 2>&1 &&
-     product-release-audit verify "$audit_dir" >>"$LOG" 2>&1; then
-    log "增量 release audit 通过: $# 个当天文件"
-    rc=0
-  else
-    log "ERROR: 增量 release audit 失败或超时"
-  fi
-  rm -rf -- "$audit_dir"
-  return "$rc"
+  product-release-audit audit . >>"$LOG" 2>&1 &&
+    product-release-audit verify . >>"$LOG" 2>&1
 }
 TIMEOUT_CMD=""
 if command -v timeout >/dev/null 2>&1; then
@@ -152,9 +122,6 @@ codex_infrastructure_failure() {
   elif grep -qiE '502 Bad Gateway|504 Gateway Timeout|stream disconnected|Reconnecting\.\.\.' \
     "$RELAY_OUT" "$RELAY_JSON" 2>/dev/null; then
     printf '%s\n' 'Codex 上游代理连接失败（502/504 或连接中断）。本窗口已停止重复轰炸式重试，下一定时窗口会自动补偿。'
-  elif grep -qiE 'unsupported_value.*reasoning\.effort|Unsupported value:.*not supported.*model' \
-    "$RELAY_OUT" "$RELAY_JSON" 2>/dev/null; then
-    printf '%s\n' "Codex 配置错误：${CODEX_MODEL} 不接受当前 reasoning effort。本窗口已停止无效接力。"
   else
     return 1
   fi
@@ -170,7 +137,14 @@ log "===== 开始每日 AI 热点任务(Codex 版) $TODAY ====="
 
 # 1. 同步仓库
 cd "$WORK" || { log "FATAL: $WORK 不存在"; exit 1; }
-sync_main_checkout || { log "FATAL: 启动时无法安全快进到 origin/main，拒绝在不确定状态继续"; exit 1; }
+sync_main_checkout || log "WARN: 启动时未能把主发布 checkout 快进到 origin/main；后续发布将 fail-closed"
+rm -f ruvector.db ./*.db 2>/dev/null
+git rm --cached --ignore-unmatch ruvector.db "*.db" >/dev/null 2>&1
+for i in 1 2 3; do
+  git pull -q --rebase origin main 2>>"$LOG" && break
+  [ "$i" -eq 3 ] && { git rebase --abort 2>/dev/null; git fetch -q origin main; git reset --hard origin/main 2>>"$LOG"; }
+  sleep $((i*3))
+done
 
 # 2. 幂等:完成标记存在才直接跳过；若文件已存在但上次在标记前中断，先回查远端。
 DONE_MARK="$HOME/.claude/logs/.daily-ai-news-done-${TODAY}"
@@ -190,8 +164,8 @@ if ls ai-news/zh/${TODAY}-*.md >/dev/null 2>&1 && ls ai-news/en/${TODAY}-*.md >/
   fi
   log "WARN: 本地已有今日 AI 热点双版但 origin/main 未齐，直接重试审核/提交/push，不重新生成"
   python3 .tools/gen_readme.py >>"$LOG" 2>&1 || true
-  git add "$EXISTING_ZH" "$EXISTING_EN" README.md 2>/dev/null
-  if ! release_audit_ok "$EXISTING_ZH" "$EXISTING_EN"; then
+  git add "$EXISTING_ZH" "$EXISTING_EN" README.md .gitignore .tools/gen_readme.py 2>/dev/null
+  if ! release_audit_ok; then
     log "FATAL: release audit 未通过，不 commit、不 push；等待下一补偿时刻"
     exit 1
   fi
@@ -245,8 +219,6 @@ done
 if [ "$ITEM_N" -lt "$MIN_HOT_ITEMS" ]; then
   log "WARN: aihot 5 次重试后只有 $ITEM_N 条, 将交给 Codex 联网搜索补齐到至少 $MIN_HOT_ITEMS 条后继续"
 fi
-mkdir -p "$STAGE_DIR/ai-news/zh" "$STAGE_DIR/ai-news/en" "$STAGE_DIR/inputs"
-cp -p "$AIHOT_RAW" "$STAGE_DIR/inputs/aihot.json"
 
 # 4. 调 Codex(headless), dedao-write 简化模式整理 + 个人化过滤
 PROMPT=$(cat <<PROMPT_EOF
@@ -259,14 +231,14 @@ PROMPT=$(cat <<PROMPT_EOF
 写成 "为什么值得关心",而不是 "为什么 Tony 该关心"。
 
 【第一步: 读热点原始数据 + 不足时联网补全】
-读 inputs/aihot.json (aihot.virxact.com 返回的 JSON), 提取所有 items。
+读 $AIHOT_RAW (aihot.virxact.com 返回的 JSON), 提取所有 items。
 每条字段包括: title / chineseTitle / chineseSummary / url / publishedAt / category。
 当前 aihot 原始条数是 ${ITEM_N:-0}, 目标至少 ${MIN_HOT_ITEMS} 条。
 如果原始数据少于 ${MIN_HOT_ITEMS} 条, 不要退出、不要等待下个窗口:
 - 立刻使用 WebSearch / web.run / curl 可访问的公开网页, 搜索过去 24-48 小时内与 AI 相关的热点。
 - 优先补 Claude Code / Anthropic / OpenAI / AI Agent / MCP / AI 编程工具 / 独立开发者 / 国产大模型 / 开源模型 / AI 产品发布。
 - 每条补充热点必须有可打开的原文 URL, 不要用只有二手转述且无来源的内容。
-- 最终尽量保持 5 条; 若公开信息确实不足, 允许 3-4 条简版日报, 但必须成稿并保存双版, 不能因为条数不足退出。
+- 最终尽量保持 5 条; 若公开信息确实不足, 允许 3-4 条简版日报, 但必须成稿、保存并发布到 GitHub main, 不能因为条数不足退出。
 
 【第二步: 个人化过滤(Tony 的兴趣画像)】
 **Tony 高度关注的方向**(命中加权 +3):
@@ -302,19 +274,21 @@ PROMPT=$(cat <<PROMPT_EOF
 
 长度: 中文版 800-1500 字, 英文版 600-1000 词。
 
-【第四步: 只保存双版，不发布】
+【第四步: 保存双版 + push】
 - 中文: ai-news/zh/${TODAY}-AI圈过去24小时.md
 - 英文: ai-news/en/${TODAY}-ai-news-daily.md
 - 两版开头加: # 标题  > 发布日期:${TODAY} · 类型:AI 热点日报  ---
-- 只允许写上述两个当天文件。不要运行 git、ai-git-workflow、product-release-audit，不要修改 README、历史日报或其他文件。
-- 外层自动化会负责审核、提交、推送与飞书分发；两份文件保存完立即停止。
+- 重建 README: python3 .tools/gen_readme.py
+- git add ai-news/ README.md .gitignore .tools/ → commit
+- 用户已明确授权这项每日自动任务公开发布到 GitHub main。完成脱敏检查并运行
+  product-release-audit audit . 与 product-release-audit verify . 后，必须执行
+  git push origin HEAD:main。只 push 到 ai/* 分支或只给 PR 链接不算完成。
 
-完成后报告: 中英版文件名 + 选了哪 5-8 条热点(标题列表), 以及哪些来自 aihot、哪些来自联网补全。
+完成后报告: 中英版文件名 + 是否推送成功 + 选了哪 5-8 条热点(标题列表), 以及哪些来自 aihot、哪些来自联网补全。
 PROMPT_EOF
 )
 
-cd "$STAGE_DIR" || { log "FATAL: 无法进入暂存目录 $STAGE_DIR"; exit 1; }
-log "调用 Codex 整理 AI 热点(非 Git 暂存区)..."
+log "调用 Codex 整理 AI 热点..."
 RELAY_OUT="$HOME/.claude/logs/.daily-ai-news-codex-out.txt"
 RELAY_JSON="$HOME/.claude/logs/.daily-ai-news-codex-events.jsonl"
 
@@ -376,51 +350,35 @@ log "  解析到 session_id=${SID:-<空,后续接力改用 --last>}"
 # 接力一轮(若首轮没出双版)。优先用解析到的 SID;解析失败用 --last(同 cwd + 共享锁串行,安全)。
 # 注意:resume 子命令【不支持 -C/--add-dir】(只有顶层 codex exec 有),靠当前进程 cwd 过滤会话;
 #   脚本开头已 cd "$WORK",故 resume 自动定位到本仓库的会话。headless 续跑要跑 git,须带免审批+跳git检查。
-RESUME_FLAGS=(--dangerously-bypass-approvals-and-sandbox --skip-git-repo-check -m "$CODEX_MODEL" -c "model_reasoning_effort=\"$CODEX_REASONING_EFFORT\"")
-CONT_PROMPT="继续完成 AI 热点日报: 如果 aihot 原始数据不足 5 条, 立刻联网搜索过去 24-48 小时 AI 热点补齐, 不要因为条数不足退出。把双版保存到 ai-news/zh/${TODAY}-*.md 和 ai-news/en/${TODAY}-*.md。只写这两个当天文件；不要运行 git、ai-git-workflow、product-release-audit，不要修改其他文件。保存后立即停止。"
+RESUME_FLAGS=(--dangerously-bypass-approvals-and-sandbox --skip-git-repo-check -m "$CODEX_MODEL")
+CONT_PROMPT="继续完成 AI 热点日报: 如果 aihot 原始数据不足 5 条, 立刻联网搜索过去 24-48 小时 AI 热点补齐, 不要因为条数不足退出。把双版保存到 ai-news/zh/${TODAY}-*.md 和 ai-news/en/${TODAY}-*.md, 运行 python3 .tools/gen_readme.py, git add/commit，完成脱敏与 product-release-audit 后执行 git push origin HEAD:main。用户已明确授权每日公开发布；只推 ai/* 分支或给 PR 链接不算完成。"
 for r in 1 2; do
-  if ls "$STAGE_DIR"/ai-news/zh/${TODAY}-*.md >/dev/null 2>&1 && ls "$STAGE_DIR"/ai-news/en/${TODAY}-*.md >/dev/null 2>&1; then break; fi
+  if ls ai-news/zh/${TODAY}-*.md >/dev/null 2>&1 && ls ai-news/en/${TODAY}-*.md >/dev/null 2>&1; then break; fi
   log "接力 +$r 轮..."
   if [ -n "$SID" ]; then
-    echo "$CONT_PROMPT" | run_limited 900 env CODEX_NOTIFY_DISABLE=1 "$CODEX" exec resume "$SID" "${RESUME_FLAGS[@]}" - > "$RELAY_OUT" 2>&1
+    echo "$CONT_PROMPT" | run_limited 900 env CODEX_NOTIFY_DISABLE=1 "$CODEX" exec resume "$SID" "${RESUME_FLAGS[@]}" - >> "$LOG" 2>&1
   else
-    echo "$CONT_PROMPT" | run_limited 900 env CODEX_NOTIFY_DISABLE=1 "$CODEX" exec resume --last "${RESUME_FLAGS[@]}" - > "$RELAY_OUT" 2>&1
-  fi
-  RC=$?
-  cat "$RELAY_OUT" >> "$LOG"
-  if [ "$RC" -ne 0 ]; then
-    INFRA_FAILURE=$(codex_infrastructure_failure || true)
-    if [ -n "$INFRA_FAILURE" ]; then
-      log "  基础设施故障，停止后续 resume: $INFRA_FAILURE"
-      notify_daily_failure_once "$INFRA_FAILURE"
-      exit 1
-    fi
+    echo "$CONT_PROMPT" | run_limited 900 env CODEX_NOTIFY_DISABLE=1 "$CODEX" exec resume --last "${RESUME_FLAGS[@]}" - >> "$LOG" 2>&1
   fi
 done
 
-# 5. 外层脚本唯一负责审核、提交、推送；先审暂存文件，失败不污染发布 checkout
-STAGED_ZH=$(ls "$STAGE_DIR"/ai-news/zh/${TODAY}-*.md 2>/dev/null | head -1)
-STAGED_EN=$(ls "$STAGE_DIR"/ai-news/en/${TODAY}-*.md 2>/dev/null | head -1)
-if [ -n "$STAGED_ZH" ] && [ -n "$STAGED_EN" ]; then
-  release_audit_ok "$STAGED_ZH" "$STAGED_EN" || {
-    log "FATAL: 暂存 AI 热点 release audit 未通过，发布 checkout 保持不变"
-    notify_daily_failure_once "AI 热点双版已生成，但暂存发布审计未通过；发布 checkout 未改动。"
-    exit 1
-  }
-  cd "$WORK" || exit 1
-  sync_main_checkout || { log "FATAL: 发布前无法安全快进到 origin/main"; exit 1; }
-  cp -p "$STAGED_ZH" "ai-news/zh/$(basename "$STAGED_ZH")"
-  cp -p "$STAGED_EN" "ai-news/en/$(basename "$STAGED_EN")"
-fi
+# 5. 兜底: 验证双版 + push；GitHub origin/main 通过后触发飞书合并分发
+sync_main_checkout || true
 ZH_FILE=$(ls ai-news/zh/${TODAY}-*.md 2>/dev/null | head -1)
 EN_FILE=$(ls ai-news/en/${TODAY}-*.md 2>/dev/null | head -1)
 if [ -n "$ZH_FILE" ] && [ -n "$EN_FILE" ]; then
   log "SUCCESS: zh=$(basename "$ZH_FILE") en=$(basename "$EN_FILE")"
+  rm -f ruvector.db ./*.db 2>/dev/null
   python3 .tools/gen_readme.py >>"$LOG" 2>&1 || true
-  git add "$ZH_FILE" "$EN_FILE" README.md 2>/dev/null
+  git add ai-news/ README.md .gitignore .tools/ 2>/dev/null
   if [ -n "$(git diff --cached --name-only)" ]; then
-    git commit -q -m "post(ai-news): ${TODAY} AI 圈过去 24 小时热点" 2>>"$LOG" || { log "ERROR: commit 失败"; exit 1; }
-    for i in 1 2 3; do git push -q origin HEAD:main 2>>"$LOG" && { log "push 成功"; break; }; sleep $((i*5)); done
+    if ! release_audit_ok; then
+      log "FATAL: release audit 未通过，不 commit、不 push"
+      notify_daily_failure_once "AI 热点双版已生成，但公开发布审计未通过；本次未 commit、未 push。"
+      exit 1
+    fi
+    git commit -q -m "post(ai-news): ${TODAY} AI 圈过去 24 小时热点" 2>>"$LOG"
+    for i in 1 2 3; do git push -q origin main 2>>"$LOG" && { log "push 成功"; break; }; sleep $((i*5)); done
   fi
   git fetch -q origin main 2>>"$LOG" || true
   if git cat-file -e "origin/main:${ZH_FILE}" 2>/dev/null && git cat-file -e "origin/main:${EN_FILE}" 2>/dev/null; then

@@ -55,14 +55,12 @@ echo $$ > "$CLAUDE_SESSION_LOCK/pid"
 trap 'rm -f "$CLAUDE_SESSION_LOCK/pid"; rmdir "$CLAUDE_SESSION_LOCK" 2>/dev/null' EXIT
 # --- 锁结束 ---
 
-WORK="${TONY_ARTICLES_WORK:-$HOME/.local/share/tony-articles}"
+WORK="$HOME/.local/share/tony-articles"
 CODEX="$HOME/.nvm/versions/node/v24.14.0/bin/codex"
 CODEX_MODEL="gpt-5.5"
-CODEX_REASONING_EFFORT="xhigh"
 LOG="$HOME/.claude/logs/daily-article.codex.log"
 TODAY="$(date +%Y-%m-%d)"
 RUN_STATE_DIR="$HOME/.claude/logs"
-STAGE_DIR="$RUN_STATE_DIR/daily-article-stage-${TODAY}"
 DONE_MARK="$RUN_STATE_DIR/.daily-article-done-${TODAY}"
 BLOCKED_MARK="$RUN_STATE_DIR/.daily-article-blocked-${TODAY}"
 BLOCKER_SNIPPET="$RUN_STATE_DIR/.daily-article-blocker-${TODAY}.txt"
@@ -129,47 +127,19 @@ sync_main_checkout() {
     return 1
   fi
   git fetch -q origin main 2>>"$LOG" || return 1
+  if [ "$(git symbolic-ref --short HEAD 2>/dev/null)" != "main" ]; then
+    git switch -q main 2>>"$LOG" || return 1
+  fi
   git merge -q --ff-only origin/main 2>>"$LOG" || return 1
 }
 
 release_audit_ok() {
-  local audit_dir supplied source relative rc
   command -v product-release-audit >/dev/null 2>&1 || {
     log "FATAL: product-release-audit 不可用，拒绝公开发布"
     return 1
   }
-  [ "$#" -ge 1 ] || { log "FATAL: release audit 未指定当天文件"; return 1; }
-  audit_dir="$(mktemp -d "${TMPDIR:-/tmp}/tony-article-audit.${TODAY}.XXXXXX")" || return 1
-  rc=1
-  for supplied in "$@"; do
-    case "$supplied" in
-      articles/en/${TODAY}-*.md|articles/zh/${TODAY}-*.md)
-        relative="$supplied"; source="$WORK/$supplied" ;;
-      "$STAGE_DIR"/articles/en/${TODAY}-*.md)
-        relative="articles/en/$(basename "$supplied")"; source="$supplied" ;;
-      "$STAGE_DIR"/articles/zh/${TODAY}-*.md)
-        relative="articles/zh/$(basename "$supplied")"; source="$supplied" ;;
-      *) log "FATAL: release audit 拒绝非当天文章路径: $supplied"; rm -rf -- "$audit_dir"; return 1 ;;
-    esac
-    [ -f "$source" ] || { log "FATAL: 待审计文件不存在: $relative"; rm -rf -- "$audit_dir"; return 1; }
-    [ -s "$source" ] || { log "FATAL: 待审计文件为空: $relative"; rm -rf -- "$audit_dir"; return 1; }
-    head -1 "$source" | grep -q '^# ' || { log "FATAL: 标题格式错误: $relative"; rm -rf -- "$audit_dir"; return 1; }
-    grep -q "$TODAY" "$source" || { log "FATAL: 正文缺少发布日期 $TODAY: $relative"; rm -rf -- "$audit_dir"; return 1; }
-    if grep -Eq '(/Users/|/Volumes/|sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|[A-Za-z0-9_]*(TOKEN|SECRET|API_KEY)[[:space:]]*[=:])' "$source"; then
-      log "FATAL: 脱敏检查命中内部路径或凭据模式: $relative"; rm -rf -- "$audit_dir"; return 1
-    fi
-    mkdir -p "$audit_dir/$(dirname "$relative")"
-    cp -p "$source" "$audit_dir/$relative" || { rm -rf -- "$audit_dir"; return 1; }
-  done
-  if run_limited 600 product-release-audit audit --max-cost 1.5 "$audit_dir" >>"$LOG" 2>&1 &&
-     product-release-audit verify "$audit_dir" >>"$LOG" 2>&1; then
-    log "增量 release audit 通过: $# 个当天文件"
-    rc=0
-  else
-    log "ERROR: 增量 release audit 失败或超时"
-  fi
-  rm -rf -- "$audit_dir"
-  return "$rc"
+  product-release-audit audit . >>"$LOG" 2>&1 &&
+    product-release-audit verify . >>"$LOG" 2>&1
 }
 mark_terminal_blocker() {
   local reason="$1"
@@ -190,7 +160,30 @@ log "===== 开始每日文章任务(Codex 版) $TODAY ====="
 
 # 1. 同步仓库
 cd "$WORK" || { log "FATAL: 工作目录不存在 $WORK"; exit 1; }
-sync_main_checkout || { log "FATAL: 启动时无法安全快进到 origin/main，拒绝在不确定状态继续"; exit 1; }
+sync_main_checkout || log "WARN: 启动时未能把主发布 checkout 快进到 origin/main；后续发布将 fail-closed"
+cat > .gitignore <<'GI'
+.DS_Store
+.omc/
+*.log
+ruvector.db
+*.db
+.tools/__pycache__/
+.tools/daily-post-failures.md
+GI
+git rm -r --cached --ignore-unmatch ruvector.db "*.db" ".omc" >/dev/null 2>&1 || true
+rm -f ruvector.db ./*.db 2>/dev/null || true
+rm -rf .omc 2>/dev/null || true
+if [ -n "$(git status --porcelain)" ]; then
+  git add -A 2>/dev/null
+  git commit -q -m "chore: ignore 运行时产物 (auto)" 2>>"$LOG" || true
+fi
+for i in 1 2 3; do
+  if git pull -q --rebase origin main 2>>"$LOG"; then break; fi
+  log "git pull 第 $i 次失败, 重试..."
+  rm -f ruvector.db ./*.db 2>/dev/null
+  [ "$i" -eq 3 ] && { git rebase --abort 2>/dev/null; git fetch -q origin main && git reset --hard origin/main 2>>"$LOG" && log "  已 reset --hard 对齐远端"; }
+  sleep $((i*3))
+done
 
 # 2. 幂等:完成标记存在才直接跳过；若文件已存在但上次在标记前中断，先回查远端。
 if [ -f "$DONE_MARK" ]; then
@@ -212,8 +205,8 @@ if ls articles/en/${TODAY}-*.md >/dev/null 2>&1 && ls articles/zh/${TODAY}-*.md 
   python3 .tools/gen_readme.py >>"$LOG" 2>&1 || true
   EXISTING_ZH_T=$(head -1 "$EXISTING_ZH" | sed 's/^#[[:space:]]*//')
   grep -qxF "$EXISTING_ZH_T" .tools/published-topics.log 2>/dev/null || echo "$EXISTING_ZH_T" >> .tools/published-topics.log
-  git add "$EXISTING_EN" "$EXISTING_ZH" README.md .tools/published-topics.log 2>/dev/null
-  if ! release_audit_ok "$EXISTING_EN" "$EXISTING_ZH"; then
+  git add "$EXISTING_EN" "$EXISTING_ZH" README.md .gitignore .tools/gen_readme.py .tools/published-topics.log 2>/dev/null
+  if ! release_audit_ok; then
     log "FATAL: release audit 未通过，不 commit、不 push；等待下一补偿时刻"
     exit 1
   fi
@@ -266,16 +259,12 @@ fi
 
 # 3. 调 Codex 非交互完成全流程(中英双版)
 #    注意:13-phase 已展开成显式步骤(Codex 无 xiaolai-write subagent 编排)
-mkdir -p "$STAGE_DIR/articles/en" "$STAGE_DIR/articles/zh" "$STAGE_DIR/inputs"
-cp -p "$PUB_LOG" "$STAGE_DIR/inputs/published-topics.log"
-find articles/en articles/zh -maxdepth 1 -type f -name '*.md' -print | sort > "$STAGE_DIR/inputs/existing-articles.txt"
-
-PROMPT=$(cat <<PROMPT_EOF
-你是盛大白(Tony)本人的写作助手。今天的任务:基于我今天的 GetNote 笔记,创作一篇有思想深度的长文,产出【中文版 + 英文版】两个待发布版本。全程 zero-pause,不要中途停下问我任何问题,也不要尝试派发子任务/subagent(单会话直接做)。
+PROMPT=$(cat <<'PROMPT_EOF'
+你是盛大白(Tony)本人的写作助手。今天的任务:基于我今天的 GetNote 笔记,创作一篇有思想深度的长文,产出【中文版 + 英文版】两个版本,发布到 Tony-Articles 仓库。全程 zero-pause,不要中途停下问我任何问题,也不要尝试派发子任务/subagent(单会话直接做)。
 
 【第零步:去重判断,不重发旧主题】
-先读 inputs/existing-articles.txt，记下已发布的所有 slug / 中文标题。
-再读 inputs/published-topics.log(每行一个历史已发布主题,含已删除旧文)。
+先 ls ~/.local/share/tony-articles/articles/en/ 和 articles/zh/, 记下已发布的所有 slug / 中文标题。
+再读 ~/.local/share/tony-articles/.tools/published-topics.log(每行一个历史已发布主题,含已删除旧文)。
 你选的主题若与其中任一同义/高度重复,必须换一个未写过的点。重发旧主题(哪怕已删除)是严重错误。
 
 【第一步:取素材】
@@ -313,10 +302,10 @@ PROMPT=$(cat <<PROMPT_EOF
 6. CJK 排版:中文版用全角标点,中英混排时 ASCII 与中文之间留空格。
 目标读者:关注成长、学习、AI、自我进化的普通人。长度:正文 1500-3000 字(英文 1000-2000 词)。
 
-【第四步:只保存双版，不发布】
-今天日期是 ${TODAY},取简洁英文 slug(小写连字符,去特殊字符)。
-- 英文版: articles/en/${TODAY}-<slug>.md
-- 中文版: articles/zh/${TODAY}-<中文标题>.md(中文标题去掉 / : 等特殊字符)
+【第四步:保存双版 + 发布】
+今天日期记为 TODAY(YYYY-MM-DD),取简洁英文 slug(小写连字符,去特殊字符)。
+- 英文版: articles/en/TODAY-<slug>.md
+- 中文版: articles/zh/TODAY-<中文标题>.md(中文标题去掉 / : 等特殊字符)
 两文件开头都加:
   # 标题
 
@@ -324,17 +313,20 @@ PROMPT=$(cat <<PROMPT_EOF
 
   ---
 (互链对方语言版本)
-- 只允许写上述两个当天文件。不要运行 git、ai-git-workflow、product-release-audit，不要修改 README、历史文章或其他文件。
-- 外层自动化会负责审核、提交、推送与飞书分发；两份文件保存完立即停止。
+- 重建 README:在仓库根目录运行 python3 .tools/gen_readme.py
+- git add -A && git commit -m "post: <slug> 中英双版 (TODAY)"
+- 用户已明确授权这项每日自动任务公开发布到 GitHub main。完成脱敏检查并运行
+  product-release-audit audit . 与 product-release-audit verify . 后，必须执行
+  git push origin HEAD:main。只 push 到 ai/* 分支或只给 PR 链接不算完成。
 
-完成后用一句话报告文章标题(中/英)+ 两版文件名。
+完成后用一句话报告:文章标题(中/英)+ 两版是否都已推送成功。
 PROMPT_EOF
 )
 
 # Codex 调用 flags(首轮 codex exec 支持 -C/--add-dir;resume 子命令不支持,见下)
-CODEX_FLAGS=(--dangerously-bypass-approvals-and-sandbox --skip-git-repo-check -C "$STAGE_DIR" --add-dir "$STAGE_DIR" -m "$CODEX_MODEL" -c "model_reasoning_effort=\"$CODEX_REASONING_EFFORT\"")
+CODEX_FLAGS=(--dangerously-bypass-approvals-and-sandbox --skip-git-repo-check -C "$WORK" --add-dir "$WORK" -m "$CODEX_MODEL")
 # resume 子命令【不支持 -C/--add-dir】,靠当前进程 cwd 过滤会话;脚本已 cd "$WORK",故自动定位本仓库会话。
-RESUME_FLAGS=(--dangerously-bypass-approvals-and-sandbox --skip-git-repo-check -m "$CODEX_MODEL" -c "model_reasoning_effort=\"$CODEX_REASONING_EFFORT\"")
+RESUME_FLAGS=(--dangerously-bypass-approvals-and-sandbox --skip-git-repo-check -m "$CODEX_MODEL")
 
 RELAY_OUT="$HOME/.claude/logs/.daily-relay-codex-out.txt"
 RELAY_JSON="$HOME/.claude/logs/.daily-relay-codex-events.jsonl"
@@ -344,24 +336,12 @@ hit_session_limit() {
   grep -qiE "usage limit reached|usage_limit_reached|rate limit exceeded|429 too many requests|quota exceeded|exceeded your current quota" "$RELAY_OUT" 2>/dev/null
 }
 
-unsupported_reasoning_effort_seen() {
-  grep -qiE "unsupported_value.*reasoning\.effort|Unsupported value:.*not supported.*model" \
-    "$RELAY_OUT" "$RELAY_JSON" 2>/dev/null
-}
-
 # 第一轮:启动写作,用 --json 捕获 session_id
-cd "$STAGE_DIR" || { log "FATAL: 无法进入暂存目录 $STAGE_DIR"; exit 1; }
-log "接力第 1 轮: 启动 Codex 写作(非 Git 暂存区)..."
+log "接力第 1 轮: 启动 Codex 写作..."
 echo "$PROMPT" | run_limited 1500 "$CODEX" exec --json "${CODEX_FLAGS[@]}" - \
   > "$RELAY_JSON" 2>"$RELAY_OUT"
-RC=$?
-log "  第 1 轮 rc=$RC (124=超时)"
+log "  第 1 轮 rc=$? (124=超时)"
 cat "$RELAY_OUT" >> "$LOG"
-if unsupported_reasoning_effort_seen; then
-  log "FATAL: $CODEX_MODEL 不接受当前 reasoning effort；已停止接力，避免无效重试"
-  ntfy_send "⚠️ daily-article 的 Codex reasoning effort 与 $CODEX_MODEL 不兼容，已停止无效重试。"
-  exit 1
-fi
 if hit_session_limit; then
   log "  撞用量上限, 止损退出。当前 launchd 每天只跑一次, 可在 reset 后手动重跑"
   ntfy_send "⚠️ daily-article 撞 Codex 429 限额(首轮), 今日($TODAY)文章暂未出。可在额度 reset 后手动重跑: DAILY_ARTICLE_FORCE=1 bash ~/.claude/scripts/daily-article.sh"
@@ -400,10 +380,10 @@ PY
 log "本次接力 session-id=${SID:-<空,接力改用 --last>}"
 
 # 后续接力:resume 续跑,收敛判据 = 双版是否已落地(Codex 无 .state.json,故不做 phase 推进检测)
-CONT_PROMPT="继续完成当前文章:把英文版保存到 articles/en/${TODAY}-*.md、中文版保存到 articles/zh/${TODAY}-*.md(中英互链)。只写这两个当天文件；不要运行 git、ai-git-workflow、product-release-audit，不要修改其他文件。保存后立即停止。"
+CONT_PROMPT="继续完成当前文章:把英文版保存到 articles/en/、中文版保存到 articles/zh/(中英互链),运行 python3 .tools/gen_readme.py 重建 README,git add/commit，完成脱敏与 product-release-audit 后执行 git push origin HEAD:main。用户已明确授权每日公开发布；只推 ai/* 分支或给 PR 链接不算完成。全程不要停下问我,不要派 subagent。"
 MAX_RELAYS=12
 for r in $(seq 1 $MAX_RELAYS); do
-  if ls "$STAGE_DIR"/articles/en/${TODAY}-*.md >/dev/null 2>&1 && ls "$STAGE_DIR"/articles/zh/${TODAY}-*.md >/dev/null 2>&1; then
+  if ls "$WORK"/articles/en/${TODAY}-*.md >/dev/null 2>&1 && ls "$WORK"/articles/zh/${TODAY}-*.md >/dev/null 2>&1; then
     log "  双版已落地, 接力结束(第 $r 轮前)"; break
   fi
   log "接力第 $((r+1)) 轮: resume 续跑..."
@@ -412,14 +392,8 @@ for r in $(seq 1 $MAX_RELAYS); do
   else
     echo "$CONT_PROMPT" | run_limited 1200 "$CODEX" exec resume --last "${RESUME_FLAGS[@]}" - > "$RELAY_OUT" 2>&1
   fi
-  RC=$?
   cat "$RELAY_OUT" >> "$LOG"
-  log "  第 $((r+1)) 轮 rc=$RC"
-  if unsupported_reasoning_effort_seen; then
-    log "FATAL: $CODEX_MODEL 不接受当前 reasoning effort；已停止接力，避免无效重试"
-    ntfy_send "⚠️ daily-article 的 Codex reasoning effort 与 $CODEX_MODEL 不兼容，已停止无效重试。"
-    exit 1
-  fi
+  log "  第 $((r+1)) 轮 rc=$?"
   if hit_session_limit; then
     log "  撞用量上限, 止损退出。当前 launchd 每天只跑一次, 可在 reset 后手动重跑"
     ntfy_send "⚠️ daily-article 撞 Codex 429 限额(接力轮), 今日($TODAY)文章暂未出。可在额度 reset 后手动重跑: DAILY_ARTICLE_FORCE=1 bash ~/.claude/scripts/daily-article.sh"
@@ -431,28 +405,32 @@ for r in $(seq 1 $MAX_RELAYS); do
   fi
 done
 
-# 4. 外层脚本唯一负责审核、提交、推送；先审暂存文件，失败不污染发布 checkout
-STAGED_EN=$(ls "$STAGE_DIR"/articles/en/${TODAY}-*.md 2>/dev/null | head -1)
-STAGED_ZH=$(ls "$STAGE_DIR"/articles/zh/${TODAY}-*.md 2>/dev/null | head -1)
-if [ -n "$STAGED_EN" ] && [ -n "$STAGED_ZH" ]; then
-  release_audit_ok "$STAGED_EN" "$STAGED_ZH" || { log "FATAL: 暂存文章 release audit 未通过，发布 checkout 保持不变"; exit 1; }
-  cd "$WORK" || exit 1
-  sync_main_checkout || { log "FATAL: 发布前无法安全快进到 origin/main"; exit 1; }
-  cp -p "$STAGED_EN" "articles/en/$(basename "$STAGED_EN")"
-  cp -p "$STAGED_ZH" "articles/zh/$(basename "$STAGED_ZH")"
-fi
+# 4. 兜底确认双版是否真的推送了
+cd "$WORK"
+sync_main_checkout || true
 EN_FILE=$(ls articles/en/${TODAY}-*.md 2>/dev/null | head -1)
 ZH_FILE=$(ls articles/zh/${TODAY}-*.md 2>/dev/null | head -1)
 if [ -n "$EN_FILE" ] && [ -n "$ZH_FILE" ]; then
   log "SUCCESS: 英文=$(basename "$EN_FILE") 中文=$(basename "$ZH_FILE")"
+  rm -f ruvector.db ./*.db 2>/dev/null
+  git rm --cached --ignore-unmatch ruvector.db "*.db" >/dev/null 2>&1 || true
   python3 .tools/gen_readme.py >>"$LOG" 2>&1 || true
+  for i in 1 2 3; do
+    git pull -q --rebase origin main 2>>"$LOG" && break
+    [ "$i" -eq 3 ] && { git rebase --abort 2>/dev/null; git fetch -q origin main; git reset --hard origin/main 2>>"$LOG"; }
+    rm -f ruvector.db ./*.db 2>/dev/null; sleep $((i*3))
+  done
   ZH_T=$(head -1 "$ZH_FILE" | sed 's/^#[[:space:]]*//')
   grep -qxF "$ZH_T" .tools/published-topics.log 2>/dev/null || echo "$ZH_T" >> .tools/published-topics.log
-  git add "$EN_FILE" "$ZH_FILE" README.md .tools/published-topics.log 2>/dev/null
+  git add articles/ README.md .gitignore .tools/gen_readme.py .tools/published-topics.log 2>/dev/null
   if [ -n "$(git diff --cached --name-only)" ]; then
-    git commit -q -m "post: ${TODAY} 中英双版" 2>>"$LOG" || { log "ERROR: commit 失败"; exit 1; }
+    if ! release_audit_ok; then
+      log "FATAL: release audit 未通过，不 commit、不 push"
+      exit 1
+    fi
+    git commit -q -m "post: ${TODAY} 中英双版" 2>>"$LOG" || true
     for i in 1 2 3; do
-      git push -q origin HEAD:main 2>>"$LOG" && { log "push 成功"; break; }
+      git push -q origin main 2>>"$LOG" && { log "push 成功"; break; }
       log "push 第 $i 次失败"; sleep $((i*5))
     done
   fi

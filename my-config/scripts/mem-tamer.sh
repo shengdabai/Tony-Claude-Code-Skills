@@ -26,6 +26,9 @@ TARGETS=(
 # 白名单：以下进程绝不 renice
 PROTECT=(
   "node"
+  "Claude"
+  "ChatGPT"
+  "Codex"
   "Hermes"
   "OpenClaw"
   "gateway"
