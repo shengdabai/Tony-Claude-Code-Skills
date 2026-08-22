@@ -164,8 +164,6 @@ User input 中文;内部推理英文;所有输出中文;代码、命令、标识
 @rules/secrets-firewall.md
 @rules/intent-defaults.md
 @rules/verification.md
-@rules/session-resilience.md
-@rules/tool-discipline.md
 @../.config/ai-governance/MULTI_AGENT_GOVERNANCE.md
 
 @CLAUDE.local.md
@@ -173,6 +171,8 @@ User input 中文;内部推理英文;所有输出中文;代码、命令、标识
 ## 按需规则(命中场景时先 Read 对应文件再动手)
 
 - **机密文件场景范例** → `rules/secrets-firewall-examples.md`(真要处理密钥/`.env`/证书相关操作时;Iron Law 已在强制区)
+- **长任务 / 中断续跑 / compact 恢复** → `rules/session-resilience.md`(预计 ≥30 分钟、阶段超过 5 项、需要 ledger 或恢复上下文时)
+- **复杂文件操作 / 工具选择 / 真实 tool_use 约束** → `rules/tool-discipline.md`(批量读写、工具调用密集或需要 shell-only 能力时)
 - **多 Claude 会话 / cache 卫生** → `rules/multi-claude-cache.md`(开新窗口、并行会话、context 管理)
 - **gstack 路由 / 设计 skill 选择** → `rules/gstack-routing.md`(plan / review / ship / QA / UI 设计)
 - **品牌设计系统** → `rules/design-systems.md`(UI 任务要加载品牌 DESIGN.md)
