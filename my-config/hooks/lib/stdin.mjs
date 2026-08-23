@@ -1,0 +1,1 @@
+$HOME/.claude/plugins/cache/omc/oh-my-claudecode/4.15.10/templates/hooks/lib/stdin.mjs
