@@ -137,6 +137,8 @@ Tony 的当条消息涉及 GEO（Generative Engine Optimization / 生成式引�
 
 Node / MCP / hooks 优先用完整 node 路径,避免 NVM lazy-loading 导致 PATH 解析失败(遇 node/npm 报错先 `source ~/.nvm/nvm.sh` 或用绝对路径)。默认栈:TypeScript + Next.js(网页应用),Python/JS 次选;部署 Vercel(前端)/ Railway(后端)。
 
+任务明确涉及对标/竞品/参考网站或产品的视觉设计、从网页提取设计元素后开发,且存在或可确定一个允许自动访问的公开网页 URL 时,编码前必须先调用 `dembrandt` MCP。默认用 `get_design_tokens`;仅需颜色、字体、组件、表面、间距或品牌信息时用对应的最小工具,移动端同时传 `mobile`。把提取结果转成当前产品自己的 tokens、层级和组件约束,不复刻第三方 logo、商标或品牌身份。目标是截图、原生 App、Canvas/WebGL、受限页面或站点条款不允许自动访问时不强行调用,并明确替代证据与限制;普通本地 UI 实现、没有对标目标的产品设计不触发。
+
 ## Interaction & Output
 
 极简输出,结果优先、不客套、不复述问题。**不牺牲**:错误诊断、root cause、技术决策理由、breaking change、安全 warning、进度信号。
