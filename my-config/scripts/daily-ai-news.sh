@@ -7,7 +7,7 @@
 #   - claude -p --session-id $SID         → codex exec --json(首轮捕获 codex 生成的 session_id)
 #   - claude -p --resume $SID             → codex exec resume $SID(续轮,不传 -s,继承首轮沙箱)
 #   - --mcp-config getnote-only.json      → 删除(getnote 已在 ~/.codex/config.toml 静态注册)
-#   - --permission-mode bypassPermissions → --dangerously-bypass-approvals-and-sandbox
+#   - 后台权限                         → workspace-write 沙箱 + 自动安全审批
 #   - --add-dir $WORK                     → -C $WORK + --add-dir $WORK + --skip-git-repo-check
 #   - 默认 Opus                           → -m gpt-5.5(ChatGPT 订阅 auth 只能 5.5/5.2)
 #   - 发布完成先认 GitHub origin/main；随后触发幂等飞书合并分发，微信保持关闭
@@ -39,6 +39,19 @@ WORK="${TONY_ARTICLES_WORK:-$HOME/.local/share/tony-articles}"
 CODEX="$HOME/.nvm/versions/node/v24.14.0/bin/codex"
 CODEX_MODEL="gpt-5.5"
 CODEX_REASONING_EFFORT="xhigh"
+# External feed/page text is processed with no user config, no plugins/apps,
+# no local MCP, and a workspace-write sandbox rooted at the stage directory.
+CODEX_ISOLATION_FLAGS=(
+  --ignore-user-config
+  --disable plugins
+  --disable apps
+  --disable computer_use
+  --disable browser_use
+  --disable in_app_browser
+  --disable memories
+  --disable multi_agent
+  -c 'approval_policy="never"'
+)
 LOG="$HOME/.claude/logs/daily-ai-news.codex.log"
 TODAY="$(date +%Y-%m-%d)"
 STAGE_DIR="$HOME/.claude/logs/daily-ai-news-stage-${TODAY}"
@@ -46,21 +59,33 @@ MIN_HOT_ITEMS=5
 TASK_BRIDGE="$HOME/Desktop/01-项目开发/15-飞书桥接/task-progress-bridge.py"
 
 # Codex 调用公共 flags(首轮用;resume 不接受 -s/sandbox 类,见下)
-CODEX_FLAGS=(--dangerously-bypass-approvals-and-sandbox --skip-git-repo-check -C "$STAGE_DIR" --add-dir "$STAGE_DIR" -m "$CODEX_MODEL" -c "model_reasoning_effort=\"$CODEX_REASONING_EFFORT\"")
+CODEX_FLAGS=(--sandbox workspace-write --skip-git-repo-check -C "$STAGE_DIR" --add-dir "$STAGE_DIR" -m "$CODEX_MODEL" "${CODEX_ISOLATION_FLAGS[@]}" -c "model_reasoning_effort=\"$CODEX_REASONING_EFFORT\"")
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG"; }
+COMMON="$HOME/.claude/scripts/daily-publish-common.sh"
+[ -r "$COMMON" ] || { log "FATAL: 公共发布可靠性库不存在: $COMMON"; exit 1; }
+# shellcheck source=$HOME/.claude/scripts/daily-publish-common.sh
+source "$COMMON"
+NETWORK_ROUTE="$HOME/.claude/scripts/daily-network-route.sh"
+[ -r "$NETWORK_ROUTE" ] || { log "FATAL: 网络路由修复库不存在: $NETWORK_ROUTE"; exit 1; }
+# shellcheck source=$HOME/.claude/scripts/daily-network-route.sh
+source "$NETWORK_ROUTE"
+if [ "${DAILY_POLICY_PROBE:-0}" = "1" ]; then
+  printf 'ai-news policy ok: ignore-user-config + plugins/apps disabled + workspace-write\n'
+  exit 0
+fi
 sync_main_checkout() {
   cd "$WORK" || return 1
   if [ -n "$(git status --porcelain)" ]; then
     log "WARN: 主发布 checkout 有未提交改动，跳过自动切分支/快进"
     return 1
   fi
-  git fetch -q origin main 2>>"$LOG" || return 1
+  daily_git_retry fetch -q origin main 2>>"$LOG" || return 1
   git merge -q --ff-only origin/main 2>>"$LOG" || return 1
 }
 
 release_audit_ok() {
-  local audit_dir supplied source relative rc
+  local audit_dir supplied source relative rc attempt audit_log audit_rc
   command -v product-release-audit >/dev/null 2>&1 || {
     log "FATAL: product-release-audit 不可用，拒绝公开发布"
     return 1
@@ -88,13 +113,29 @@ release_audit_ok() {
     mkdir -p "$audit_dir/$(dirname "$relative")"
     cp -p "$source" "$audit_dir/$relative" || { rm -rf -- "$audit_dir"; return 1; }
   done
-  if run_limited 600 product-release-audit audit --max-cost 1.5 "$audit_dir" >>"$LOG" 2>&1 &&
-     product-release-audit verify "$audit_dir" >>"$LOG" 2>&1; then
-    log "增量 release audit 通过: $# 个当天文件"
-    rc=0
-  else
-    log "ERROR: 增量 release audit 失败或超时"
-  fi
+  for attempt in 1 2; do
+    daily_infra_preflight "ai-news-release-audit-attempt-$attempt" || break
+    audit_log="$(mktemp "${TMPDIR:-/tmp}/tony-ai-news-audit-run.${TODAY}.XXXXXX")" || break
+    run_limited 900 product-release-audit audit --max-cost 1.5 --model gpt-5.6-terra --effort low "$audit_dir" >"$audit_log" 2>&1
+    audit_rc=$?
+    cat "$audit_log" >>"$LOG"
+    if [ "$audit_rc" -eq 0 ] && product-release-audit verify "$audit_dir" >>"$LOG" 2>&1; then
+      log "增量 release audit 通过: $# 个当天文件（attempt=$attempt）"
+      rm -f "$audit_log"
+      rc=0
+      break
+    fi
+    if [ "$attempt" -eq 1 ] && { [ "$audit_rc" -eq 124 ] || daily_transient_failure_file "$audit_log"; }; then
+      log "WARN: release audit 命中瞬态基础设施故障（rc=$audit_rc），修复预检后仅重试审计一次"
+      daily_repair_transient_failure "$audit_log"
+      rm -f "$audit_log"
+      sleep 12
+      continue
+    fi
+    log "ERROR: 增量 release audit 失败（attempt=$attempt rc=$audit_rc），非瞬态错误不盲目重试"
+    rm -f "$audit_log"
+    break
+  done
   rm -rf -- "$audit_dir"
   return "$rc"
 }
@@ -114,6 +155,26 @@ run_limited() {
   else
     "$@"
   fi
+}
+
+validate_ai_news_pair() {
+  local zh_file="$1" en_file="$2"
+  python3 - "$zh_file" "$en_file" "$MIN_HOT_ITEMS" <<'PY'
+import re, sys
+from pathlib import Path
+
+minimum = int(sys.argv[3])
+sets = []
+for name in sys.argv[1:3]:
+    text = Path(name).read_text(encoding="utf-8", errors="replace")
+    urls = set(re.findall(r"\[source\]\((https?://[^)]+)\)", text, flags=re.I))
+    if not (minimum <= len(urls) <= 8):
+        raise SystemExit(1)
+    sets.append(urls)
+if sets[0] != sets[1]:
+    raise SystemExit(2)
+raise SystemExit(0)
+PY
 }
 
 # Headless Codex turns are implementation details of this one daily job. Suppress
@@ -149,9 +210,9 @@ codex_infrastructure_failure() {
   if grep -qiE 'invalid_refresh_token|access token could not be refreshed|log out and sign in again|401 Unauthorized' \
     "$RELAY_OUT" "$RELAY_JSON" 2>/dev/null; then
     printf '%s\n' 'Codex CLI 登录已失效（401 / invalid_refresh_token）。请重新登录 Codex；任务将在下一定时窗口自动补偿。'
-  elif grep -qiE '502 Bad Gateway|504 Gateway Timeout|stream disconnected|Reconnecting\.\.\.' \
+  elif grep -qiE '502 Bad Gateway|503 Service Unavailable|504 Gateway Timeout|所有供应商|熔断|SSL_ERROR_SYSCALL|stream disconnected|Reconnecting\.\.\.|request timed out|error sending request' \
     "$RELAY_OUT" "$RELAY_JSON" 2>/dev/null; then
-    printf '%s\n' 'Codex 上游代理连接失败（502/504 或连接中断）。本窗口已停止重复轰炸式重试，下一定时窗口会自动补偿。'
+    printf '%s\n' 'Codex 上游基础设施故障（代理、502/503/504、熔断或连接中断）。本窗口停止重复轰炸式重试。'
   elif grep -qiE 'unsupported_value.*reasoning\.effort|Unsupported value:.*not supported.*model' \
     "$RELAY_OUT" "$RELAY_JSON" 2>/dev/null; then
     printf '%s\n' "Codex 配置错误：${CODEX_MODEL} 不接受当前 reasoning effort。本窗口已停止无效接力。"
@@ -168,20 +229,23 @@ ntfy_send() {
 }
 log "===== 开始每日 AI 热点任务(Codex 版) $TODAY ====="
 
-# 1. 同步仓库
-cd "$WORK" || { log "FATAL: $WORK 不存在"; exit 1; }
-sync_main_checkout || { log "FATAL: 启动时无法安全快进到 origin/main，拒绝在不确定状态继续"; exit 1; }
-
-# 2. 幂等:完成标记存在才直接跳过；若文件已存在但上次在标记前中断，先回查远端。
 DONE_MARK="$HOME/.claude/logs/.daily-ai-news-done-${TODAY}"
 if [ -f "$DONE_MARK" ]; then
   log "今日 AI 热点双版已完成, 跳过"
   exit 0
 fi
+
+daily_generation_preflight "daily-ai-news" || exit 1
+
+# 1. 同步仓库
+cd "$WORK" || { log "FATAL: $WORK 不存在"; exit 1; }
+sync_main_checkout || { log "FATAL: 启动时无法安全快进到 origin/main，拒绝在不确定状态继续"; exit 1; }
+
+# 2. 幂等恢复:若文件已存在但上次在标记前中断，先回查远端。
 if ls ai-news/zh/${TODAY}-*.md >/dev/null 2>&1 && ls ai-news/en/${TODAY}-*.md >/dev/null 2>&1; then
   EXISTING_ZH=$(ls ai-news/zh/${TODAY}-*.md 2>/dev/null | head -1)
   EXISTING_EN=$(ls ai-news/en/${TODAY}-*.md 2>/dev/null | head -1)
-  git fetch -q origin main 2>>"$LOG" || true
+  daily_git_retry fetch -q origin main 2>>"$LOG" || true
   if git cat-file -e "origin/main:${EXISTING_ZH}" 2>/dev/null &&
      git cat-file -e "origin/main:${EXISTING_EN}" 2>/dev/null; then
     touch "$DONE_MARK"
@@ -189,6 +253,10 @@ if ls ai-news/zh/${TODAY}-*.md >/dev/null 2>&1 && ls ai-news/en/${TODAY}-*.md >/
     exit 0
   fi
   log "WARN: 本地已有今日 AI 热点双版但 origin/main 未齐，直接重试审核/提交/push，不重新生成"
+  if ! validate_ai_news_pair "$EXISTING_ZH" "$EXISTING_EN"; then
+    log "FATAL: 已有 AI 热点双版未通过 5-8 条来源/双语 URL 一致性门禁"
+    exit 1
+  fi
   python3 .tools/gen_readme.py >>"$LOG" 2>&1 || true
   git add "$EXISTING_ZH" "$EXISTING_EN" README.md 2>/dev/null
   if ! release_audit_ok "$EXISTING_ZH" "$EXISTING_EN"; then
@@ -201,15 +269,8 @@ if ls ai-news/zh/${TODAY}-*.md >/dev/null 2>&1 && ls ai-news/en/${TODAY}-*.md >/
       exit 1
     }
   fi
-  for i in 1 2 3; do
-    if git push -q origin HEAD:main 2>>"$LOG"; then
-      log "retry push 成功"
-      break
-    fi
-    log "retry push 第 $i 次失败"
-    sleep $((i*5))
-  done
-  git fetch -q origin main 2>>"$LOG" || true
+  daily_git_retry push -q origin HEAD:main 2>>"$LOG" && log "retry push 成功"
+  daily_git_retry fetch -q origin main 2>>"$LOG" || true
   if git cat-file -e "origin/main:${EXISTING_ZH}" 2>/dev/null &&
      git cat-file -e "origin/main:${EXISTING_EN}" 2>/dev/null; then
     touch "$DONE_MARK"
@@ -233,7 +294,8 @@ SINCE=$(date -u -v-24H +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '24 hours a
 AIHOT_RAW="$HOME/.claude/logs/.aihot-raw-${TODAY}.json"
 log "拉 aihot 数据 since=$SINCE"
 for try in 1 2 3 4 5; do
-  curl -sf -H "User-Agent: $UA" --max-time 60 --retry 2 --retry-delay 3 \
+  curl -sf -H "User-Agent: $UA" --connect-timeout 8 --max-time 60 \
+    --retry 3 --retry-delay 3 --retry-all-errors \
     "https://aihot.virxact.com/api/public/items?mode=selected&since=$SINCE&take=60" \
     -o "$AIHOT_RAW" 2>>"$LOG"
   SZ=$(stat -f%z "$AIHOT_RAW" 2>/dev/null || echo 0)
@@ -266,7 +328,7 @@ PROMPT=$(cat <<PROMPT_EOF
 - 立刻使用 WebSearch / web.run / curl 可访问的公开网页, 搜索过去 24-48 小时内与 AI 相关的热点。
 - 优先补 Claude Code / Anthropic / OpenAI / AI Agent / MCP / AI 编程工具 / 独立开发者 / 国产大模型 / 开源模型 / AI 产品发布。
 - 每条补充热点必须有可打开的原文 URL, 不要用只有二手转述且无来源的内容。
-- 最终尽量保持 5 条; 若公开信息确实不足, 允许 3-4 条简版日报, 但必须成稿并保存双版, 不能因为条数不足退出。
+- 最终必须形成至少 5 条有原文 URL 的热点；如果本窗口无法核实满 5 条，就不要生成可发布文件，留给下一定时窗口补偿，严禁用无来源内容凑数。
 
 【第二步: 个人化过滤(Tony 的兴趣画像)】
 **Tony 高度关注的方向**(命中加权 +3):
@@ -288,7 +350,7 @@ PROMPT=$(cat <<PROMPT_EOF
 - 通用消费级 AI 玩具
 - 与中文创作者关系不大的纯英文学术论文
 
-按上面规则给每条算分, 选 5-8 条做今天日报。aihot 不足时, 用联网搜索补齐到 5 条后再筛选; 最后兜底才允许 3-4 条简版。
+按上面规则给每条算分, 选 5-8 条做今天日报。aihot 不足时, 必须用联网搜索补齐到至少 5 条后再筛选。
 
 【第三步: 用 dedao-write 整理成日报(简化模式)】
 这是日报而不是长文, 走简化模式, 主会话直接写、不要尝试派发子任务/subagent:
@@ -325,7 +387,7 @@ hit_session_limit() {
 
 # 首轮:用 --json 捕获 codex 生成的 session_id(供后续 resume)。
 # session_id 在 JSONL 事件里(thread.started / session 字段),首轮跑完从 events 解析。
-echo "$PROMPT" | run_limited 1500 env CODEX_NOTIFY_DISABLE=1 "$CODEX" exec --json "${CODEX_FLAGS[@]}" - \
+echo "$PROMPT" | run_limited 1500 env CODEX_NOTIFY_DISABLE=1 "$CODEX" --search exec --json "${CODEX_FLAGS[@]}" - \
   > "$RELAY_JSON" 2>"$RELAY_OUT"
 RC=$?
 cat "$RELAY_OUT" >> "$LOG"
@@ -376,15 +438,16 @@ log "  解析到 session_id=${SID:-<空,后续接力改用 --last>}"
 # 接力一轮(若首轮没出双版)。优先用解析到的 SID;解析失败用 --last(同 cwd + 共享锁串行,安全)。
 # 注意:resume 子命令【不支持 -C/--add-dir】(只有顶层 codex exec 有),靠当前进程 cwd 过滤会话;
 #   脚本开头已 cd "$WORK",故 resume 自动定位到本仓库的会话。headless 续跑要跑 git,须带免审批+跳git检查。
-RESUME_FLAGS=(--dangerously-bypass-approvals-and-sandbox --skip-git-repo-check -m "$CODEX_MODEL" -c "model_reasoning_effort=\"$CODEX_REASONING_EFFORT\"")
+# resume 继承首轮 workspace-write 沙箱与审批策略，不再提升权限。
+RESUME_FLAGS=(--skip-git-repo-check -m "$CODEX_MODEL" "${CODEX_ISOLATION_FLAGS[@]}" -c "model_reasoning_effort=\"$CODEX_REASONING_EFFORT\"")
 CONT_PROMPT="继续完成 AI 热点日报: 如果 aihot 原始数据不足 5 条, 立刻联网搜索过去 24-48 小时 AI 热点补齐, 不要因为条数不足退出。把双版保存到 ai-news/zh/${TODAY}-*.md 和 ai-news/en/${TODAY}-*.md。只写这两个当天文件；不要运行 git、ai-git-workflow、product-release-audit，不要修改其他文件。保存后立即停止。"
 for r in 1 2; do
   if ls "$STAGE_DIR"/ai-news/zh/${TODAY}-*.md >/dev/null 2>&1 && ls "$STAGE_DIR"/ai-news/en/${TODAY}-*.md >/dev/null 2>&1; then break; fi
   log "接力 +$r 轮..."
   if [ -n "$SID" ]; then
-    echo "$CONT_PROMPT" | run_limited 900 env CODEX_NOTIFY_DISABLE=1 "$CODEX" exec resume "$SID" "${RESUME_FLAGS[@]}" - > "$RELAY_OUT" 2>&1
+    echo "$CONT_PROMPT" | run_limited 900 env CODEX_NOTIFY_DISABLE=1 "$CODEX" --search exec resume "$SID" "${RESUME_FLAGS[@]}" - > "$RELAY_OUT" 2>&1
   else
-    echo "$CONT_PROMPT" | run_limited 900 env CODEX_NOTIFY_DISABLE=1 "$CODEX" exec resume --last "${RESUME_FLAGS[@]}" - > "$RELAY_OUT" 2>&1
+    echo "$CONT_PROMPT" | run_limited 900 env CODEX_NOTIFY_DISABLE=1 "$CODEX" --search exec resume --last "${RESUME_FLAGS[@]}" - > "$RELAY_OUT" 2>&1
   fi
   RC=$?
   cat "$RELAY_OUT" >> "$LOG"
@@ -402,6 +465,12 @@ done
 STAGED_ZH=$(ls "$STAGE_DIR"/ai-news/zh/${TODAY}-*.md 2>/dev/null | head -1)
 STAGED_EN=$(ls "$STAGE_DIR"/ai-news/en/${TODAY}-*.md 2>/dev/null | head -1)
 if [ -n "$STAGED_ZH" ] && [ -n "$STAGED_EN" ]; then
+  if ! validate_ai_news_pair "$STAGED_ZH" "$STAGED_EN"; then
+    log "FATAL: 暂存 AI 热点未通过 5-8 条来源/双语 URL 一致性门禁"
+    notify_daily_failure_once "AI 热点双版已生成，但来源数量不足或中英文来源不一致；已拒绝公开发布。"
+    exit 1
+  fi
+  log "AI 热点来源门禁通过：双语各 5-8 条且 URL 集合一致"
   release_audit_ok "$STAGED_ZH" "$STAGED_EN" || {
     log "FATAL: 暂存 AI 热点 release audit 未通过，发布 checkout 保持不变"
     notify_daily_failure_once "AI 热点双版已生成，但暂存发布审计未通过；发布 checkout 未改动。"
@@ -420,9 +489,9 @@ if [ -n "$ZH_FILE" ] && [ -n "$EN_FILE" ]; then
   git add "$ZH_FILE" "$EN_FILE" README.md 2>/dev/null
   if [ -n "$(git diff --cached --name-only)" ]; then
     git commit -q -m "post(ai-news): ${TODAY} AI 圈过去 24 小时热点" 2>>"$LOG" || { log "ERROR: commit 失败"; exit 1; }
-    for i in 1 2 3; do git push -q origin HEAD:main 2>>"$LOG" && { log "push 成功"; break; }; sleep $((i*5)); done
+    daily_git_retry push -q origin HEAD:main 2>>"$LOG" && log "push 成功"
   fi
-  git fetch -q origin main 2>>"$LOG" || true
+  daily_git_retry fetch -q origin main 2>>"$LOG" || true
   if git cat-file -e "origin/main:${ZH_FILE}" 2>/dev/null && git cat-file -e "origin/main:${EN_FILE}" 2>/dev/null; then
     touch "$DONE_MARK"
     log "已验证 origin/main 含今日 AI 热点双版，标记完成"
