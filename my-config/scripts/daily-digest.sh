@@ -17,13 +17,21 @@ FEISHU_DONE="$HOME/.claude/logs/.daily-digest-feishu-${TODAY}"
 WECHAT_DISABLED="$HOME/.claude/logs/.daily-digest-wechat-disabled-${TODAY}"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG"; }
+. "$HOME/.claude/scripts/daily-publish-common.sh"
 log "===== digest $TODAY ====="
 
 if ! [[ "$TODAY" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
   log "ERROR: DAILY_DIGEST_DATE 格式错误: $TODAY"
   exit 2
 fi
-for dep in git python3 "$HERMES" "$RENDER"; do
+
+# 已完成日期的定时重入必须完全无副作用；dry-run 仍执行全链路只读检查。
+if [ -f "$DONE" ] && [ "${DAILY_DIGEST_DRY_RUN:-0}" != "1" ]; then
+  log "该日已推送, 跳过"
+  exit 0
+fi
+
+for dep in git python3 lark-cli "$HERMES" "$RENDER"; do
   if [ "${dep#/}" = "$dep" ]; then
     command -v "$dep" >/dev/null 2>&1 || { log "ERROR: 依赖不存在: $dep"; exit 1; }
   elif [ ! -x "$dep" ]; then
@@ -31,10 +39,12 @@ for dep in git python3 "$HERMES" "$RENDER"; do
   fi
 done
 
+daily_infra_preflight "daily-digest" 0 || { log "ERROR: 发布基础设施预检失败，等待下个窗口"; exit 1; }
+
 # launchd 独立触发时也先同步 GitHub main。只允许干净 checkout 做安全快进。
 cd "$WORK" || { log "FATAL: 工作目录不存在 $WORK"; exit 1; }
 if [ -z "$(git status --porcelain)" ]; then
-  if git fetch -q origin main 2>>"$LOG"; then
+  if daily_git_retry fetch -q origin main; then
     log "已刷新 origin/main"
   elif git rev-parse --verify origin/main >/dev/null 2>&1; then
     log "WARN: fetch origin/main 暂时失败；仅使用已有远端跟踪引用做对象级校验"
@@ -50,9 +60,6 @@ else
   log "ERROR: 主发布 checkout 有未提交改动，拒绝用不确定状态推送飞书"
   exit 1
 fi
-
-# 幂等
-[ -f "$DONE" ] && { log "该日已推送, 跳过"; exit 0; }
 
 # 按日期加锁，补发历史日期时不与今日发送互相覆盖。
 LOCK="$HOME/.claude/logs/.daily-digest-${TODAY}.lock"
@@ -102,20 +109,38 @@ ntfy_send() {
   curl -s -m 3 -d "$1" "ntfy.sh/${NTFY_CLAUDE_TOPIC}" >/dev/null 2>&1 || true
 }
 
-# 返回 0=已确认落地, 1=未见消息, 2=回查工具不可用。
+# 返回 0=已确认落地, 1=已成功查询但未见消息, 2=回查工具不可用/查询失败。
 feishu_confirm() {
   command -v lark-cli >/dev/null 2>&1 || return 2
-  local _i
+  local _i _out _rc _success=0
   for _i in 1 2 3; do
-    if LARK_CLI_NO_PROXY=1 lark-cli --profile cli_aa80e81017f85bc0 --as user \
-         im +chat-messages-list --chat-id "$FEISHU_CHAT_ID" --page-size 20 2>/dev/null \
-         | grep -q "盛大白每日 · ${TODAY}"; then
+    _out="$(LARK_CLI_NO_PROXY=1 lark-cli --profile cli_aa80e81017f85bc0 --as user \
+         im +chat-messages-list --chat-id "$FEISHU_CHAT_ID" --page-size 50 2>/dev/null)"
+    _rc=$?
+    if [ "$_rc" -eq 0 ]; then
+      _success=1
+    fi
+    if [ "$_rc" -eq 0 ] && printf '%s' "$_out" | grep -q "盛大白每日 · ${TODAY}"; then
       return 0
     fi
     sleep 3
   done
-  return 1
+  [ "$_success" -eq 1 ] && return 1
+  return 2
 }
+
+# 发送前先查飞书真实历史。这样即使上一次发送后进程崩溃、marker 未落盘，
+# 也只会补齐本地状态，绝不会再发第二条。
+feishu_confirm; pre_cf=$?
+if [ "$pre_cf" -eq 0 ]; then
+  touch "$FEISHU_DONE" "$WECHAT_DISABLED" "$DONE"
+  log "飞书历史已存在该日 digest，已补齐本地完成标记并跳过发送"
+  exit 0
+elif [ "$pre_cf" -eq 2 ]; then
+  log "ERROR: 发送前飞书回查不可用；为避免重复推送，本窗口暂停发送"
+  ntfy_send "⚠️ daily-digest: 发送前无法回查飞书($TODAY)，已安全暂停，未发送。"
+  exit 1
+fi
 
 if [ ! -f "$FEISHU_DONE" ]; then
   OUT="$("$HERMES" send -t "$FEISHU_TARGET" "$MSG" 2>&1)"; rc=$?
@@ -125,7 +150,8 @@ if [ ! -f "$FEISHU_DONE" ]; then
     if [ "$cf" -eq 0 ]; then
       touch "$FEISHU_DONE"; log "飞书推送成功+回查确认落地 -> $FEISHU_TARGET"
     elif [ "$cf" -eq 2 ]; then
-      touch "$FEISHU_DONE"; log "飞书 rc=0(回查工具缺失, 信任发送结果) -> $FEISHU_TARGET"
+      log "WARN: 飞书 rc=0 但回查工具不可用；不信任单一返回值，不标记完成"
+      ntfy_send "⚠️ daily-digest: 飞书返回成功但无法回查($TODAY)，已停止标记，后续先查重。"
     else
       log "WARN: 飞书 rc=0 但回查 3 次未见该日 digest, 不标记完成, 后续自动重推"
       ntfy_send "⚠️ daily-digest: 飞书报成功但回查未确认送达($TODAY), 已留待下个窗口自动重推。"
