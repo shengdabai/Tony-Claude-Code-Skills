@@ -75,7 +75,9 @@ CODEX_ISOLATION_FLAGS=(
 LOG="$HOME/.claude/logs/daily-article.codex.log"
 TODAY="$(date +%Y-%m-%d)"
 RUN_STATE_DIR="$HOME/.claude/logs"
-STAGE_DIR="$RUN_STATE_DIR/daily-article-stage-${TODAY}"
+# 每次尝试使用独立暂存区，避免前一次审计/发布失败后残留的多组草稿
+# 被下一次运行混合选取，造成中英文错配或重复生成。
+STAGE_DIR="$RUN_STATE_DIR/daily-article-stage-${TODAY}-$$"
 GETNOTE_EXPORTER="$HOME/.claude/scripts/getnote-readonly-export.mjs"
 GETNOTE_INPUT="$STAGE_DIR/inputs/getnote.json"
 DONE_MARK="$RUN_STATE_DIR/.daily-article-done-${TODAY}"
@@ -208,19 +210,19 @@ release_audit_ok() {
     audit_rc=$?
     cat "$audit_log" >>"$LOG"
     if [ "$audit_rc" -eq 0 ] && product-release-audit verify "$audit_dir" >>"$LOG" 2>&1; then
-      log "增量 release audit 通过: $# 个当天文件（attempt=$attempt）"
+      log "增量 release audit 通过: $# 个当天文件（attempt=${attempt}）"
       rm -f "$audit_log"
       rc=0
       break
     fi
     if [ "$attempt" -eq 1 ] && { [ "$audit_rc" -eq 124 ] || daily_transient_failure_file "$audit_log"; }; then
-      log "WARN: release audit 命中瞬态基础设施故障（rc=$audit_rc），修复预检后仅重试审计一次"
+      log "WARN: release audit 命中瞬态基础设施故障（rc=${audit_rc}），修复预检后仅重试审计一次"
       daily_repair_transient_failure "$audit_log"
       rm -f "$audit_log"
       sleep 12
       continue
     fi
-    log "ERROR: 增量 release audit 失败（attempt=$attempt rc=$audit_rc），非瞬态错误不盲目重试"
+    log "ERROR: 增量 release audit 失败（attempt=${attempt} rc=${audit_rc}），非瞬态错误不盲目重试"
     rm -f "$audit_log"
     break
   done
@@ -560,9 +562,22 @@ for r in $(seq 1 $MAX_RELAYS); do
 done
 
 # 4. 外层脚本唯一负责审核、提交、推送；先审暂存文件，失败不污染发布 checkout
-STAGED_EN=$(ls "$STAGE_DIR"/articles/en/${TODAY}-*.md 2>/dev/null | head -1)
-STAGED_ZH=$(ls "$STAGE_DIR"/articles/zh/${TODAY}-*.md 2>/dev/null | head -1)
+STAGED_EN_COUNT=$(find "$STAGE_DIR/articles/en" -maxdepth 1 -type f -name "${TODAY}-*.md" 2>/dev/null | wc -l | tr -d ' ')
+STAGED_ZH_COUNT=$(find "$STAGE_DIR/articles/zh" -maxdepth 1 -type f -name "${TODAY}-*.md" 2>/dev/null | wc -l | tr -d ' ')
+if [ "$STAGED_EN_COUNT" -ne 1 ] || [ "$STAGED_ZH_COUNT" -ne 1 ]; then
+  log "FATAL: 暂存区必须严格只有一对文章（en=${STAGED_EN_COUNT} zh=${STAGED_ZH_COUNT}），拒绝选取/发布"
+  exit 1
+fi
+STAGED_EN=$(find "$STAGE_DIR/articles/en" -maxdepth 1 -type f -name "${TODAY}-*.md" -print | head -1)
+STAGED_ZH=$(find "$STAGE_DIR/articles/zh" -maxdepth 1 -type f -name "${TODAY}-*.md" -print | head -1)
 if [ -n "$STAGED_EN" ] && [ -n "$STAGED_ZH" ]; then
+  STAGED_EN_BASE=$(basename "$STAGED_EN")
+  STAGED_ZH_BASE=$(basename "$STAGED_ZH")
+  if ! grep -Fq "../zh/${STAGED_ZH_BASE}" "$STAGED_EN" ||
+     ! grep -Fq "../en/${STAGED_EN_BASE}" "$STAGED_ZH"; then
+    log "FATAL: 暂存中英文互链不一致，拒绝审核和发布"
+    exit 1
+  fi
   if ! getnote_evidence_ok; then
     log "FATAL: GetNote 只读采集收据无效或隔离生成器出现 MCP 调用，拒绝发布"
     exit 1
