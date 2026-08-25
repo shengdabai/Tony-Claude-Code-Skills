@@ -25,6 +25,17 @@ if ! [[ "$TODAY" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
   exit 2
 fi
 
+# 生成任务可在中午前完成并主动触发本脚本，但当天飞书合并摘要必须等到
+# 12:00 才发送。历史补发不受限制；紧急人工恢复可显式覆盖。
+CURRENT_DATE="$(date +%Y-%m-%d)"
+CURRENT_HOUR="$(date +%H)"
+if [ "$TODAY" = "$CURRENT_DATE" ] &&
+   [ "${CURRENT_HOUR#0}" -lt 12 ] &&
+   [ "${DAILY_DIGEST_FORCE_EARLY:-0}" != "1" ]; then
+  log "当天内容已进入分发检查，但未到 12:00，等待正式定时触发"
+  exit 0
+fi
+
 # 已完成日期的定时重入必须完全无副作用；dry-run 仍执行全链路只读检查。
 if [ -f "$DONE" ] && [ "${DAILY_DIGEST_DRY_RUN:-0}" != "1" ]; then
   log "该日已推送, 跳过"
@@ -120,7 +131,9 @@ feishu_confirm() {
     if [ "$_rc" -eq 0 ]; then
       _success=1
     fi
-    if [ "$_rc" -eq 0 ] && printf '%s' "$_out" | grep -q "盛大白每日 · ${TODAY}"; then
+    # 避免 set -o pipefail 下 grep -q 提前命中关闭管道，导致 printf 收到
+    # SIGPIPE 并把“已找到消息”误判成失败。
+    if [ "$_rc" -eq 0 ] && grep -q "盛大白每日 · ${TODAY}" <<< "$_out"; then
       return 0
     fi
     sleep 3

@@ -4,7 +4,7 @@ description: cc-suite 桥接与 NLP 工件审计规则：三条铁律、功能�
 
 # cc-suite 接入规则（命中 cc-suite / 桥接 / 审计 skill·rules·plugin 时先 Read）
 
-xiaolai/cc-suite = **项目级多工具桥接 + NLP 工件审计**。装在 `cc-suite@xiaolai`，当前 0.11.1。
+xiaolai/cc-suite = **项目级多工具桥接 + NLP 工件审计**。装在 `cc-suite@xiaolai`，当前 2.0.0（2026-08-25 升级；0.11.1 时代的行为描述如与新版不符，以实测为准）。
 本文件是本机唯一权威用法；与 README 冲突以本文件为准（README 面向通用用户，不知道本机已有体系）。
 
 ## Iron Law 三条
