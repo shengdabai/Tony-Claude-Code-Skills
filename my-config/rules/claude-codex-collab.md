@@ -38,6 +38,8 @@ description: Claude × Codex 双模型协同：按 benchmark 强项分工、通�
 | **`/oh-my-claudecode:ccg`** | 进阶 | 要 Claude+Codex+Gemini 三方意见再综合 | tri-model 编排 |
 | **worktree best-of-N** | 进阶 | 高价值/方案不明，多实现择优 | Agent `isolation: "worktree"` 跑 N 个独立实现 → meta-judge |
 
+**反向调用(Codex/ChatGPT 桌面端/飞书桥 → Claude Code)必须是真 Claude 模型**：`~/.claude/bin/claude` 守卫包装器排在 PATH 最前(`.zshenv`/`.zshrc`/飞书桥 plist 三处),剥离 shell 快照里残留的 `ANTHROPIC_BASE_URL`/`ANTHROPIC_MODEL` 等第三方覆盖、强制官方端点,非 `claude-*` 的 `--model` 改写为 `claude-opus-5`,日志在 `~/.claude/logs/claude-official-guard.log`。复杂任务 `--model claude-fable-5`、简单任务 `claude-opus-5`。第三方模型(Qwen/DeepSeek/Kimi…)只有 Tony 在终端敲 `claude` 进菜单亲自选才允许,且只对那一次启动生效(子 shell,不泄漏)。写脚本/规则时**禁止**直调 `~/.local/bin/claude`、禁止设 `CLAUDE_MENU_CHOICE`。
+
 **铁律**：ChatGPT 账号可用 `gpt-5.5`/`gpt-5.6` 系（以 `~/.codex/config.toml` 当前 `model` 为准；`gpt-5.2` 等旧型号与 `-codex` 后缀 400 拒，[[reference_codex-mcp-chatgpt-account-model]]）。sub-agent 报 "Codex unavailable" 几乎都是没 `ToolSearch` 加载 deferred 工具，不是真不可用——主会话直调正常。
 
 ## 交接班协议（Claude ⇄ Codex 换手必走，2026-07-23 增补）

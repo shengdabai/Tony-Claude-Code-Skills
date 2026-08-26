@@ -172,6 +172,7 @@ User input 中文;内部推理英文;所有输出中文;代码、命令、标识
 
 ## 按需规则(命中场景时先 Read 对应文件再动手)
 
+- **审核优化专家** → 用户要求审核、审查、评审、复核、验收、优化、改进、润色、review、audit、critique 或 polish，且存在待检查的产物时，必须加载 `~/.claude/skills/review-optimizer/SKILL.md`；由当前 Claude 主会话协调 Codex GPT-5.6 Sol 与 Claude Opus 5 做只读交叉审核和对质，不再询问用户选哪个 AI。用户明确只用单模型或禁止外部模型时不触发。
 - **机密文件场景范例** → `rules/secrets-firewall-examples.md`(真要处理密钥/`.env`/证书相关操作时;Iron Law 已在强制区)
 - **长任务 / 中断续跑 / compact 恢复** → `rules/session-resilience.md`(预计 ≥30 分钟、阶段超过 5 项、需要 ledger 或恢复上下文时)
 - **复杂文件操作 / 工具选择 / 真实 tool_use 约束** → `rules/tool-discipline.md`(批量读写、工具调用密集或需要 shell-only 能力时)
