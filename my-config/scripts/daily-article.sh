@@ -56,7 +56,8 @@ trap 'rm -f "$CLAUDE_SESSION_LOCK/pid"; rmdir "$CLAUDE_SESSION_LOCK" 2>/dev/null
 # --- 锁结束 ---
 
 WORK="${TONY_ARTICLES_WORK:-$HOME/.local/share/tony-articles}"
-CODEX="$HOME/.nvm/versions/node/v24.14.0/bin/codex"
+# 首选路径仅是候选，真正生效的值由 daily_codex_ready 探活后回写（见预检处）。
+CODEX="${CODEX:-$HOME/.local/bin/codex}"
 CODEX_MODEL="gpt-5.5"
 CODEX_REASONING_EFFORT="xhigh"
 # GetNote is collected by a fixed read-only exporter before the model starts.
@@ -197,7 +198,9 @@ release_audit_ok() {
     [ -s "$source" ] || { log "FATAL: 待审计文件为空: $relative"; rm -rf -- "$audit_dir"; return 1; }
     head -1 "$source" | grep -q '^# ' || { log "FATAL: 标题格式错误: $relative"; rm -rf -- "$audit_dir"; return 1; }
     grep -q "$TODAY" "$source" || { log "FATAL: 正文缺少发布日期 $TODAY: $relative"; rm -rf -- "$audit_dir"; return 1; }
-    if grep -Eq '(/Users/|/Volumes/|sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|[A-Za-z0-9_]*(TOKEN|SECRET|API_KEY)[[:space:]]*[=:])' "$source"; then
+    # sk- 必须带左边界，否则 "risk-management-framework-ai-rmf-10" 这类正常英文
+    # 连字符长串会被误判成 OpenAI key（2026-08-27 因此漏发一次）。
+    if grep -Eq '(/Users/|/Volumes/|(^|[^A-Za-z0-9])sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|[A-Za-z0-9_]*(TOKEN|SECRET|API_KEY)[[:space:]]*[=:])' "$source"; then
       log "FATAL: 脱敏检查命中内部路径或凭据模式: $relative"; rm -rf -- "$audit_dir"; return 1
     fi
     mkdir -p "$audit_dir/$(dirname "$relative")"
@@ -253,6 +256,10 @@ if [ -f "$DONE_MARK" ]; then
 fi
 
 daily_generation_preflight "daily-article" || exit 1
+daily_codex_ready "daily-article" || {
+  ntfy_send "⚠️ daily-article: Codex CLI 不可执行(平台二进制缺失)，今日($TODAY)文章未生成。修复: npm install -g @openai/codex@latest"
+  exit 1
+}
 [ -r "$HOME/.config/getnote/.env" ] && [ -x "$GETNOTE_EXPORTER" ] && \
   [ -r "$HOME/.claude/mcp-servers/getnote-mcp/dist/client.js" ] || {
     log "FATAL: GetNote 只读采集器、环境文件或客户端不可用"
@@ -426,7 +433,9 @@ unsupported_reasoning_effort_seen() {
 }
 
 codex_infrastructure_failure() {
-  if grep -qiE 'invalid_refresh_token|access token could not be refreshed|log out and sign in again|401 Unauthorized' \
+  if daily_codex_binary_failure_file "$RELAY_OUT" || daily_codex_binary_failure_file "$RELAY_JSON"; then
+    printf '%s\n' 'Codex CLI 二进制损坏（平台二进制缺失）。本窗口停止接力，修复: npm install -g @openai/codex@latest'
+  elif grep -qiE 'invalid_refresh_token|access token could not be refreshed|log out and sign in again|401 Unauthorized' \
     "$RELAY_OUT" "$RELAY_JSON" 2>/dev/null; then
     printf '%s\n' 'Codex CLI 登录已失效（401 / invalid_refresh_token）。'
   elif grep -qiE '502 Bad Gateway|503 Service Unavailable|504 Gateway Timeout|所有供应商|熔断|stream disconnected|Reconnecting\.\.\.|SSL_ERROR_SYSCALL|request timed out|error sending request' \

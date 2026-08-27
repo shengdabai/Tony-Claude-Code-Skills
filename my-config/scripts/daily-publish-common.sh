@@ -107,6 +107,13 @@ daily_infra_preflight() {
       return 1
     }
   fi
+  # CC Switch 于 2026-08-26 被主动卸载（残留在 ~/.cc-switch.uninstalled-20260826，
+  # 原因是它反复覆盖 ~/.codex/config.toml）。这个健康检查的意义是“装了但熔断了”，
+  # 对一个根本没安装的组件强制要求，只会把发布链路永久卡死——所以未安装时降级跳过。
+  if [ "$require_cc_switch" = "1" ] && [ ! -d "/Applications/CC Switch.app" ]; then
+    require_cc_switch=0
+    daily_common_log "$context 未安装 CC Switch，跳过其健康检查（codex 直连官方端点）"
+  fi
   if [ "$require_cc_switch" = "1" ] && ! daily_cc_switch_ready; then
     if [ "$DAILY_PREFLIGHT_REPAIR" = "1" ] && [ -d "/Applications/CC Switch.app" ]; then
       /usr/bin/open -a "CC Switch" >/dev/null 2>&1 || true
@@ -164,6 +171,69 @@ daily_repair_transient_failure() {
     daily_restart_clash || true
     daily_export_proxy
   fi
+}
+
+# --- Codex CLI 可执行性守卫 -------------------------------------------------
+# 2026-08-27 事故：npm 的 optionalDependencies 在 npmmirror 源下丢了平台二进制
+# (@openai/codex-darwin-arm64)，nvm 里的 codex 启动即 rc=1。生成脚本此前只检查
+# 代理/GitHub/ChatGPT，不检查 codex 本身能不能跑，于是 13 轮接力在 4 秒内全部
+# 烧掉，最后以“暂存区 en=0 zh=0”结束——日志里看不出真正原因，当天无推送。
+# 这里把“codex 能不能跑”提前成硬预检，并在失败时做一次有界自愈。
+DAILY_CODEX_FALLBACKS="${DAILY_CODEX_FALLBACKS:-$HOME/.local/bin/codex $HOME/.nvm/versions/node/v24.14.0/bin/codex}"
+DAILY_CODEX_NPM="${DAILY_CODEX_NPM:-$HOME/.nvm/versions/node/v24.14.0/bin/npm}"
+DAILY_CODEX_NPM_PREFIX="${DAILY_CODEX_NPM_PREFIX:-$HOME/.nvm/versions/node/v24.14.0}"
+
+daily_codex_probe() {
+  local bin="${1:-}"
+  [ -n "$bin" ] || return 1
+  [ -x "$bin" ] || [ -L "$bin" ] || return 1
+  "$bin" --version 2>/dev/null | grep -Eq '^codex-cli [0-9]+\.[0-9]+\.[0-9]+'
+}
+
+daily_codex_repair() {
+  [ "$DAILY_PREFLIGHT_REPAIR" = "1" ] || return 1
+  [ -x "$DAILY_CODEX_NPM" ] || return 1
+  daily_common_log "尝试有界自愈：重装 @openai/codex@latest（平台二进制缺失）"
+  env NPM_CONFIG_PREFIX="$DAILY_CODEX_NPM_PREFIX" \
+    /usr/bin/perl -e 'alarm shift; exec @ARGV' 300 \
+    "$DAILY_CODEX_NPM" install -g @openai/codex@latest >/dev/null 2>&1
+}
+
+# 用法: daily_codex_ready <context>；成功后把可用路径写回全局 CODEX 并导出。
+daily_codex_ready() {
+  local context="${1:-daily-generation}"
+  local candidates="${CODEX:-} ${DAILY_CODEX_FALLBACKS:-}"
+  local bin=""
+  local ver=""
+  local round=0
+  while [ "$round" -lt 2 ]; do
+    round=$((round + 1))
+    for bin in $candidates; do
+      ver=""
+      if [ -x "$bin" ] || [ -L "$bin" ]; then
+        ver="$("$bin" --version 2>/dev/null || true)"
+      fi
+      case "$ver" in
+        codex-cli\ [0-9]*)
+          CODEX="$bin"
+          export CODEX
+          daily_common_log "$context Codex 可执行性预检通过: $bin ($ver)"
+          return 0
+          ;;
+      esac
+    done
+    [ "$round" -eq 1 ] || break
+    daily_common_log "WARN: $context 所有候选 codex 均无法启动，进入一次性自愈"
+    daily_codex_repair || break
+  done
+  daily_common_log "FATAL: $context Codex CLI 不可执行（平台二进制缺失或未安装），拒绝进入接力循环"
+  return 1
+}
+
+# 供接力循环内识别“二进制本身坏了”，避免把重试预算烧在必然失败的调用上。
+daily_codex_binary_failure_file() {
+  local file="$1"
+  grep -qiE 'Missing optional dependency @openai/codex|findCodexExecutable|codex: command not found|No such file or directory.*codex' "$file" 2>/dev/null
 }
 
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then

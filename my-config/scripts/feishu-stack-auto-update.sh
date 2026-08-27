@@ -24,7 +24,7 @@ LOG_DIR="$HOME/.claude/logs"
 LOG="$LOG_DIR/feishu-stack-auto-update.log"
 SNAP_DIR="$HOME/.claude/backups/feishu-stack"
 HOLD_FILE="$SNAP_DIR/held-versions.txt"
-export PATH="$NODE_BIN:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+export PATH="$HOME/.local/bin:$NODE_BIN:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 # 与 launchd plist 同款代理,npm view/install 需要出网
 export HTTP_PROXY="${HTTP_PROXY:-http://127.0.0.1:7897}" HTTPS_PROXY="${HTTPS_PROXY:-http://127.0.0.1:7897}"
 export NO_PROXY="127.0.0.1,localhost,::1,*.local"

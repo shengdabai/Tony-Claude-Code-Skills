@@ -1,5 +1,8 @@
 #!/bin/bash
-# 每日 AI 热点新闻 — Codex 版草稿(.codex.sh) — launchd 12:05 触发
+# 每日 AI 热点新闻 — Codex 版草稿(.codex.sh)
+# ⚠️ DEPRECATED（2026-08-27 核实）：迁移已完成，Codex 化逻辑现活在 daily-ai-news.sh，
+#    com.tony.daily-ai-news.plist 的 ProgramArguments 指向的也是那个文件。本草稿
+#    不在任何执行路径上——排障或改逻辑请改 daily-ai-news.sh，不要改这里。
 # ⚠️ 这是 Codex 迁移草稿,供主会话审后切换。原 daily-ai-news.sh 不动、launchd 不碰。
 #
 # 迁移 delta(相对 daily-ai-news.sh,只换推理引擎,锁/done-mark/重试结构原样保留):
@@ -28,7 +31,11 @@ trap 'rmdir "$CLAUDE_SESSION_LOCK" 2>/dev/null' EXIT
 # --- 锁结束 ---
 
 WORK="$HOME/.local/share/tony-articles"
-CODEX="$HOME/.nvm/versions/node/v24.14.0/bin/codex"
+# 2026-08-27: 单点硬编码 nvm 路径曾因 npm 包缺 darwin-arm64 二进制导致全天停摆
+# (codex.js 抛 Missing optional dependency，每轮 rc=1)。改为候选列表 + 启动前探活，
+# standalone 包优先；真正生效的值由 daily_codex_ready 回写。
+CODEX="${CODEX:-$HOME/.local/bin/codex}"
+DAILY_CODEX_FALLBACKS="${DAILY_CODEX_FALLBACKS:-$HOME/.nvm/versions/node/v24.14.0/bin/codex}"
 CODEX_MODEL="gpt-5.5"
 LOG="$HOME/.claude/logs/daily-ai-news.codex.log"
 TODAY="$(date +%Y-%m-%d)"
@@ -37,6 +44,8 @@ TODAY="$(date +%Y-%m-%d)"
 CODEX_FLAGS=(--dangerously-bypass-approvals-and-sandbox --skip-git-repo-check -C "$WORK" --add-dir "$WORK" -m "$CODEX_MODEL")
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG"; }
+# 复用 daily-article 同源的 Codex 探活/自愈helper(仅定义函数，无顶层副作用)。
+. "$HOME/.claude/scripts/daily-publish-common.sh"
 # L1 告警:撞 429 时推 ntfy,避免静默漏稿(复用 claude-auto-resume 同款 topic)
 ntfy_send() {
   [ -f "$HOME/.config/ntfy/.env" ] || return 0
@@ -148,6 +157,11 @@ PROMPT=$(cat <<PROMPT_EOF
 PROMPT_EOF
 )
 
+daily_codex_ready "daily-ai-news" || {
+  log "FATAL: Codex CLI 不可执行，拒绝进入接力循环(避免把重试预算烧在必然失败的调用上)"
+  ntfy_send "❌ daily-ai-news: Codex CLI 不可执行($TODAY)，今日热点未出。检查 codex 安装。"
+  exit 1
+}
 log "调用 Codex 整理 AI 热点..."
 RELAY_OUT="$HOME/.claude/logs/.daily-ai-news-codex-out.txt"
 RELAY_JSON="$HOME/.claude/logs/.daily-ai-news-codex-events.jsonl"
