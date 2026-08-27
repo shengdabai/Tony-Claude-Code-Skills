@@ -91,7 +91,12 @@ else
   fail "GitHub 或 ChatGPT 生成端实时路由"
 fi
 
-CODEX="$HOME/.nvm/versions/node/v24.14.0/bin/codex"
+CODEX="${CODEX:-$HOME/.local/bin/codex}"
+if DAILY_PREFLIGHT_REPAIR=0 daily_codex_ready "doctor-codex"; then
+  pass "Codex CLI 可执行（$CODEX）"
+else
+  fail "Codex CLI 不可执行——平台二进制缺失，生成任务会全轮空转"
+fi
 if [ -x "$CODEX" ] && daily_getnote_preflight "$CODEX"; then
   pass "GetNote 配置存在且 Codex MCP 已启用（未读取凭据）"
 else

@@ -153,7 +153,7 @@ Prefix 稳定 = 省 token 核心。会话中避免:切模型、改 CLAUDE.md、�
 
 ## Language
 
-User input 中文;内部推理英文;所有输出中文;代码、命令、标识符始终英文。
+Persistent language policy: `~/.claude/rules/language-protocol.md`.
 
 ## 快速指针
 
