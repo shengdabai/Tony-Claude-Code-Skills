@@ -24,7 +24,10 @@ STATE_DIR="${HOME}/.claude/state"
 STATE_FILE="${STATE_DIR}/auto-resume.json"
 LOG_DIR="${HOME}/.claude/logs"
 LOG_FILE="${LOG_DIR}/auto-resume.log"
-CLAUDE_BIN="${HOME}/.local/bin/claude"
+# 2026-08-29:改指守卫包装器,不再直调 REAL_BIN。
+# 直调 ~/.local/bin/claude 会绕过官方端点强制、第三方 ANTHROPIC_* 剥离、模型改写,
+# 以及飞书瘦身分支 —— 恢复出来的会话配置与正常会话不一致。守卫最终 exec 同一个二进制。
+CLAUDE_BIN="${HOME}/.claude/bin/claude"
 NTFY_ENV="${HOME}/.config/ntfy/.env"
 
 # 用绝对路径绕开 RTK/Claude Code 改写的 shell function
@@ -234,12 +237,24 @@ for project_dir in "$PROJECTS_DIR"/*/; do
 
   prompt="usage limit 已解除。请读 .omc/plans/ 里所有含 [ ] 的 ledger 文件,选最相关的一个,逐项继续执行未完成的任务。每完成一项把 [ ] 改成 [x] 并保存。"
 
+  # 飞书 workspace 的恢复:这条会话不经过 bridge,产出默认回不到聊天里 ——
+  # Tony 只会看到任务"没动静"。让它自己用 lark-cli 把结果发回原 chat。
+  # -c 续的是同一会话,上下文里有当轮的 <bridge_context>,chat_id 可直接取。
+  slim_env=()
+  case "$cwd" in
+    *"/.lark-channel-workspaces/"*|*"/.agent-feishu-channel/"*)
+      prompt="${prompt} 本会话来自飞书:全部做完后,从上下文里的 <bridge_context> 取 chatId,用 lark-cli 把一段不超过 450 字的完成摘要发回**同一个** chat(私聊回私聊、群聊回群聊);取不到 chatId 就不要外发,只在 ledger 里记录完成情况。"
+      # 恢复出来的会话同样吃瘦身配置,与正常飞书会话保持一致
+      slim_env=(CLAUDE_LARK_SLIM=1)
+      ;;
+  esac
+
   # 用 setsid 让子进程完全脱离 launchd, 不会被它当成超时回收
   # 后台模式: nohup + & + disown
   log_stem="$LOG_DIR/resume-$($DATE +%Y%m%d-%H%M%S)-$(basename "$cwd")"
   (
     cd "$cwd" || exit 1
-    nohup "$CLAUDE_BIN" -c -p "$prompt" \
+    nohup env ${slim_env[@]+"${slim_env[@]}"} "$CLAUDE_BIN" -c -p "$prompt" \
       > "${log_stem}.stdout.log" \
       2> "${log_stem}.stderr.log" < /dev/null &
     disown
