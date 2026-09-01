@@ -173,6 +173,83 @@ daily_repair_transient_failure() {
   fi
 }
 
+daily_process_age_seconds() {
+  local pid="$1"
+  ps -p "$pid" -o etime= 2>/dev/null | awk -F '[-:]' '
+    {
+      gsub(/[[:space:]]/, "")
+      if (NF == 4) print ($1 * 86400) + ($2 * 3600) + ($3 * 60) + $4
+      else if (NF == 3) print ($1 * 3600) + ($2 * 60) + $3
+      else if (NF == 2) print ($1 * 60) + $2
+    }
+  '
+}
+
+daily_run_with_timeout() {
+  local seconds="$1"
+  shift
+  if command -v timeout >/dev/null 2>&1; then
+    timeout "$seconds" "$@"
+  elif command -v gtimeout >/dev/null 2>&1; then
+    gtimeout "$seconds" "$@"
+  elif [ -x /opt/homebrew/bin/gtimeout ]; then
+    /opt/homebrew/bin/gtimeout "$seconds" "$@"
+  else
+    /usr/bin/perl -e 'alarm shift; exec @ARGV' "$seconds" "$@"
+  fi
+}
+
+# Send one verified Feishu failure receipt per job/day through the Codex bot.
+# The bridge deduplicates on the stable job/date id. Callers may retry freely.
+daily_notify_failure_once() {
+  local job="$1"
+  local summary="$2"
+  local work="${3:-$PWD}"
+  local bridge="${DAILY_TASK_BRIDGE:-$HOME/Desktop/01-项目开发/15-飞书桥接/task-progress-bridge.py}"
+  local day="${TODAY:-$(date +%F)}"
+  local stable_id="${job}-${day}"
+  local start_result finish_result finish_status
+
+  if [ ! -f "$bridge" ] || ! command -v jq >/dev/null 2>&1; then
+    daily_common_log "WARN: $job 飞书失败告警不可用（bridge/jq 缺失）"
+    return 1
+  fi
+
+  start_result="$({
+    jq -nc \
+      --arg session_id "$stable_id" \
+      --arg turn_id "$stable_id" \
+      --arg cwd "$work" \
+      --arg prompt "${job} 每日自动任务 · ${day}" \
+      '{session_id:$session_id,turn_id:$turn_id,cwd:$cwd,prompt:$prompt}' |
+      daily_run_with_timeout 30 env CODEX_NOTIFY_DISABLE=0 AI_TASK_NOTIFY_DISABLE=0 \
+        /usr/bin/python3 "$bridge" --source codex --event UserPromptSubmit --emit-result
+  } 2>/dev/null || true)"
+
+  finish_result="$({
+    jq -nc \
+      --arg session_id "$stable_id" \
+      --arg turn_id "$stable_id" \
+      --arg cwd "$work" \
+      --arg summary "$summary" \
+      '{session_id:$session_id,turn_id:$turn_id,cwd:$cwd,last_assistant_message:$summary}' |
+      daily_run_with_timeout 30 env CODEX_NOTIFY_DISABLE=0 AI_TASK_NOTIFY_DISABLE=0 \
+        /usr/bin/python3 "$bridge" --source codex --event StopFailure --emit-result
+  } 2>/dev/null || true)"
+
+  finish_status="$(printf '%s' "$finish_result" | jq -r '.status // empty' 2>/dev/null || true)"
+  case "$finish_status" in
+    sent|deduped)
+      daily_common_log "$job 飞书失败告警已确认（status=${finish_status}）"
+      return 0
+      ;;
+    *)
+      daily_common_log "WARN: $job 飞书失败告警未确认（start=${start_result:-empty} finish=${finish_result:-empty}）"
+      return 1
+      ;;
+  esac
+}
+
 # --- Codex CLI 可执行性守卫 -------------------------------------------------
 # 2026-08-27 事故：npm 的 optionalDependencies 在 npmmirror 源下丢了平台二进制
 # (@openai/codex-darwin-arm64)，nvm 里的 codex 启动即 rc=1。生成脚本此前只检查
