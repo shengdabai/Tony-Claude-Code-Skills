@@ -1,6 +1,5 @@
 #!/bin/bash
-# 每日文章自动创作 + 推送 — Codex 版草稿(.codex.sh) — launchd 每天 12:00 触发
-# ⚠️ 这是 Codex 迁移草稿,供主会话审后切换。原 daily-article.sh 不动、launchd 不碰。
+# 每日文章自动创作 + 推送 — Codex 生产版，由 launchd 定时触发。
 #
 # ============================================================================
 # 重要限制(主会话切换前必读)——为什么这是"最佳可行版"而非完整迁移:
@@ -19,7 +18,7 @@
 # 因此本草稿采取【Codex 起草 + 保留接力结构】方案:
 #   - 保留全部 锁/幂等/done-mark/重试/兜底 push 结构(与原脚本同构)
 #   - 把"用 xiaolai-write 跑 13-phase"改为在 prompt 里把写作步骤【显式展开成纯文本】,
-#     让 Codex 在单会话(+ resume 接力)里完成:取素材→选题脱敏→成文→翻译→双版落盘→push
+#     让 Codex 在单个有界新会话里完成:取素材→选题脱敏→成文→翻译→双版落盘
 #   - 不依赖 .state.json;接力的收敛判据改为"双版文件是否已落地"(原脚本兜底循环本就用它)
 #   - 质量基线:gpt-5.5,中文长文结构/收尾比 Opus 弱(见 evidence),主会话切换前
 #     建议先做 3-5 篇盲测 A/B,或仅把"研究/翻译"交 Codex、"结构/收尾"仍走 Claude。
@@ -27,7 +26,7 @@
 # 迁移 delta(CLI 接口,与 daily-ai-news.codex.sh 同构):
 #   CLAUDE=~/.local/bin/claude          → CODEX=~/.nvm/.../codex(绝对路径,防 exit 127)
 #   claude -p --session-id $SID         → codex exec --json(捕获 session_id)
-#   claude -p --resume $SID             → codex exec resume $SID(不传 -s,继承首轮沙箱)
+#   失败补偿                         → 下一 launchd 窗口全新 exec，禁止 resume --last
 #   --mcp-config getnote-only.json      → 删除(getnote 已在 ~/.codex/config.toml 注册;
 #                                          依赖 ~/.config/getnote/.env 存在,已实测 YES)
 #   后台权限                         → workspace-write 沙箱 + 自动安全审批
@@ -36,12 +35,52 @@
 #   发布完成先认 GitHub origin/main；随后触发幂等飞书合并分发，微信保持关闭
 # ============================================================================
 set -uo pipefail
+WORK="${TONY_ARTICLES_WORK:-$HOME/.local/share/tony-articles}"
+LOG="$HOME/.claude/logs/daily-article.codex.log"
+TODAY="$(date +%Y-%m-%d)"
+RUN_STATE_DIR="$HOME/.claude/logs"
+DONE_MARK="$RUN_STATE_DIR/.daily-article-done-${TODAY}"
+CURRENT_PHASE="startup"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG"; }
+COMMON="$HOME/.claude/scripts/daily-publish-common.sh"
+[ -r "$COMMON" ] || { log "FATAL: 公共发布可靠性库不存在: $COMMON"; exit 1; }
+# shellcheck source=$HOME/.claude/scripts/daily-publish-common.sh
+source "$COMMON"
+
+article_cleanup() {
+  rm -f "${CLAUDE_SESSION_LOCK:-/tmp/daily-claude-session.lock}/pid" 2>/dev/null || true
+  rmdir "${CLAUDE_SESSION_LOCK:-/tmp/daily-claude-session.lock}" 2>/dev/null || true
+  [ -z "${LOCK:-}" ] || rm -f "$LOCK" 2>/dev/null || true
+  [ -z "${GETNOTE_INPUT:-}" ] || rm -f -- "$GETNOTE_INPUT"
+  if [ -f "$DONE_MARK" ] && [ -n "${STAGE_DIR:-}" ] &&
+     [[ "$STAGE_DIR" == "$RUN_STATE_DIR"/daily-article-stage-"$TODAY"-* ]] && [ -d "$STAGE_DIR" ]; then
+    find "$STAGE_DIR" -depth -delete 2>/dev/null || true
+  fi
+}
+
+article_on_exit() {
+  local rc=$?
+  article_cleanup
+  if [ "$rc" -ne 0 ] && [ ! -f "$DONE_MARK" ]; then
+    daily_notify_failure_once "daily-article" \
+      "每日文章在阶段「${CURRENT_PHASE}」失败（rc=${rc}）。本次未标记完成，下一定时窗口会全新重试；详情已记录到 daily-article.codex.log。" \
+      "$WORK" || true
+  fi
+  return "$rc"
+}
+
 # --- 共享互斥锁:daily-article 与 daily-ai-news 都调用推理 session,排队避免并发抢占 ---
-CLAUDE_SESSION_LOCK="/tmp/daily-claude-session.lock"
+CLAUDE_SESSION_LOCK="${DAILY_SESSION_LOCK:-/tmp/daily-claude-session.lock}"
 if ! mkdir "$CLAUDE_SESSION_LOCK" 2>/dev/null; then
   _lock_pid=$(cat "$CLAUDE_SESSION_LOCK/pid" 2>/dev/null || true)
   if [ -n "$_lock_pid" ] && kill -0 "$_lock_pid" 2>/dev/null; then
     echo "[lock] another daily generation is running (PID $_lock_pid); retry slot skips" >&2
+    _lock_age="$(daily_process_age_seconds "$_lock_pid" || true)"
+    if [ -n "$_lock_age" ] && [ "$_lock_age" -ge 900 ] 2>/dev/null; then
+      daily_notify_failure_once "daily-article" \
+        "共享生成锁已被 PID ${_lock_pid} 占用 ${_lock_age} 秒，超过 15 分钟。本轮已跳过，需检查占锁任务。" \
+        "$WORK" || true
+    fi
     exit 0
   fi
   rm -f "$CLAUDE_SESSION_LOCK/pid" 2>/dev/null || true
@@ -52,10 +91,9 @@ if ! mkdir "$CLAUDE_SESSION_LOCK" 2>/dev/null; then
   }
 fi
 echo $$ > "$CLAUDE_SESSION_LOCK/pid"
-trap 'rm -f "$CLAUDE_SESSION_LOCK/pid"; rmdir "$CLAUDE_SESSION_LOCK" 2>/dev/null; [ -z "${GETNOTE_INPUT:-}" ] || rm -f -- "$GETNOTE_INPUT"' EXIT
+trap article_on_exit EXIT
 # --- 锁结束 ---
 
-WORK="${TONY_ARTICLES_WORK:-$HOME/.local/share/tony-articles}"
 # 首选路径仅是候选，真正生效的值由 daily_codex_ready 探活后回写（见预检处）。
 CODEX="${CODEX:-$HOME/.local/bin/codex}"
 CODEX_MODEL="gpt-5.5"
@@ -73,27 +111,20 @@ CODEX_ISOLATION_FLAGS=(
   --disable multi_agent
   -c 'approval_policy="never"'
 )
-LOG="$HOME/.claude/logs/daily-article.codex.log"
-TODAY="$(date +%Y-%m-%d)"
-RUN_STATE_DIR="$HOME/.claude/logs"
 # 每次尝试使用独立暂存区，避免前一次审计/发布失败后残留的多组草稿
 # 被下一次运行混合选取，造成中英文错配或重复生成。
 STAGE_DIR="$RUN_STATE_DIR/daily-article-stage-${TODAY}-$$"
 GETNOTE_EXPORTER="$HOME/.claude/scripts/getnote-readonly-export.mjs"
 GETNOTE_INPUT="$STAGE_DIR/inputs/getnote.json"
-DONE_MARK="$RUN_STATE_DIR/.daily-article-done-${TODAY}"
 BLOCKED_MARK="$RUN_STATE_DIR/.daily-article-blocked-${TODAY}"
 BLOCKER_SNIPPET="$RUN_STATE_DIR/.daily-article-blocker-${TODAY}.txt"
+BLOCKER_ALERT_MARK="$RUN_STATE_DIR/.daily-article-blocker-alerted-${TODAY}"
+DAILY_ARTICLE_AUDIT_TIMEOUT="${DAILY_ARTICLE_AUDIT_TIMEOUT:-300}"
 DAILY_ARTICLE_FORCE="${DAILY_ARTICLE_FORCE:-0}"
 # This background job has its own logs and final digest. Suppress generic
 # Codex Stop-hook Feishu progress messages so relay attempts do not spam chat.
 export CODEX_NOTIFY_DISABLE="${CODEX_NOTIFY_DISABLE:-1}"
 
-log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG"; }
-COMMON="$HOME/.claude/scripts/daily-publish-common.sh"
-[ -r "$COMMON" ] || { log "FATAL: 公共发布可靠性库不存在: $COMMON"; exit 1; }
-# shellcheck source=$HOME/.claude/scripts/daily-publish-common.sh
-source "$COMMON"
 NETWORK_ROUTE="$HOME/.claude/scripts/daily-network-route.sh"
 [ -r "$NETWORK_ROUTE" ] || { log "FATAL: 网络路由修复库不存在: $NETWORK_ROUTE"; exit 1; }
 # shellcheck source=$HOME/.claude/scripts/daily-network-route.sh
@@ -116,9 +147,14 @@ run_limited() {
   if [ -n "$TIMEOUT_CMD" ]; then
     "$TIMEOUT_CMD" "$seconds" "$@"
   else
-    "$@"
+    log "FATAL: timeout/gtimeout 不可用，拒绝无界执行: ${1:-command}"
+    return 127
   fi
 }
+if [ -z "$TIMEOUT_CMD" ] && [ "${DAILY_POLICY_PROBE:-0}" != "1" ]; then
+  log "FATAL: timeout/gtimeout 不可用，每日文章任务拒绝启动"
+  exit 1
+fi
 # L1 告警:撞 429 时推 ntfy,避免静默漏稿(复用 claude-auto-resume 同款 topic)
 ntfy_send() {
   [ -f "$HOME/.config/ntfy/.env" ] || return 0
@@ -206,10 +242,12 @@ release_audit_ok() {
     mkdir -p "$audit_dir/$(dirname "$relative")"
     cp -p "$source" "$audit_dir/$relative" || { rm -rf -- "$audit_dir"; return 1; }
   done
-  for attempt in 1 2; do
+  # One bounded audit attempt per launch window. A second 15-minute launch slot
+  # is the retry boundary; keeping it here would hold the shared lock too long.
+  for attempt in 1; do
     daily_infra_preflight "article-release-audit-attempt-$attempt" || break
     audit_log="$(mktemp "${TMPDIR:-/tmp}/tony-article-audit-run.${TODAY}.XXXXXX")" || break
-    run_limited 900 product-release-audit audit --max-cost 1.5 --model gpt-5.6-terra --effort low "$audit_dir" >"$audit_log" 2>&1
+    run_limited "$DAILY_ARTICLE_AUDIT_TIMEOUT" product-release-audit audit --max-cost 1.5 --model gpt-5.6-terra --effort low "$audit_dir" >"$audit_log" 2>&1
     audit_rc=$?
     cat "$audit_log" >>"$LOG"
     if [ "$audit_rc" -eq 0 ] && product-release-audit verify "$audit_dir" >>"$LOG" 2>&1; then
@@ -218,20 +256,33 @@ release_audit_ok() {
       rc=0
       break
     fi
-    if [ "$attempt" -eq 1 ] && { [ "$audit_rc" -eq 124 ] || daily_transient_failure_file "$audit_log"; }; then
-      log "WARN: release audit 命中瞬态基础设施故障（rc=${audit_rc}），修复预检后仅重试审计一次"
+    if [ "$audit_rc" -eq 124 ] || daily_transient_failure_file "$audit_log"; then
+      log "WARN: release audit 命中瞬态故障（rc=${audit_rc}），本窗口止损，下一定时窗口重试"
       daily_repair_transient_failure "$audit_log"
-      rm -f "$audit_log"
-      sleep 12
-      continue
+    else
+      log "ERROR: 增量 release audit 失败（attempt=${attempt} rc=${audit_rc}），不盲目重试"
     fi
-    log "ERROR: 增量 release audit 失败（attempt=${attempt} rc=${audit_rc}），非瞬态错误不盲目重试"
     rm -f "$audit_log"
     break
   done
   rm -rf -- "$audit_dir"
   return "$rc"
 }
+
+trigger_digest() {
+  local digest="$HOME/.claude/scripts/daily-digest.sh"
+  [ -x "$digest" ] || { log "ERROR: 合并分发脚本不可执行: $digest"; return 1; }
+  if bash "$digest" >/dev/null 2>&1; then
+    log "幂等合并分发已执行"
+    return 0
+  fi
+  log "ERROR: 合并分发本轮未成功；daily-digest 将按独立定时窗口重试"
+  daily_notify_failure_once "daily-digest" \
+    "每日文章与 AI 热点已发布到 GitHub，但合并飞书分发本轮未确认送达。daily-digest 会在后续定时窗口自动重试。" \
+    "$WORK" || true
+  return 1
+}
+
 mark_terminal_blocker() {
   local reason="$1"
   log "STOP: 非重试型阻塞(${reason}), 今日不再接力/重试。可在修复后用 DAILY_ARTICLE_FORCE=1 手动重跑。"
@@ -245,19 +296,30 @@ mark_terminal_blocker() {
     { tail -n 80 "$RELAY_OUT" 2>/dev/null; tail -n 80 "$RELAY_JSON" 2>/dev/null; } | sed -n '1,120p'
   } > "$BLOCKER_SNIPPET"
   touch "$BLOCKED_MARK"
+  if daily_notify_failure_once "daily-article" \
+    "每日文章遇到非重试型阻塞（${reason}），今日已停止自动重试。需要修复 GetNote/素材后用 DAILY_ARTICLE_FORCE=1 重跑。" \
+    "$WORK"; then
+    touch "$BLOCKER_ALERT_MARK"
+  fi
 }
 
 log "===== 开始每日文章任务(Codex 版) $TODAY ====="
+CURRENT_PHASE="preflight"
 
 if [ -f "$DONE_MARK" ]; then
   record_today_topic
-  log "今日中英双版已完成, 跳过"
+  [ -f "$RUN_STATE_DIR/.daily-digest-done-${TODAY}" ] || trigger_digest || true
+  log "今日中英双版已发布, 跳过生成"
   exit 0
 fi
 
 daily_generation_preflight "daily-article" || exit 1
 daily_codex_ready "daily-article" || {
   ntfy_send "⚠️ daily-article: Codex CLI 不可执行(平台二进制缺失)，今日($TODAY)文章未生成。修复: npm install -g @openai/codex@latest"
+  exit 1
+}
+command -v product-release-audit >/dev/null 2>&1 || {
+  log "FATAL: product-release-audit 不可用，拒绝启动生成"
   exit 1
 }
 [ -r "$HOME/.config/getnote/.env" ] && [ -x "$GETNOTE_EXPORTER" ] && \
@@ -267,6 +329,7 @@ daily_codex_ready "daily-article" || {
   }
 
 # 1. 同步仓库
+CURRENT_PHASE="repository-sync"
 cd "$WORK" || { log "FATAL: 工作目录不存在 $WORK"; exit 1; }
 sync_main_checkout || { log "FATAL: 启动时无法安全快进到 origin/main，拒绝在不确定状态继续"; exit 1; }
 
@@ -279,8 +342,9 @@ if ls articles/en/${TODAY}-*.md >/dev/null 2>&1 && ls articles/zh/${TODAY}-*.md 
      git cat-file -e "origin/main:${EXISTING_ZH}" 2>/dev/null; then
     record_today_topic
     touch "$DONE_MARK"
-    rm -f "$BLOCKED_MARK" "$BLOCKER_SNIPPET"
+    rm -f "$BLOCKED_MARK" "$BLOCKER_SNIPPET" "$BLOCKER_ALERT_MARK"
     log "今日双版已在 origin/main；补写完成标记"
+    trigger_digest || true
     exit 0
   fi
   log "WARN: 本地已有今日双版但 origin/main 未齐，直接重试审核/提交/push，不重新生成"
@@ -298,13 +362,18 @@ if ls articles/en/${TODAY}-*.md >/dev/null 2>&1 && ls articles/zh/${TODAY}-*.md 
       exit 1
     }
   fi
-  daily_git_retry push -q origin HEAD:main 2>>"$LOG" && log "retry push 成功"
+  daily_git_retry push -q origin HEAD:main 2>>"$LOG" || {
+    log "ERROR: retry push 失败；等待下一补偿时刻"
+    exit 1
+  }
+  log "retry push 成功"
   daily_git_retry fetch -q origin main 2>>"$LOG" || true
   if git cat-file -e "origin/main:${EXISTING_EN}" 2>/dev/null &&
      git cat-file -e "origin/main:${EXISTING_ZH}" 2>/dev/null; then
     touch "$DONE_MARK"
-    rm -f "$BLOCKED_MARK" "$BLOCKER_SNIPPET"
+    rm -f "$BLOCKED_MARK" "$BLOCKER_SNIPPET" "$BLOCKER_ALERT_MARK"
     log "retry 已确认 origin/main 双版齐全，标记完成"
+    trigger_digest || true
     exit 0
   fi
   log "ERROR: retry 后 origin/main 仍未齐；不标记完成，等待下一补偿时刻"
@@ -312,6 +381,11 @@ if ls articles/en/${TODAY}-*.md >/dev/null 2>&1 && ls articles/zh/${TODAY}-*.md 
 fi
 if [ -f "$BLOCKED_MARK" ] && [ "$DAILY_ARTICLE_FORCE" != "1" ]; then
   log "今日已有非重试型阻塞标记且远端双版未齐, 跳过。修复 GetNote/草稿后可 DAILY_ARTICLE_FORCE=1 手动重跑。marker=$BLOCKED_MARK"
+  if [ ! -f "$BLOCKER_ALERT_MARK" ] && daily_notify_failure_once "daily-article" \
+    "每日文章仍处于非重试型阻塞，今日未发布。需要修复 GetNote/素材后用 DAILY_ARTICLE_FORCE=1 重跑。" \
+    "$WORK"; then
+    touch "$BLOCKER_ALERT_MARK"
+  fi
   exit 0
 fi
 LOCK="$HOME/.claude/logs/.daily-article.codex.lock"
@@ -320,7 +394,7 @@ if [ -f "$LOCK" ] && kill -0 "$(cat "$LOCK" 2>/dev/null)" 2>/dev/null; then
   exit 0
 fi
 echo $$ > "$LOCK"
-trap 'rm -f "$LOCK" "$CLAUDE_SESSION_LOCK/pid"; rmdir "$CLAUDE_SESSION_LOCK" 2>/dev/null; [ -z "${GETNOTE_INPUT:-}" ] || rm -f -- "$GETNOTE_INPUT"' EXIT
+trap article_on_exit EXIT
 mkdir -p articles/en articles/zh
 
 # 已发布主题持久 log(选题去重防重发)
@@ -413,11 +487,9 @@ PROMPT=$(cat <<PROMPT_EOF
 PROMPT_EOF
 )
 
-# Codex 调用 flags(首轮 codex exec 支持 -C/--add-dir;resume 子命令不支持,见下)
+# Codex 调用 flags。每个定时窗口只跑一个有界新会话；失败由下一窗口全新重试。
 CODEX_FLAGS=(--sandbox workspace-write --skip-git-repo-check -C "$STAGE_DIR" --add-dir "$STAGE_DIR" -m "$CODEX_MODEL" "${CODEX_ISOLATION_FLAGS[@]}" -c "model_reasoning_effort=\"$CODEX_REASONING_EFFORT\"")
-# resume 子命令【不支持 -C/--add-dir】,靠当前进程 cwd 过滤会话;脚本已 cd "$WORK",故自动定位本仓库会话。
-# resume 继承首轮 workspace-write 沙箱与审批策略，不再提升权限。
-RESUME_FLAGS=(--skip-git-repo-check -m "$CODEX_MODEL" "${CODEX_ISOLATION_FLAGS[@]}" -c "model_reasoning_effort=\"$CODEX_REASONING_EFFORT\"")
+DAILY_ARTICLE_GENERATION_TIMEOUT="${DAILY_ARTICLE_GENERATION_TIMEOUT:-480}"
 
 RELAY_OUT="$HOME/.claude/logs/.daily-relay-codex-out.txt"
 RELAY_JSON="$HOME/.claude/logs/.daily-relay-codex-events.jsonl"
@@ -476,7 +548,8 @@ PY
 # 第一轮:启动写作,用 --json 捕获 session_id
 cd "$STAGE_DIR" || { log "FATAL: 无法进入暂存目录 $STAGE_DIR"; exit 1; }
 log "接力第 1 轮: 启动 Codex 写作(非 Git 暂存区)..."
-echo "$PROMPT" | run_limited 1500 "$CODEX" --search exec --json "${CODEX_FLAGS[@]}" - \
+CURRENT_PHASE="generation"
+echo "$PROMPT" | run_limited "$DAILY_ARTICLE_GENERATION_TIMEOUT" env CODEX_NOTIFY_DISABLE=1 "$CODEX" --search exec --json "${CODEX_FLAGS[@]}" - \
   > "$RELAY_JSON" 2>"$RELAY_OUT"
 RC=$?
 log "  第 1 轮 rc=$RC (124=超时)"
@@ -487,9 +560,9 @@ if unsupported_reasoning_effort_seen; then
   exit 1
 fi
 if hit_session_limit; then
-  log "  撞用量上限, 止损退出。当前 launchd 每天只跑一次, 可在 reset 后手动重跑"
+  log "  撞用量上限，本窗口止损退出；下一定时窗口会重试"
   ntfy_send "⚠️ daily-article 撞 Codex 429 限额(首轮), 今日($TODAY)文章暂未出。可在额度 reset 后手动重跑: DAILY_ARTICLE_FORCE=1 bash ~/.claude/scripts/daily-article.sh"
-  exit 0
+  exit 1
 fi
 if terminal_blocker_seen; then
   mark_terminal_blocker "first-round-terminal-blocker"
@@ -504,73 +577,20 @@ if [ "$RC" -ne 0 ]; then
   fi
 fi
 
-# 解析 session_id(多键兜底,失败则后续用 --last)
-SID=$(python3 - "$RELAY_JSON" <<'PY' 2>/dev/null
-import json, sys
-sid = ""
-try:
-    for line in open(sys.argv[1], encoding="utf-8", errors="replace"):
-        line = line.strip()
-        if not line: continue
-        try: ev = json.loads(line)
-        except Exception: continue
-        for k in ("session_id", "sessionId", "thread_id", "threadId", "conversation_id", "id"):
-            v = ev.get(k) if isinstance(ev, dict) else None
-            if isinstance(v, str) and len(v) >= 8:
-                sid = v
-        msg = ev.get("msg") if isinstance(ev, dict) else None
-        if isinstance(msg, dict):
-            for k in ("session_id", "sessionId", "thread_id", "conversation_id"):
-                v = msg.get(k)
-                if isinstance(v, str) and len(v) >= 8:
-                    sid = v
-except Exception:
-    pass
-print(sid)
-PY
-)
-log "本次接力 session-id=${SID:-<空,接力改用 --last>}"
-
-# 后续接力:resume 续跑,收敛判据 = 双版是否已落地(Codex 无 .state.json,故不做 phase 推进检测)
-CONT_PROMPT="继续完成当前文章:把英文版保存到 articles/en/${TODAY}-*.md、中文版保存到 articles/zh/${TODAY}-*.md(中英互链)。只写这两个当天文件；不要运行 git、ai-git-workflow、product-release-audit，不要修改其他文件。保存后立即停止。"
-MAX_RELAYS=12
-for r in $(seq 1 $MAX_RELAYS); do
-  if ls "$STAGE_DIR"/articles/en/${TODAY}-*.md >/dev/null 2>&1 && ls "$STAGE_DIR"/articles/zh/${TODAY}-*.md >/dev/null 2>&1; then
-    log "  双版已落地, 接力结束(第 $r 轮前)"; break
-  fi
-  log "接力第 $((r+1)) 轮: resume 续跑..."
-  if [ -n "$SID" ]; then
-    echo "$CONT_PROMPT" | run_limited 1200 "$CODEX" --search exec resume "$SID" "${RESUME_FLAGS[@]}" - > "$RELAY_OUT" 2>&1
+# Never resume with --last. On 2026-09-01 it selected a read-only session and
+# held the shared lock for hours, so every scheduled retry silently skipped.
+if ! ls "$STAGE_DIR"/articles/en/${TODAY}-*.md >/dev/null 2>&1 ||
+   ! ls "$STAGE_DIR"/articles/zh/${TODAY}-*.md >/dev/null 2>&1; then
+  if [ "$RC" -eq 124 ]; then
+    log "FATAL: 生成超过 ${DAILY_ARTICLE_GENERATION_TIMEOUT}s，未产出双版；拒绝 resume --last，下一定时窗口全新重试"
   else
-    echo "$CONT_PROMPT" | run_limited 1200 "$CODEX" --search exec resume --last "${RESUME_FLAGS[@]}" - > "$RELAY_OUT" 2>&1
+    log "FATAL: Codex 已结束但未产出双版（rc=$RC）；下一定时窗口全新重试"
   fi
-  RC=$?
-  cat "$RELAY_OUT" >> "$LOG"
-  log "  第 $((r+1)) 轮 rc=$RC"
-  if unsupported_reasoning_effort_seen; then
-    log "FATAL: $CODEX_MODEL 不接受当前 reasoning effort；已停止接力，避免无效重试"
-    ntfy_send "⚠️ daily-article 的 Codex reasoning effort 与 $CODEX_MODEL 不兼容，已停止无效重试。"
-    exit 1
-  fi
-  if hit_session_limit; then
-    log "  撞用量上限, 止损退出。当前 launchd 每天只跑一次, 可在 reset 后手动重跑"
-    ntfy_send "⚠️ daily-article 撞 Codex 429 限额(接力轮), 今日($TODAY)文章暂未出。可在额度 reset 后手动重跑: DAILY_ARTICLE_FORCE=1 bash ~/.claude/scripts/daily-article.sh"
-    exit 0
-  fi
-  if terminal_blocker_seen; then
-    mark_terminal_blocker "relay-${r}-terminal-blocker"
-    exit 0
-  fi
-  if [ "$RC" -ne 0 ]; then
-    INFRA_FAILURE=$(codex_infrastructure_failure || true)
-    if [ -n "$INFRA_FAILURE" ]; then
-      log "FATAL: $INFRA_FAILURE 停止后续 resume，避免轰炸式重试"
-      exit 1
-    fi
-  fi
-done
+  exit 1
+fi
 
 # 4. 外层脚本唯一负责审核、提交、推送；先审暂存文件，失败不污染发布 checkout
+CURRENT_PHASE="validation-and-publish"
 STAGED_EN_COUNT=$(find "$STAGE_DIR/articles/en" -maxdepth 1 -type f -name "${TODAY}-*.md" 2>/dev/null | wc -l | tr -d ' ')
 STAGED_ZH_COUNT=$(find "$STAGE_DIR/articles/zh" -maxdepth 1 -type f -name "${TODAY}-*.md" 2>/dev/null | wc -l | tr -d ' ')
 if [ "$STAGED_EN_COUNT" -ne 1 ] || [ "$STAGED_ZH_COUNT" -ne 1 ]; then
@@ -596,28 +616,29 @@ if [ -n "$STAGED_EN" ] && [ -n "$STAGED_ZH" ]; then
   release_audit_ok "$STAGED_EN" "$STAGED_ZH" || { log "FATAL: 暂存文章 release audit 未通过，发布 checkout 保持不变"; exit 1; }
   cd "$WORK" || exit 1
   sync_main_checkout || { log "FATAL: 发布前无法安全快进到 origin/main"; exit 1; }
-  cp -p "$STAGED_EN" "articles/en/$(basename "$STAGED_EN")"
-  cp -p "$STAGED_ZH" "articles/zh/$(basename "$STAGED_ZH")"
+  cp -p "$STAGED_EN" "articles/en/$(basename "$STAGED_EN")" || { log "ERROR: 复制英文暂存文章失败"; exit 1; }
+  cp -p "$STAGED_ZH" "articles/zh/$(basename "$STAGED_ZH")" || { log "ERROR: 复制中文暂存文章失败"; exit 1; }
 fi
 EN_FILE=$(ls articles/en/${TODAY}-*.md 2>/dev/null | head -1)
 ZH_FILE=$(ls articles/zh/${TODAY}-*.md 2>/dev/null | head -1)
 if [ -n "$EN_FILE" ] && [ -n "$ZH_FILE" ]; then
   log "SUCCESS: 英文=$(basename "$EN_FILE") 中文=$(basename "$ZH_FILE")"
-  python3 .tools/gen_readme.py >>"$LOG" 2>&1 || true
+  python3 .tools/gen_readme.py >>"$LOG" 2>&1 || { log "ERROR: README 生成失败"; exit 1; }
   ZH_T=$(head -1 "$ZH_FILE" | sed 's/^#[[:space:]]*//')
   grep -qxF "$ZH_T" .tools/published-topics.log 2>/dev/null || echo "$ZH_T" >> .tools/published-topics.log
-  git add "$EN_FILE" "$ZH_FILE" README.md .tools/published-topics.log 2>/dev/null
+  git add "$EN_FILE" "$ZH_FILE" README.md .tools/published-topics.log 2>/dev/null || { log "ERROR: git add 失败"; exit 1; }
   if [ -n "$(git diff --cached --name-only)" ]; then
     git commit -q -m "post: ${TODAY} 中英双版" 2>>"$LOG" || { log "ERROR: commit 失败"; exit 1; }
-    daily_git_retry push -q origin HEAD:main 2>>"$LOG" && log "push 成功"
+    daily_git_retry push -q origin HEAD:main 2>>"$LOG" || { log "ERROR: push 失败"; exit 1; }
+    log "push 成功"
   fi
   daily_git_retry fetch -q origin main 2>>"$LOG" || true
   if git cat-file -e "origin/main:${ZH_FILE}" 2>/dev/null && git cat-file -e "origin/main:${EN_FILE}" 2>/dev/null; then
     touch "$DONE_MARK"
-    rm -f "$BLOCKED_MARK" "$BLOCKER_SNIPPET"
+    rm -f "$BLOCKED_MARK" "$BLOCKER_SNIPPET" "$BLOCKER_ALERT_MARK"
     log "已验证远端含今日中文版, 标记完成"
     log "已验证 GitHub origin/main 含今日双版；触发幂等飞书合并分发"
-    bash "$HOME/.claude/scripts/daily-digest.sh" >/dev/null 2>&1 || true
+    trigger_digest || true
   else
     log "WARN: 远端未确认今日文章, 不标记完成, 后续重试"
   fi
@@ -629,4 +650,5 @@ else
   fi
 fi
 
+[ -f "$DONE_MARK" ] || { log "FATAL: 本窗口未建立远端发布完成标记"; exit 1; }
 log "===== 任务结束 ====="
