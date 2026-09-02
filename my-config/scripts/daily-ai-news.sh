@@ -1,27 +1,43 @@
 #!/bin/bash
-# 每日 AI 热点新闻 — Codex 版草稿(.codex.sh) — launchd 12:05 触发
-# ⚠️ 这是 Codex 迁移草稿,供主会话审后切换。原 daily-ai-news.sh 不动、launchd 不碰。
+# 每日 AI 热点新闻 — Codex 生产版，由 launchd 定时触发。
 #
 # 迁移 delta(相对 daily-ai-news.sh,只换推理引擎,锁/done-mark/重试结构原样保留):
 #   - CLAUDE=~/.local/bin/claude          → CODEX=~/.nvm/versions/node/v24.14.0/bin/codex(绝对路径,防后台 PATH 丢失 exit 127)
-#   - claude -p --session-id $SID         → codex exec --json(首轮捕获 codex 生成的 session_id)
-#   - claude -p --resume $SID             → codex exec resume $SID(续轮,不传 -s,继承首轮沙箱)
+#   - claude -p --session-id $SID         → 单个有界 codex exec --json
+#   - 失败补偿                            → 30 分钟后的 launchd 窗口启动全新会话
 #   - --mcp-config getnote-only.json      → 删除(getnote 已在 ~/.codex/config.toml 静态注册)
 #   - 后台权限                         → workspace-write 沙箱 + 自动安全审批
 #   - --add-dir $WORK                     → -C $WORK + --add-dir $WORK + --skip-git-repo-check
-#   - 默认 Opus                           → -m gpt-5.5(ChatGPT 订阅 auth 只能 5.5/5.2)
+#   - 默认 Opus                           → -m gpt-5.6-sol + xhigh
 #   - 发布完成先认 GitHub origin/main；随后触发幂等飞书合并分发，微信保持关闭
 # 已知限制:dedao-write 在 Codex 是软链 SKILL.md(~/Projects/gbrain/skills/dedao-write),
 #   Codex skill≈prompt 注入(无 subagent 编排)。本脚本用简化模式整理,prompt 已把过滤+整理步骤写死,
 #   不依赖 skill 自动展开 subagent,故 dedao 缺编排能力影响小。
 set -uo pipefail
+WORK="${TONY_ARTICLES_WORK:-$HOME/.local/share/tony-articles}"
+LOG="$HOME/.claude/logs/daily-ai-news.codex.log"
+TODAY="$(date +%Y-%m-%d)"
+DONE_MARK="$HOME/.claude/logs/.daily-ai-news-done-${TODAY}"
+LOCK=""
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG"; }
+COMMON="$HOME/.claude/scripts/daily-publish-common.sh"
+[ -r "$COMMON" ] || { log "FATAL: 公共发布可靠性库不存在: $COMMON"; exit 1; }
+# shellcheck source=$HOME/.claude/scripts/daily-publish-common.sh
+source "$COMMON"
+
 # --- 共享互斥锁:daily-article 与 daily-ai-news 都调用推理 session,排队避免并发抢占 ---
 # 注意:沿用同一把锁名,使 Codex 版与 Claude 版互斥(同机不会两个引擎同时抢额度/工作区)
-CLAUDE_SESSION_LOCK="/tmp/daily-claude-session.lock"
+CLAUDE_SESSION_LOCK="${DAILY_SESSION_LOCK:-/tmp/daily-claude-session.lock}"
 if ! mkdir "$CLAUDE_SESSION_LOCK" 2>/dev/null; then
   _lock_pid=$(cat "$CLAUDE_SESSION_LOCK/pid" 2>/dev/null || true)
   if [ -n "$_lock_pid" ] && kill -0 "$_lock_pid" 2>/dev/null; then
     echo "[lock] another daily generation is running (PID $_lock_pid); retry slot skips" >&2
+    _lock_age="$(daily_process_age_seconds "$_lock_pid" || true)"
+    if [ -n "$_lock_age" ] && [ "$_lock_age" -ge 900 ] 2>/dev/null; then
+      daily_notify_failure_once "daily-ai-news" \
+        "共享生成锁已被 PID ${_lock_pid} 占用 ${_lock_age} 秒，超过 15 分钟。本轮已跳过，需检查占锁任务。" \
+        "$WORK" || true
+    fi
     exit 0
   fi
   rm -f "$CLAUDE_SESSION_LOCK/pid" 2>/dev/null || true
@@ -32,13 +48,11 @@ if ! mkdir "$CLAUDE_SESSION_LOCK" 2>/dev/null; then
   }
 fi
 echo $$ > "$CLAUDE_SESSION_LOCK/pid"
-trap 'rm -f "$CLAUDE_SESSION_LOCK/pid"; rmdir "$CLAUDE_SESSION_LOCK" 2>/dev/null' EXIT
 # --- 锁结束 ---
 
-WORK="${TONY_ARTICLES_WORK:-$HOME/.local/share/tony-articles}"
 # 首选路径仅是候选，真正生效的值由 daily_codex_ready 探活后回写（见预检处）。
 CODEX="${CODEX:-$HOME/.local/bin/codex}"
-CODEX_MODEL="gpt-5.5"
+CODEX_MODEL="gpt-5.6-sol"
 CODEX_REASONING_EFFORT="xhigh"
 # External feed/page text is processed with no user config, no plugins/apps,
 # no local MCP, and a workspace-write sandbox rooted at the stage directory.
@@ -53,8 +67,6 @@ CODEX_ISOLATION_FLAGS=(
   --disable multi_agent
   -c 'approval_policy="never"'
 )
-LOG="$HOME/.claude/logs/daily-ai-news.codex.log"
-TODAY="$(date +%Y-%m-%d)"
 # 每次尝试使用独立暂存区，避免失败重试复用旧产物。
 STAGE_DIR="$HOME/.claude/logs/daily-ai-news-stage-${TODAY}-$$"
 MIN_HOT_ITEMS=5
@@ -63,11 +75,20 @@ TASK_BRIDGE="$HOME/Desktop/01-项目开发/15-飞书桥接/task-progress-bridge.
 # Codex 调用公共 flags(首轮用;resume 不接受 -s/sandbox 类,见下)
 CODEX_FLAGS=(--sandbox workspace-write --skip-git-repo-check -C "$STAGE_DIR" --add-dir "$STAGE_DIR" -m "$CODEX_MODEL" "${CODEX_ISOLATION_FLAGS[@]}" -c "model_reasoning_effort=\"$CODEX_REASONING_EFFORT\"")
 
-log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG"; }
-COMMON="$HOME/.claude/scripts/daily-publish-common.sh"
-[ -r "$COMMON" ] || { log "FATAL: 公共发布可靠性库不存在: $COMMON"; exit 1; }
-# shellcheck source=$HOME/.claude/scripts/daily-publish-common.sh
-source "$COMMON"
+news_cleanup() {
+  if [ -n "${LOCK:-}" ]; then
+    rm -f -- "$LOCK" 2>/dev/null || true
+  fi
+  if [ "$(cat "$CLAUDE_SESSION_LOCK/pid" 2>/dev/null || true)" = "$$" ]; then
+    rm -f "$CLAUDE_SESSION_LOCK/pid" 2>/dev/null || true
+    rmdir "$CLAUDE_SESSION_LOCK" 2>/dev/null || true
+  fi
+  if [[ "$STAGE_DIR" == "$HOME/.claude/logs/daily-ai-news-stage-${TODAY}-"* ]] && [ -d "$STAGE_DIR" ]; then
+    find "$STAGE_DIR" -depth -delete 2>/dev/null || true
+  fi
+}
+trap news_cleanup EXIT
+
 NETWORK_ROUTE="$HOME/.claude/scripts/daily-network-route.sh"
 [ -r "$NETWORK_ROUTE" ] || { log "FATAL: 网络路由修复库不存在: $NETWORK_ROUTE"; exit 1; }
 # shellcheck source=$HOME/.claude/scripts/daily-network-route.sh
@@ -117,10 +138,12 @@ release_audit_ok() {
     mkdir -p "$audit_dir/$(dirname "$relative")"
     cp -p "$source" "$audit_dir/$relative" || { rm -rf -- "$audit_dir"; return 1; }
   done
-  for attempt in 1 2; do
+  # 每个 launchd 窗口只做一次有界审计；瞬态失败交给 30 分钟后的
+  # 新窗口，避免本轮长时占有共享锁。
+  for attempt in 1; do
     daily_infra_preflight "ai-news-release-audit-attempt-$attempt" || break
     audit_log="$(mktemp "${TMPDIR:-/tmp}/tony-ai-news-audit-run.${TODAY}.XXXXXX")" || break
-    run_limited 900 product-release-audit audit --max-cost 1.5 --model gpt-5.6-terra --effort low "$audit_dir" >"$audit_log" 2>&1
+    run_limited "$DAILY_AI_NEWS_AUDIT_TIMEOUT" product-release-audit audit --max-cost 1.5 --model gpt-5.6-terra --effort low "$audit_dir" >"$audit_log" 2>&1
     audit_rc=$?
     cat "$audit_log" >>"$LOG"
     if [ "$audit_rc" -eq 0 ] && product-release-audit verify "$audit_dir" >>"$LOG" 2>&1; then
@@ -129,12 +152,9 @@ release_audit_ok() {
       rc=0
       break
     fi
-    if [ "$attempt" -eq 1 ] && { [ "$audit_rc" -eq 124 ] || daily_transient_failure_file "$audit_log"; }; then
-      log "WARN: release audit 命中瞬态基础设施故障（rc=${audit_rc}），修复预检后仅重试审计一次"
+    if [ "$audit_rc" -eq 124 ] || daily_transient_failure_file "$audit_log"; then
+      log "WARN: release audit 命中瞬态基础设施故障（rc=${audit_rc}），本窗口止损，30 分钟后全新重试"
       daily_repair_transient_failure "$audit_log"
-      rm -f "$audit_log"
-      sleep 12
-      continue
     fi
     log "ERROR: 增量 release audit 失败（attempt=${attempt} rc=${audit_rc}），非瞬态错误不盲目重试"
     rm -f "$audit_log"
@@ -157,9 +177,16 @@ run_limited() {
   if [ -n "$TIMEOUT_CMD" ]; then
     "$TIMEOUT_CMD" "$seconds" "$@"
   else
-    "$@"
+    log "FATAL: timeout/gtimeout 不可用，拒绝无界执行: ${1:-command}"
+    return 127
   fi
 }
+DAILY_AI_NEWS_GENERATION_TIMEOUT="${DAILY_AI_NEWS_GENERATION_TIMEOUT:-600}"
+DAILY_AI_NEWS_AUDIT_TIMEOUT="${DAILY_AI_NEWS_AUDIT_TIMEOUT:-600}"
+if [ -z "$TIMEOUT_CMD" ] && [ "${DAILY_POLICY_PROBE:-0}" != "1" ]; then
+  log "FATAL: timeout/gtimeout 不可用，每日 AI 热点任务拒绝启动"
+  exit 1
+fi
 
 validate_ai_news_pair() {
   local zh_file="$1" en_file="$2"
@@ -235,7 +262,6 @@ ntfy_send() {
 }
 log "===== 开始每日 AI 热点任务(Codex 版) $TODAY ====="
 
-DONE_MARK="$HOME/.claude/logs/.daily-ai-news-done-${TODAY}"
 if [ -f "$DONE_MARK" ]; then
   log "今日 AI 热点双版已完成, 跳过"
   exit 0
@@ -268,13 +294,17 @@ if ls ai-news/zh/${TODAY}-*.md >/dev/null 2>&1 && ls ai-news/en/${TODAY}-*.md >/
     exit 1
   fi
   python3 .tools/gen_readme.py >>"$LOG" 2>&1 || true
-  git add "$EXISTING_ZH" "$EXISTING_EN" README.md 2>/dev/null
+  git add "$EXISTING_ZH" "$EXISTING_EN" README.md 2>>"$LOG" || {
+    log "ERROR: retry git add 失败；等待下一补偿时刻"
+    exit 1
+  }
   if ! release_audit_ok "$EXISTING_ZH" "$EXISTING_EN"; then
     log "FATAL: release audit 未通过，不 commit、不 push；等待下一补偿时刻"
     exit 1
   fi
   if [ -n "$(git diff --cached --name-only)" ]; then
-    git commit -q -m "post(ai-news): ${TODAY} AI 圈过去 24 小时热点" 2>>"$LOG" || {
+    git commit -q --only -m "post(ai-news): ${TODAY} AI 圈过去 24 小时热点" -- \
+      "$EXISTING_ZH" "$EXISTING_EN" README.md 2>>"$LOG" || {
       log "ERROR: retry commit 失败；等待下一补偿时刻"
       exit 1
     }
@@ -295,7 +325,6 @@ if [ -f "$LOCK" ] && kill -0 "$(cat "$LOCK" 2>/dev/null)" 2>/dev/null; then
   log "上一次任务仍在运行 (PID $(cat "$LOCK")), 本次跳过"; exit 0
 fi
 echo $$ > "$LOCK"
-trap 'rm -f "$LOCK" "$CLAUDE_SESSION_LOCK/pid"; rmdir "$CLAUDE_SESSION_LOCK" 2>/dev/null' EXIT
 mkdir -p ai-news/zh ai-news/en
 
 # 3. 拉 aihot 过去 24h 精选数据 → 写到临时文件供 codex 读
@@ -401,81 +430,34 @@ hit_session_limit() {
   grep -qiE "usage limit reached|usage_limit_reached|rate limit exceeded|429 too many requests|quota exceeded|exceeded your current quota" "$RELAY_OUT" "$RELAY_JSON" 2>/dev/null
 }
 
-# 首轮:用 --json 捕获 codex 生成的 session_id(供后续 resume)。
-# session_id 在 JSONL 事件里(thread.started / session 字段),首轮跑完从 events 解析。
-echo "$PROMPT" | run_limited 1500 env CODEX_NOTIFY_DISABLE=1 "$CODEX" --search exec --json "${CODEX_FLAGS[@]}" - \
+# 每个定时窗口只跑一个有界新会话。未生成双版时直接失败，
+# 由 30 分钟后的 launchd 窗口重新取数、重新生成，不复用任何旧会话。
+echo "$PROMPT" | run_limited "$DAILY_AI_NEWS_GENERATION_TIMEOUT" env CODEX_NOTIFY_DISABLE=1 "$CODEX" --search exec --json "${CODEX_FLAGS[@]}" - \
   > "$RELAY_JSON" 2>"$RELAY_OUT"
 RC=$?
 cat "$RELAY_OUT" >> "$LOG"
-log "  Codex 首轮调用 rc=$RC (124=超时)"
+log "  Codex 单窗口调用 rc=$RC (124=超时)"
 if hit_session_limit; then
   log "  撞用量上限, 止损退出, 后续 launchd 时刻自动重试"
   notify_daily_failure_once "Codex 本窗口触发用量或速率限制；下一定时窗口会自动补偿。"
   ntfy_send "⚠️ daily-ai-news 撞 Codex 429 限额, 今日($TODAY)日报暂未出, 等下个 launchd 窗口(5h窗重置后)自动重试。如需立即出稿可手动跑或临时切 API key。"
-  exit 0
+  exit 1
 fi
 if [ "$RC" -ne 0 ]; then
   INFRA_FAILURE=$(codex_infrastructure_failure || true)
   if [ -n "$INFRA_FAILURE" ]; then
-    log "  基础设施故障，跳过同窗口 resume 重试: $INFRA_FAILURE"
+    log "  基础设施故障，本窗口止损: $INFRA_FAILURE"
     notify_daily_failure_once "$INFRA_FAILURE"
     exit 1
   fi
 fi
 
-# 从 JSONL 事件解析 session_id(字段名随 codex 版本可能变,做多键兜底)
-SID=$(python3 - "$RELAY_JSON" <<'PY' 2>/dev/null
-import json, sys
-sid = ""
-try:
-    for line in open(sys.argv[1], encoding="utf-8", errors="replace"):
-        line = line.strip()
-        if not line: continue
-        try: ev = json.loads(line)
-        except Exception: continue
-        # 逐层探测可能承载 session/thread id 的字段
-        for k in ("session_id", "sessionId", "thread_id", "threadId", "conversation_id", "id"):
-            v = ev.get(k) if isinstance(ev, dict) else None
-            if isinstance(v, str) and len(v) >= 8:
-                sid = v
-        msg = ev.get("msg") if isinstance(ev, dict) else None
-        if isinstance(msg, dict):
-            for k in ("session_id", "sessionId", "thread_id", "conversation_id"):
-                v = msg.get(k)
-                if isinstance(v, str) and len(v) >= 8:
-                    sid = v
-except Exception:
-    pass
-print(sid)
-PY
-)
-log "  解析到 session_id=${SID:-<空,后续接力改用 --last>}"
-
-# 接力一轮(若首轮没出双版)。优先用解析到的 SID;解析失败用 --last(同 cwd + 共享锁串行,安全)。
-# 注意:resume 子命令【不支持 -C/--add-dir】(只有顶层 codex exec 有),靠当前进程 cwd 过滤会话;
-#   脚本开头已 cd "$WORK",故 resume 自动定位到本仓库的会话。headless 续跑要跑 git,须带免审批+跳git检查。
-# resume 继承首轮 workspace-write 沙箱与审批策略，不再提升权限。
-RESUME_FLAGS=(--skip-git-repo-check -m "$CODEX_MODEL" "${CODEX_ISOLATION_FLAGS[@]}" -c "model_reasoning_effort=\"$CODEX_REASONING_EFFORT\"")
-CONT_PROMPT="继续完成 AI 热点日报: 如果 aihot 原始数据不足 5 条, 立刻联网搜索过去 24-48 小时 AI 热点补齐, 不要因为条数不足退出。把双版保存到 ai-news/zh/${TODAY}-*.md 和 ai-news/en/${TODAY}-*.md。只写这两个当天文件；不要运行 git、ai-git-workflow、product-release-audit，不要修改其他文件。保存后立即停止。"
-for r in 1 2; do
-  if ls "$STAGE_DIR"/ai-news/zh/${TODAY}-*.md >/dev/null 2>&1 && ls "$STAGE_DIR"/ai-news/en/${TODAY}-*.md >/dev/null 2>&1; then break; fi
-  log "接力 +$r 轮..."
-  if [ -n "$SID" ]; then
-    echo "$CONT_PROMPT" | run_limited 900 env CODEX_NOTIFY_DISABLE=1 "$CODEX" --search exec resume "$SID" "${RESUME_FLAGS[@]}" - > "$RELAY_OUT" 2>&1
-  else
-    echo "$CONT_PROMPT" | run_limited 900 env CODEX_NOTIFY_DISABLE=1 "$CODEX" --search exec resume --last "${RESUME_FLAGS[@]}" - > "$RELAY_OUT" 2>&1
-  fi
-  RC=$?
-  cat "$RELAY_OUT" >> "$LOG"
-  if [ "$RC" -ne 0 ]; then
-    INFRA_FAILURE=$(codex_infrastructure_failure || true)
-    if [ -n "$INFRA_FAILURE" ]; then
-      log "  基础设施故障，停止后续 resume: $INFRA_FAILURE"
-      notify_daily_failure_once "$INFRA_FAILURE"
-      exit 1
-    fi
-  fi
-done
+if ! ls "$STAGE_DIR"/ai-news/zh/${TODAY}-*.md >/dev/null 2>&1 ||
+   ! ls "$STAGE_DIR"/ai-news/en/${TODAY}-*.md >/dev/null 2>&1; then
+  log "FATAL: Codex 本窗口未产出热点中英双版（rc=$RC）；拒绝 resume/--last，30 分钟后全新重试"
+  notify_daily_failure_once "Codex 本窗口未生成齐热点中英双版；30 分钟后将启动全新会话补偿。"
+  exit 1
+fi
 
 # 5. 外层脚本唯一负责审核、提交、推送；先审暂存文件，失败不污染发布 checkout
 STAGED_ZH_COUNT=$(find "$STAGE_DIR/ai-news/zh" -maxdepth 1 -type f -name "${TODAY}-*.md" 2>/dev/null | wc -l | tr -d ' ')
@@ -500,17 +482,18 @@ if [ -n "$STAGED_ZH" ] && [ -n "$STAGED_EN" ]; then
   }
   cd "$WORK" || exit 1
   sync_main_checkout || { log "FATAL: 发布前无法安全快进到 origin/main"; exit 1; }
-  cp -p "$STAGED_ZH" "ai-news/zh/$(basename "$STAGED_ZH")"
-  cp -p "$STAGED_EN" "ai-news/en/$(basename "$STAGED_EN")"
+  cp -p "$STAGED_ZH" "ai-news/zh/$(basename "$STAGED_ZH")" || { log "ERROR: 中文热点暂存复制失败"; exit 1; }
+  cp -p "$STAGED_EN" "ai-news/en/$(basename "$STAGED_EN")" || { log "ERROR: 英文热点暂存复制失败"; exit 1; }
 fi
 ZH_FILE=$(ls ai-news/zh/${TODAY}-*.md 2>/dev/null | head -1)
 EN_FILE=$(ls ai-news/en/${TODAY}-*.md 2>/dev/null | head -1)
 if [ -n "$ZH_FILE" ] && [ -n "$EN_FILE" ]; then
   log "SUCCESS: zh=$(basename "$ZH_FILE") en=$(basename "$EN_FILE")"
   python3 .tools/gen_readme.py >>"$LOG" 2>&1 || true
-  git add "$ZH_FILE" "$EN_FILE" README.md 2>/dev/null
+  git add "$ZH_FILE" "$EN_FILE" README.md 2>>"$LOG" || { log "ERROR: git add 失败"; exit 1; }
   if [ -n "$(git diff --cached --name-only)" ]; then
-    git commit -q -m "post(ai-news): ${TODAY} AI 圈过去 24 小时热点" 2>>"$LOG" || { log "ERROR: commit 失败"; exit 1; }
+    git commit -q --only -m "post(ai-news): ${TODAY} AI 圈过去 24 小时热点" -- \
+      "$ZH_FILE" "$EN_FILE" README.md 2>>"$LOG" || { log "ERROR: commit 失败"; exit 1; }
     daily_git_retry push -q origin HEAD:main 2>>"$LOG" && log "push 成功"
   fi
   daily_git_retry fetch -q origin main 2>>"$LOG" || true
@@ -518,7 +501,12 @@ if [ -n "$ZH_FILE" ] && [ -n "$EN_FILE" ]; then
     touch "$DONE_MARK"
     log "已验证 origin/main 含今日 AI 热点双版，标记完成"
     log "已验证 GitHub origin/main 含今日 AI 热点双版；触发幂等飞书合并分发"
-    bash "$HOME/.claude/scripts/daily-digest.sh" >/dev/null 2>&1 || true
+    if bash "$HOME/.claude/scripts/daily-digest.sh" >/dev/null 2>&1; then
+      log "幂等合并分发已执行"
+    else
+      log "WARN: 合并分发本轮未确认送达；daily-digest 会在后续 30 分钟窗口重试"
+      notify_daily_failure_once "AI 热点已发布到 GitHub，但合并飞书分发本轮未确认送达；后续窗口将自动重试。"
+    fi
   else
     log "ERROR: 本地有 AI 热点，但 origin/main 未同时包含双版；不标记完成，等待下一补偿时刻"
     notify_daily_failure_once "AI 热点双版已在本地生成，但 origin/main 验证未通过；下一定时窗口会自动补偿发布。"

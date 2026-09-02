@@ -105,7 +105,9 @@ Say "setup omc" or run `/oh-my-claudecode:omc-setup`.
 
 ## 强制 Skill 路由
 
-由 `hooks/skill-router.py`(UserPromptSubmit)按关键词自动注入,不占常驻 context。命中时会收到「【强制路由】」开头的注入文本,照办即可。覆盖 needs-analysis / geo / 万维钢思维工具 / claude-code-project-layout / review-optimizer 五条;改规则改那个文件。
+由 `hooks/skill-router.py`(UserPromptSubmit)按关键词自动注入,不占常驻 context。命中时会收到「【强制路由】」或「【dbskill 自动路由】」开头的注入文本,照办即可。覆盖 needs-analysis / geo / 万维钢思维工具 / claude-code-project-layout / dbskill / review-optimizer 六条;改规则改那个文件。
+
+dbskill 语义兜底:任务与已安装 `dbs` / `dbs-*` Skill 的 description 明确匹配时,直接加载并执行最具体的一个;纯代码、数据库或 Skill 源码维护不触发,`dbs-update` 仅在用户明确要求时调用,更新后必须复验共享真源、32 个入口和软链接去重。
 
 ## Decision Support(重大决策会诊)
 

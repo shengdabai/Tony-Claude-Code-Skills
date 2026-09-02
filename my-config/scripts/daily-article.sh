@@ -20,8 +20,8 @@
 #   - 把"用 xiaolai-write 跑 13-phase"改为在 prompt 里把写作步骤【显式展开成纯文本】,
 #     让 Codex 在单个有界新会话里完成:取素材→选题脱敏→成文→翻译→双版落盘
 #   - 不依赖 .state.json;接力的收敛判据改为"双版文件是否已落地"(原脚本兜底循环本就用它)
-#   - 质量基线:gpt-5.5,中文长文结构/收尾比 Opus 弱(见 evidence),主会话切换前
-#     建议先做 3-5 篇盲测 A/B,或仅把"研究/翻译"交 Codex、"结构/收尾"仍走 Claude。
+#   - 质量基线:gpt-5.6-sol + xhigh。生成器必须在同一个有界会话中完成
+#     英文初稿、逻辑自审、中文重写和双语对齐；发布由外层审计与远端验证把关。
 #
 # 迁移 delta(CLI 接口,与 daily-ai-news.codex.sh 同构):
 #   CLAUDE=~/.local/bin/claude          → CODEX=~/.nvm/.../codex(绝对路径,防 exit 127)
@@ -31,7 +31,7 @@
 #                                          依赖 ~/.config/getnote/.env 存在,已实测 YES)
 #   后台权限                         → workspace-write 沙箱 + 自动安全审批
 #   --add-dir $WORK                     → -C $WORK + --add-dir $WORK + --skip-git-repo-check
-#   默认 Opus                           → -m gpt-5.5
+#   默认 Opus                           → -m gpt-5.6-sol + xhigh
 #   发布完成先认 GitHub origin/main；随后触发幂等飞书合并分发，微信保持关闭
 # ============================================================================
 set -uo pipefail
@@ -96,7 +96,7 @@ trap article_on_exit EXIT
 
 # 首选路径仅是候选，真正生效的值由 daily_codex_ready 探活后回写（见预检处）。
 CODEX="${CODEX:-$HOME/.local/bin/codex}"
-CODEX_MODEL="gpt-5.5"
+CODEX_MODEL="gpt-5.6-sol"
 CODEX_REASONING_EFFORT="xhigh"
 # GetNote is collected by a fixed read-only exporter before the model starts.
 # The model itself sees no user config, plugins/apps or local MCP tools.
@@ -328,10 +328,11 @@ command -v product-release-audit >/dev/null 2>&1 || {
     exit 1
   }
 
-# 1. 同步仓库
+# 1. 进入仓库。先处理上一次由本任务留下的当天发布状态，再要求干净树同步。
+#    2026-09-02 事故：git add 同时包含被 *.log 忽略的本地去重账本，前三个
+#    发布文件已部分暂存后命令失败；后续窗口先做干净树检查，导致永久自锁。
 CURRENT_PHASE="repository-sync"
 cd "$WORK" || { log "FATAL: 工作目录不存在 $WORK"; exit 1; }
-sync_main_checkout || { log "FATAL: 启动时无法安全快进到 origin/main，拒绝在不确定状态继续"; exit 1; }
 
 # 2. 幂等恢复:若文件已存在但上次在标记前中断，先回查远端。
 if ls articles/en/${TODAY}-*.md >/dev/null 2>&1 && ls articles/zh/${TODAY}-*.md >/dev/null 2>&1; then
@@ -351,13 +352,17 @@ if ls articles/en/${TODAY}-*.md >/dev/null 2>&1 && ls articles/zh/${TODAY}-*.md 
   python3 .tools/gen_readme.py >>"$LOG" 2>&1 || true
   EXISTING_ZH_T=$(head -1 "$EXISTING_ZH" | sed 's/^#[[:space:]]*//')
   grep -qxF "$EXISTING_ZH_T" .tools/published-topics.log 2>/dev/null || echo "$EXISTING_ZH_T" >> .tools/published-topics.log
-  git add "$EXISTING_EN" "$EXISTING_ZH" README.md .tools/published-topics.log 2>/dev/null
+  git add "$EXISTING_EN" "$EXISTING_ZH" README.md 2>>"$LOG" || {
+    log "ERROR: retry git add 失败；等待下一补偿时刻"
+    exit 1
+  }
   if ! release_audit_ok "$EXISTING_EN" "$EXISTING_ZH"; then
     log "FATAL: release audit 未通过，不 commit、不 push；等待下一补偿时刻"
     exit 1
   fi
   if [ -n "$(git diff --cached --name-only)" ]; then
-    git commit -q -m "post: ${TODAY} 中英双版" 2>>"$LOG" || {
+    git commit -q --only -m "post: ${TODAY} 中英双版" -- \
+      "$EXISTING_EN" "$EXISTING_ZH" README.md 2>>"$LOG" || {
       log "ERROR: retry commit 失败；等待下一补偿时刻"
       exit 1
     }
@@ -379,6 +384,9 @@ if ls articles/en/${TODAY}-*.md >/dev/null 2>&1 && ls articles/zh/${TODAY}-*.md 
   log "ERROR: retry 后 origin/main 仍未齐；不标记完成，等待下一补偿时刻"
   exit 1
 fi
+
+sync_main_checkout || { log "FATAL: 启动时无法安全快进到 origin/main，拒绝在不确定状态继续"; exit 1; }
+
 if [ -f "$BLOCKED_MARK" ] && [ "$DAILY_ARTICLE_FORCE" != "1" ]; then
   log "今日已有非重试型阻塞标记且远端双版未齐, 跳过。修复 GetNote/草稿后可 DAILY_ARTICLE_FORCE=1 手动重跑。marker=$BLOCKED_MARK"
   if [ ! -f "$BLOCKER_ALERT_MARK" ] && daily_notify_failure_once "daily-article" \
@@ -464,7 +472,7 @@ PROMPT=$(cat <<PROMPT_EOF
 1. 研究:用 WebSearch / getnote 已召回内容补充论据与事实,所有引用的数字/日期/事实要可核。
 2. 立结构:先列出 3-5 段的逻辑骨架(论点→论据→延伸→收口)。
 3. 写英文初稿:1000-2000 词,论证扎实、有真实张力,不要空泛口号。
-4. 自我批判一遍:找逻辑漏洞 / 幸存者偏差 / 收尾是否有力,据此修订(英文长文收尾是 gpt-5.5 已知弱项,务必让结尾收得住)。
+4. 自我批判一遍:找逻辑漏洞 / 幸存者偏差 / 中英意义偏移 / 收尾是否有力,据此修订。
 5. 翻译中文版:不要逐字翻译,用盛大白真诚、口语化、有温度的公众号风格【重写】成中文,与英文一一对应。
 6. CJK 排版:中文版用全角标点,中英混排时 ASCII 与中文之间留空格。
 目标读者:关注成长、学习、AI、自我进化的普通人。长度:正文 1500-3000 字(英文 1000-2000 词)。
@@ -626,9 +634,10 @@ if [ -n "$EN_FILE" ] && [ -n "$ZH_FILE" ]; then
   python3 .tools/gen_readme.py >>"$LOG" 2>&1 || { log "ERROR: README 生成失败"; exit 1; }
   ZH_T=$(head -1 "$ZH_FILE" | sed 's/^#[[:space:]]*//')
   grep -qxF "$ZH_T" .tools/published-topics.log 2>/dev/null || echo "$ZH_T" >> .tools/published-topics.log
-  git add "$EN_FILE" "$ZH_FILE" README.md .tools/published-topics.log 2>/dev/null || { log "ERROR: git add 失败"; exit 1; }
+  git add "$EN_FILE" "$ZH_FILE" README.md 2>>"$LOG" || { log "ERROR: git add 失败"; exit 1; }
   if [ -n "$(git diff --cached --name-only)" ]; then
-    git commit -q -m "post: ${TODAY} 中英双版" 2>>"$LOG" || { log "ERROR: commit 失败"; exit 1; }
+    git commit -q --only -m "post: ${TODAY} 中英双版" -- \
+      "$EN_FILE" "$ZH_FILE" README.md 2>>"$LOG" || { log "ERROR: commit 失败"; exit 1; }
     daily_git_retry push -q origin HEAD:main 2>>"$LOG" || { log "ERROR: push 失败"; exit 1; }
     log "push 成功"
   fi
