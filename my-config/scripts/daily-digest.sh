@@ -79,25 +79,31 @@ if [ -f "$LOCK" ] && kill -0 "$(cat "$LOCK" 2>/dev/null)" 2>/dev/null; then
 fi
 echo $$ > "$LOCK"; trap 'rm -f "$LOCK"' EXIT
 
-# 两篇是否齐；创作脚本负责生成并发布，本脚本只在远端 main 齐全后分发。
+# 中英文各自的思考+热点是否齐；只在远端 main 四文件齐全后分发。
 ZH_ART=$(find "$WORK/articles/zh" -maxdepth 1 -type f -name "${TODAY}-*.md" -print | head -1)
 ZH_NEWS=$(find "$WORK/ai-news/zh" -maxdepth 1 -type f -name "${TODAY}-*.md" -print | head -1)
-if [ -z "$ZH_ART" ] || [ -z "$ZH_NEWS" ]; then
-  log "两篇未齐(思考=${ZH_ART:-无} 热点=${ZH_NEWS:-无}), 等后续触发"; exit 0
+EN_ART=$(find "$WORK/articles/en" -maxdepth 1 -type f -name "${TODAY}-*.md" -print | head -1)
+EN_NEWS=$(find "$WORK/ai-news/en" -maxdepth 1 -type f -name "${TODAY}-*.md" -print | head -1)
+if [ -z "$ZH_ART" ] || [ -z "$ZH_NEWS" ] || [ -z "$EN_ART" ] || [ -z "$EN_NEWS" ]; then
+  log "中英文四文件未齐(中文思考=${ZH_ART:-无} 中文热点=${ZH_NEWS:-无} 英文思考=${EN_ART:-无} 英文热点=${EN_NEWS:-无}), 等后续触发"; exit 0
 fi
-log "两篇齐: 思考=$(basename "$ZH_ART") 热点=$(basename "$ZH_NEWS")"
+log "中英文双篇齐: 思考=$(basename "$ZH_ART") 热点=$(basename "$ZH_NEWS")"
 
 ART_REL="${ZH_ART#"$WORK"/}"
 NEWS_REL="${ZH_NEWS#"$WORK"/}"
+EN_ART_REL="${EN_ART#"$WORK"/}"
+EN_NEWS_REL="${EN_NEWS#"$WORK"/}"
 if ! git cat-file -e "origin/main:${ART_REL}" 2>/dev/null ||
-   ! git cat-file -e "origin/main:${NEWS_REL}" 2>/dev/null; then
-  log "ERROR: 两篇未同时进入 origin/main，拒绝提前推送飞书"
+   ! git cat-file -e "origin/main:${NEWS_REL}" 2>/dev/null ||
+   ! git cat-file -e "origin/main:${EN_ART_REL}" 2>/dev/null ||
+   ! git cat-file -e "origin/main:${EN_NEWS_REL}" 2>/dev/null; then
+  log "ERROR: 中英文双篇未同时进入 origin/main，拒绝提前推送飞书"
   exit 1
 fi
 
 # dry-run 覆盖路由、依赖、日期、文章齐备和远端发布门槛，不产生外部写入。
 if [ "${DAILY_DIGEST_DRY_RUN:-0}" = "1" ]; then
-  log "DRY_RUN: 两篇已在 origin/main，飞书目标与依赖检查通过；未同步站点、未发送消息"
+  log "DRY_RUN: 中英文双篇已在 origin/main，飞书目标与依赖检查通过；未同步站点、未发送消息"
   exit 0
 fi
 
