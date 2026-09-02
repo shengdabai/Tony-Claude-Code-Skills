@@ -15,6 +15,7 @@ Tony-Articles 国内静态站渲染器(自包含,零第三方依赖)。
       已做 surrogate / 控制字符安全过滤,可直接交给 hermes send。
 """
 import os, re, sys, html, glob, json
+from urllib.parse import urlsplit
 
 HOME = os.path.expanduser("~")
 DEFAULT_SRC = os.path.join(HOME, ".local/share/tony-articles")
@@ -31,13 +32,23 @@ def safe(text: str) -> str:
     return text.encode("utf-8", "ignore").decode("utf-8")
 
 # ---------------------------------------------------------------- 自包含 markdown
+def safe_href(raw_url: str) -> str:
+    """Allow web/mail links and local relative paths; neutralize active schemes."""
+    decoded = html.unescape(raw_url).strip()
+    parsed = urlsplit(decoded)
+    if parsed.scheme.lower() in {"http", "https", "mailto"}:
+        return html.escape(decoded, quote=True)
+    if not parsed.scheme and not decoded.startswith("//"):
+        return html.escape(decoded, quote=True)
+    return "#"
+
 def _inline(t: str) -> str:
     t = html.escape(t, quote=False)
     # 行内代码
     t = re.sub(r"`([^`]+)`", lambda m: f"<code>{m.group(1)}</code>", t)
     # 链接 [text](url)
     t = re.sub(r"\[([^\]]+)\]\(([^)\s]+)\)",
-               lambda m: f'<a href="{html.escape(m.group(2), quote=True)}" target="_blank" rel="noopener">{m.group(1)}</a>', t)
+               lambda m: f'<a href="{safe_href(m.group(2))}" target="_blank" rel="noopener noreferrer">{m.group(1)}</a>', t)
     # 粗体先于斜体
     t = re.sub(r"\*\*([^*]+)\*\*", lambda m: f"<strong>{m.group(1)}</strong>", t)
     t = re.sub(r"(?<!\*)\*([^*\n]+)\*(?!\*)", lambda m: f"<em>{m.group(1)}</em>", t)
@@ -95,7 +106,8 @@ def md_to_html(md: str) -> str:
 # ---------------------------------------------------------------- 文章解析
 def parse_article(path: str):
     """返回 (title, body_md, plain_summary)。剥掉首部 meta 引用行 + 紧随的 ---。"""
-    raw = safe(open(path, encoding="utf-8", errors="replace").read())
+    with open(path, encoding="utf-8", errors="replace") as source:
+        raw = safe(source.read())
     lines = raw.split("\n")
     title = ""
     idx = 0
@@ -139,6 +151,12 @@ def find_for_date(src, kind, lang, date):
     """kind: articles|ai-news ; lang: zh|en"""
     hits = sorted(glob.glob(os.path.join(src, kind, lang, f"{date}-*.md")))
     return hits[0] if hits else None
+
+def complete_day(src, date, lang):
+    """Return the reflection/news pair only when both files exist."""
+    art = find_for_date(src, "articles", lang, date)
+    news = find_for_date(src, "ai-news", lang, date)
+    return (art, news) if art and news else (None, None)
 
 def all_dates(src):
     dates = set()
@@ -213,8 +231,9 @@ def page(title, body, lang_toggle=""):
 
 def render_day(src, date, lang):
     other = "en" if lang == "zh" else "zh"
-    art = find_for_date(src, "articles", lang, date)
-    news = find_for_date(src, "ai-news", lang, date)
+    art, news = complete_day(src, date, lang)
+    if not art or not news:
+        return None, None
     tag_think = "💭 思考" if lang == "zh" else "💭 Reflection"
     tag_news = "📰 AI 热点" if lang == "zh" else "📰 AI Daily"
     parts = [f'<p class="date-badge">{date}</p>']
@@ -231,9 +250,8 @@ def render_day(src, date, lang):
         first_title = first_title or t
         parts.append(f'<span class="section-tag news">{tag_news}</span>')
         parts.append(f"<article><h1>{html.escape(t)}</h1>{md_to_html(body)}</article>")
-    if not art and not news:
-        return None, None
-    other_exists = find_for_date(src, "articles", other, date) or find_for_date(src, "ai-news", other, date)
+    other_art, other_news = complete_day(src, date, other)
+    other_exists = bool(other_art and other_news)
     toggle = ""
     if other_exists:
         href = f"/{date}{'-en' if other=='en' else ''}.html"
@@ -243,9 +261,8 @@ def render_day(src, date, lang):
 def render_index(src, out, dates):
     rows = []
     for d in dates:
-        zh_art = find_for_date(src, "articles", "zh", d)
-        zh_news = find_for_date(src, "ai-news", "zh", d)
-        if not zh_art and not zh_news:
+        zh_art, zh_news = complete_day(src, d, "zh")
+        if not zh_art or not zh_news:
             continue
         line = [f'<a class="idx-item" href="/{d}.html"><div class="idx-date">{d}</div>']
         if zh_art:
@@ -261,6 +278,10 @@ def render_index(src, out, dates):
 
 def build(src, out):
     os.makedirs(out, exist_ok=True)
+    # An earlier one-sided render must not survive after the completeness gate
+    # starts rejecting that date. index.html is overwritten below.
+    for stale in glob.glob(os.path.join(out, "20??-??-??.html")) + glob.glob(os.path.join(out, "20??-??-??-en.html")):
+        os.unlink(stale)
     dates = all_dates(src)
     n = 0
     for d in dates:
@@ -268,15 +289,19 @@ def build(src, out):
             htmlpage, _ = render_day(src, d, lang)
             if htmlpage:
                 fn = f"{d}.html" if lang == "zh" else f"{d}-en.html"
-                open(os.path.join(out, fn), "w", encoding="utf-8").write(htmlpage)
+                with open(os.path.join(out, fn), "w", encoding="utf-8") as target:
+                    target.write(htmlpage)
                 n += 1
-    open(os.path.join(out, "index.html"), "w", encoding="utf-8").write(render_index(src, out, dates))
+    with open(os.path.join(out, "index.html"), "w", encoding="utf-8") as target:
+        target.write(render_index(src, out, dates))
     print(f"built {n} pages + index for {len(dates)} dates -> {out}")
 
 def message(src, date, base_url):
     """微信合并消息文本(surrogate-safe)。"""
-    art = find_for_date(src, "articles", "zh", date)
-    news = find_for_date(src, "ai-news", "zh", date)
+    art, news = complete_day(src, date, "zh")
+    en_art, en_news = complete_day(src, date, "en")
+    if not art or not news or not en_art or not en_news:
+        raise ValueError(f"{date} 中英文思考/热点未形成完整四文件，拒绝生成国内链接")
     blocks = [f"📅 盛大白每日 · {date}", ""]
     if art:
         t, _, summ = parse_article(art)
