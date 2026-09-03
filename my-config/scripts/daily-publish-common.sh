@@ -151,7 +151,7 @@ daily_git_retry() {
   for attempt in 1 2 3; do
     git -c "http.proxy=$DAILY_PROXY_URL" "$@" && return 0
     rc=$?
-    daily_common_log "Git $1 第 $attempt 次失败（rc=$rc），将按边界重试"
+    daily_common_log "Git ${1} 第 ${attempt} 次失败（rc=${rc}），将按边界重试"
     sleep $((attempt * 3))
   done
   return "$rc"
@@ -183,6 +183,129 @@ daily_process_age_seconds() {
       else if (NF == 2) print ($1 * 60) + $2
     }
   '
+}
+
+# Populate one canonical list of files written by .tools/gen_readme.py.
+# Callers copy DAILY_PUBLICATION_INDEXES into a local array before use.
+daily_publication_indexes() {
+  local day="$1" year="${1%%-*}"
+  [ -n "$day" ] && [ -n "$year" ] || return 1
+  # Consumed by the sourcing script after this function returns.
+  # shellcheck disable=SC2034
+  DAILY_PUBLICATION_INDEXES=(
+    README.md
+    articles/en/README.md
+    articles/zh/README.md
+    "archive/${year}.md"
+  )
+}
+
+daily_lock_mtime_epoch() {
+  local lock_dir="$1"
+  stat -f '%m' "$lock_dir" 2>/dev/null || stat -c '%Y' "$lock_dir" 2>/dev/null
+}
+
+daily_process_start_fingerprint() {
+  local pid="$1"
+  ps -p "$pid" -o lstart= 2>/dev/null | awk '{$1=$1; print}'
+}
+
+# Atomic directory lock with conservative stale recovery and owner-checked
+# cleanup. A newly created lock without an owner file is treated as busy, which
+# closes the mkdir->owner initialization race.
+daily_lock_acquire() {
+  local lock_dir="$1" stale_seconds="${2:-1200}"
+  local now mtime age owner pid recorded_start current_start stale_dir token
+  export DAILY_LOCK_STATUS="busy"
+  current_start="$(daily_process_start_fingerprint $$ || true)"
+  token="$$|${current_start}|$(date +%s)|${RANDOM:-0}"
+  if mkdir "$lock_dir" 2>/dev/null; then
+    if ! printf '%s\n' "$token" > "$lock_dir/owner"; then
+      rmdir "$lock_dir" 2>/dev/null || true
+      export DAILY_LOCK_STATUS="error"
+      return 1
+    fi
+    export DAILY_LOCK_OWNER="$token"
+    export DAILY_LOCK_STATUS="acquired"
+    return 0
+  fi
+
+  now="$(date +%s)"
+  mtime="$(daily_lock_mtime_epoch "$lock_dir" || true)"
+  age=0
+  if [ -n "$mtime" ] && [ "$now" -ge "$mtime" ] 2>/dev/null; then
+    age=$((now - mtime))
+  fi
+  owner="$(cat "$lock_dir/owner" 2>/dev/null || true)"
+  pid="${owner%%|*}"
+  recorded_start="${owner#*|}"
+  recorded_start="${recorded_start%%|*}"
+  current_start=""
+  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+    current_start="$(daily_process_start_fingerprint "$pid" || true)"
+  fi
+  if [ "$age" -lt "$stale_seconds" ] 2>/dev/null ||
+     { [ -n "$recorded_start" ] && [ "$current_start" = "$recorded_start" ]; }; then
+    daily_common_log "锁正被使用：${lock_dir}（age=${age}s pid=${pid:-pending}）"
+    return 1
+  fi
+
+  stale_dir="${lock_dir}.stale.$$.$RANDOM"
+  if ! mv "$lock_dir" "$stale_dir" 2>/dev/null; then
+    return 1
+  fi
+  if ! mkdir "$lock_dir" 2>/dev/null; then
+    rm -f "$stale_dir/owner" 2>/dev/null || true
+    rmdir "$stale_dir" 2>/dev/null || true
+    return 1
+  fi
+  if ! printf '%s\n' "$token" > "$lock_dir/owner"; then
+    rmdir "$lock_dir" 2>/dev/null || true
+    export DAILY_LOCK_STATUS="error"
+    return 1
+  fi
+  rm -f "$stale_dir/owner" 2>/dev/null || true
+  rmdir "$stale_dir" 2>/dev/null || true
+  export DAILY_LOCK_OWNER="$token"
+  export DAILY_LOCK_STATUS="acquired"
+  daily_common_log "已原子回收陈旧锁：${lock_dir}（age=${age}s）"
+  return 0
+}
+
+daily_lock_release() {
+  local lock_dir="$1" expected_owner="$2" actual_owner
+  actual_owner="$(cat "$lock_dir/owner" 2>/dev/null || true)"
+  [ -n "$expected_owner" ] && [ "$actual_owner" = "$expected_owner" ] || return 1
+  rm -f "$lock_dir/owner" 2>/dev/null || return 1
+  rmdir "$lock_dir" 2>/dev/null || return 1
+}
+
+# Copy a bilingual pair through private temporary names. If the second rename
+# fails, remove only the destination created by this invocation.
+daily_copy_pair_atomic() {
+  local source_one="$1" dest_one="$2" source_two="$3" dest_two="$4"
+  local temp_one temp_two moved_one=0
+  [ -f "$source_one" ] && [ -f "$source_two" ] || return 1
+  [ ! -e "$dest_one" ] && [ ! -e "$dest_two" ] || return 1
+  temp_one="$(dirname "$dest_one")/.${RANDOM:-0}.$$.$(basename "$dest_one").tmp"
+  temp_two="$(dirname "$dest_two")/.${RANDOM:-0}.$$.$(basename "$dest_two").tmp"
+  rm -f "$temp_one" "$temp_two" 2>/dev/null || true
+  cp -p "$source_one" "$temp_one" || return 1
+  if ! cp -p "$source_two" "$temp_two"; then
+    rm -f "$temp_one" "$temp_two" 2>/dev/null || true
+    return 1
+  fi
+  if ! mv "$temp_one" "$dest_one"; then
+    rm -f "$temp_one" "$temp_two" 2>/dev/null || true
+    return 1
+  fi
+  moved_one=1
+  if [ "${DAILY_COPY_PAIR_FAIL_AFTER_FIRST:-0}" = "1" ] || ! mv "$temp_two" "$dest_two"; then
+    [ "$moved_one" -eq 0 ] || rm -f "$dest_one" 2>/dev/null || true
+    rm -f "$temp_two" 2>/dev/null || true
+    return 1
+  fi
+  return 0
 }
 
 daily_run_with_timeout() {

@@ -30,6 +30,8 @@ if [ ! -r "$COMMON" ]; then
   fail "公共可靠性库不存在"
   exit 1
 fi
+# Read by functions sourced from daily-publish-common.sh.
+# shellcheck disable=SC2034
 DAILY_PREFLIGHT_REPAIR=0
 # shellcheck source=$HOME/.claude/scripts/daily-publish-common.sh
 source "$COMMON"
@@ -50,6 +52,7 @@ if python3 - "${PLISTS[@]}" <<'PY'
 import plistlib, sys
 
 seen = {}
+schedules = {}
 expected = {
     "com.tony.daily-article": "daily-article.sh",
     "com.tony.daily-ai-news": "daily-ai-news.sh",
@@ -65,14 +68,21 @@ for name in sys.argv[1:]:
     entries = data.get("StartCalendarInterval") or []
     if isinstance(entries, dict):
         entries = [entries]
+    schedules[label] = entries
     for entry in entries:
         key = (entry.get("Hour"), entry.get("Minute"))
         if key in seen:
             raise SystemExit(2)
         seen[key] = label
+
+article_first = min(e["Hour"] * 60 + e["Minute"] for e in schedules["com.tony.daily-article"])
+news_first = min(e["Hour"] * 60 + e["Minute"] for e in schedules["com.tony.daily-ai-news"])
+digest_slots = {(e["Hour"], e["Minute"]) for e in schedules["com.tony.daily-digest"]}
+if article_first > 10 * 60 + 35 or news_first > 10 * 60 + 40 or (12, 0) not in digest_slots:
+    raise SystemExit(3)
 PY
 then
-  pass "LaunchAgent 路由正确且 50 个触发时刻无碰撞"
+  pass "LaunchAgent 路由正确且触发时刻无碰撞"
 else
   fail "LaunchAgent 路由或触发时刻冲突"
 fi
@@ -93,7 +103,7 @@ fi
 
 CODEX="${CODEX:-$HOME/.local/bin/codex}"
 if DAILY_PREFLIGHT_REPAIR=0 daily_codex_ready "doctor-codex"; then
-  pass "Codex CLI 可执行（$CODEX）"
+  pass "Codex CLI 可执行（${CODEX}）"
 else
   fail "Codex CLI 不可执行——平台二进制缺失，生成任务会全轮空转"
 fi
@@ -196,13 +206,26 @@ else
 fi
 
 if grep -q '发送前先查飞书真实历史' "$SCRIPT_DIR/daily-digest.sh" &&
-   grep -q '回查工具不可用；不信任单一返回值' "$SCRIPT_DIR/daily-digest.sh"; then
-  pass "飞书发送前查重、发送后回查均为 fail-closed"
+   grep -q '回查工具不可用；不信任单一返回值' "$SCRIPT_DIR/daily-digest.sh" &&
+   grep -q -- '--idempotency-key "$FEISHU_IDEMPOTENCY_KEY"' "$SCRIPT_DIR/daily-digest.sh"; then
+  pass "飞书服务端幂等、发送前查重、发送后回查均已启用"
 else
   fail "飞书双重幂等门"
 fi
 
 if command -v lark-cli >/dev/null 2>&1; then
+  LARK_SCOPE_TMP="$(mktemp "${TMPDIR:-/tmp}/daily-doctor-lark-scope.XXXXXX")"
+  if lark-cli --profile cli_aa80e81017f85bc0 auth check \
+       --scope 'im:message.send_as_user im:message im:message:readonly im:chat:read' \
+       --json >"$LARK_SCOPE_TMP" 2>/dev/null &&
+     python3 -c 'import json,sys
+d=json.load(open(sys.argv[1]))
+raise SystemExit(0 if d.get("ok") and not d.get("missing") else 1)' "$LARK_SCOPE_TMP"; then
+    pass "飞书用户身份具备发送与回查最小权限"
+  else
+    fail "飞书用户身份缺少发送或回查权限"
+  fi
+  rm -f "$LARK_SCOPE_TMP"
   LARK_TMP="$(mktemp "${TMPDIR:-/tmp}/daily-doctor-lark.XXXXXX")"
   if LARK_CLI_NO_PROXY=1 lark-cli --profile cli_aa80e81017f85bc0 --as user \
        im +chat-messages-list --chat-id oc_43c5ee271f2b76bd073779a169736142 --page-size 50 >"$LARK_TMP" 2>/dev/null; then
