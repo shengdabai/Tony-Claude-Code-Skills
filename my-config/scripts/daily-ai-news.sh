@@ -17,6 +17,7 @@ set -uo pipefail
 WORK="${TONY_ARTICLES_WORK:-$HOME/.local/share/tony-articles}"
 LOG="$HOME/.claude/logs/daily-ai-news.codex.log"
 TODAY="$(date +%Y-%m-%d)"
+RUN_STATE_DIR="$HOME/.claude/logs"
 DONE_MARK="$HOME/.claude/logs/.daily-ai-news-done-${TODAY}"
 LOCK=""
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG"; }
@@ -24,30 +25,17 @@ COMMON="$HOME/.claude/scripts/daily-publish-common.sh"
 [ -r "$COMMON" ] || { log "FATAL: 公共发布可靠性库不存在: $COMMON"; exit 1; }
 # shellcheck source=$HOME/.claude/scripts/daily-publish-common.sh
 source "$COMMON"
+daily_publication_indexes "$TODAY" || { log "FATAL: 无法建立 AI 热点发布索引清单"; exit 1; }
+PUBLICATION_INDEXES=("${DAILY_PUBLICATION_INDEXES[@]}")
 
 # --- 共享互斥锁:daily-article 与 daily-ai-news 都调用推理 session,排队避免并发抢占 ---
 # 注意:沿用同一把锁名,使 Codex 版与 Claude 版互斥(同机不会两个引擎同时抢额度/工作区)
 CLAUDE_SESSION_LOCK="${DAILY_SESSION_LOCK:-/tmp/daily-claude-session.lock}"
-if ! mkdir "$CLAUDE_SESSION_LOCK" 2>/dev/null; then
-  _lock_pid=$(cat "$CLAUDE_SESSION_LOCK/pid" 2>/dev/null || true)
-  if [ -n "$_lock_pid" ] && kill -0 "$_lock_pid" 2>/dev/null; then
-    echo "[lock] another daily generation is running (PID $_lock_pid); retry slot skips" >&2
-    _lock_age="$(daily_process_age_seconds "$_lock_pid" || true)"
-    if [ -n "$_lock_age" ] && [ "$_lock_age" -ge 900 ] 2>/dev/null; then
-      daily_notify_failure_once "daily-ai-news" \
-        "共享生成锁已被 PID ${_lock_pid} 占用 ${_lock_age} 秒，超过 15 分钟。本轮已跳过，需检查占锁任务。" \
-        "$WORK" || true
-    fi
-    exit 0
-  fi
-  rm -f "$CLAUDE_SESSION_LOCK/pid" 2>/dev/null || true
-  rmdir "$CLAUDE_SESSION_LOCK" 2>/dev/null || true
-  mkdir "$CLAUDE_SESSION_LOCK" 2>/dev/null || {
-    echo "[lock] cannot acquire shared lock; retry slot skips" >&2
-    exit 0
-  }
+if ! daily_lock_acquire "$CLAUDE_SESSION_LOCK" 2400; then
+  echo "[lock] another daily generation is running; retry slot skips" >&2
+  exit 0
 fi
-echo $$ > "$CLAUDE_SESSION_LOCK/pid"
+CLAUDE_SESSION_OWNER="$DAILY_LOCK_OWNER"
 # --- 锁结束 ---
 
 # 首选路径仅是候选，真正生效的值由 daily_codex_ready 探活后回写（见预检处）。
@@ -79,10 +67,7 @@ news_cleanup() {
   if [ -n "${LOCK:-}" ]; then
     rm -f -- "$LOCK" 2>/dev/null || true
   fi
-  if [ "$(cat "$CLAUDE_SESSION_LOCK/pid" 2>/dev/null || true)" = "$$" ]; then
-    rm -f "$CLAUDE_SESSION_LOCK/pid" 2>/dev/null || true
-    rmdir "$CLAUDE_SESSION_LOCK" 2>/dev/null || true
-  fi
+  daily_lock_release "$CLAUDE_SESSION_LOCK" "${CLAUDE_SESSION_OWNER:-}" 2>/dev/null || true
   if [[ "$STAGE_DIR" == "$HOME/.claude/logs/daily-ai-news-stage-${TODAY}-"* ]] && [ -d "$STAGE_DIR" ]; then
     find "$STAGE_DIR" -depth -delete 2>/dev/null || true
   fi
@@ -104,7 +89,40 @@ sync_main_checkout() {
     return 1
   fi
   daily_git_retry fetch -q origin main 2>>"$LOG" || return 1
-  git merge -q --ff-only origin/main 2>>"$LOG" || return 1
+  if git merge -q --ff-only origin/main 2>>"$LOG"; then
+    return 0
+  fi
+  log "WARN: 本地发布提交与 origin/main 分叉；尝试把本机未推送提交安全 rebase 到最新 main"
+  if git rebase origin/main >>"$LOG" 2>&1; then
+    return 0
+  fi
+  git rebase --abort >>"$LOG" 2>&1 || true
+  return 1
+}
+
+refresh_news_indexes() {
+  python3 .tools/gen_readme.py >>"$LOG" 2>&1 || {
+    log "ERROR: AI 热点索引生成失败"
+    return 1
+  }
+  python3 .tools/validate_bilingual.py >>"$LOG" 2>&1 || {
+    log "ERROR: 双语文章与索引一致性校验失败"
+    return 1
+  }
+}
+
+remote_news_publication_complete() {
+  local zh_file="$1" en_file="$2" local_blob remote_blob readme_text
+  git cat-file -e "origin/main:${zh_file}" 2>/dev/null || return 1
+  git cat-file -e "origin/main:${en_file}" 2>/dev/null || return 1
+  local_blob="$(git hash-object "$zh_file" 2>/dev/null)" || return 1
+  remote_blob="$(git rev-parse "origin/main:${zh_file}" 2>/dev/null)" || return 1
+  [ "$local_blob" = "$remote_blob" ] || return 1
+  local_blob="$(git hash-object "$en_file" 2>/dev/null)" || return 1
+  remote_blob="$(git rev-parse "origin/main:${en_file}" 2>/dev/null)" || return 1
+  [ "$local_blob" = "$remote_blob" ] || return 1
+  readme_text="$(git show origin/main:README.md 2>/dev/null)" || return 1
+  grep -qF "$(basename "$en_file")" <<<"$readme_text" || return 1
 }
 
 release_audit_ok() {
@@ -140,6 +158,7 @@ release_audit_ok() {
   done
   # 每个 launchd 窗口只做一次有界审计；瞬态失败交给 30 分钟后的
   # 新窗口，避免本轮长时占有共享锁。
+  # shellcheck disable=SC2043
   for attempt in 1; do
     daily_infra_preflight "ai-news-release-audit-attempt-$attempt" || break
     audit_log="$(mktemp "${TMPDIR:-/tmp}/tony-ai-news-audit-run.${TODAY}.XXXXXX")" || break
@@ -263,56 +282,69 @@ ntfy_send() {
 log "===== 开始每日 AI 热点任务(Codex 版) $TODAY ====="
 
 if [ -f "$DONE_MARK" ]; then
-  log "今日 AI 热点双版已完成, 跳过"
-  exit 0
+  log "检测到今日 AI 热点完成标记；先重验 GitHub 正文与索引"
 fi
 
-daily_generation_preflight "daily-ai-news" || exit 1
-daily_codex_ready "daily-ai-news" || {
-  ntfy_send "⚠️ daily-ai-news: Codex CLI 不可执行(平台二进制缺失)，今日($TODAY)热点未生成。修复: npm install -g @openai/codex@latest"
-  exit 1
-}
-
-# 1. 同步仓库
+# 1. 先检查并恢复上个窗口留下的当天发布状态。
 cd "$WORK" || { log "FATAL: $WORK 不存在"; exit 1; }
-sync_main_checkout || { log "FATAL: 启动时无法安全快进到 origin/main，拒绝在不确定状态继续"; exit 1; }
 
-# 2. 幂等恢复:若文件已存在但上次在标记前中断，先回查远端。
-if ls ai-news/zh/${TODAY}-*.md >/dev/null 2>&1 && ls ai-news/en/${TODAY}-*.md >/dev/null 2>&1; then
-  EXISTING_ZH=$(ls ai-news/zh/${TODAY}-*.md 2>/dev/null | head -1)
-  EXISTING_EN=$(ls ai-news/en/${TODAY}-*.md 2>/dev/null | head -1)
+# 2. 幂等恢复:隔离单侧残留；双版齐时先回查并补齐完整发布单元。
+EXISTING_ZH=$(find ai-news/zh -maxdepth 1 -type f -name "${TODAY}-*.md" -print | head -1)
+EXISTING_EN=$(find ai-news/en -maxdepth 1 -type f -name "${TODAY}-*.md" -print | head -1)
+if { [ -n "$EXISTING_ZH" ] && [ -z "$EXISTING_EN" ]; } ||
+   { [ -z "$EXISTING_ZH" ] && [ -n "$EXISTING_EN" ]; }; then
+  PARTIAL_FILE="${EXISTING_ZH:-$EXISTING_EN}"
+  if git cat-file -e "HEAD:${PARTIAL_FILE}" 2>/dev/null; then
+    log "FATAL: HEAD 中只存在单侧今日热点，拒绝自动移动已跟踪内容"
+    exit 1
+  fi
+  RECOVERY_DIR="$RUN_STATE_DIR/daily-ai-news-partial-${TODAY}-$(date +%s)-$$"
+  mkdir -p "$RECOVERY_DIR" || exit 1
+  git restore --staged -- "$PARTIAL_FILE" 2>/dev/null || true
+  mv "$PARTIAL_FILE" "$RECOVERY_DIR/" || exit 1
+  log "WARN: 已把单侧热点残留移入可恢复目录 ${RECOVERY_DIR}，继续全新生成"
+  EXISTING_ZH=""
+  EXISTING_EN=""
+fi
+if [ -n "$EXISTING_ZH" ] && [ -n "$EXISTING_EN" ]; then
   daily_git_retry fetch -q origin main 2>>"$LOG" || true
-  if git cat-file -e "origin/main:${EXISTING_ZH}" 2>/dev/null &&
-     git cat-file -e "origin/main:${EXISTING_EN}" 2>/dev/null; then
+  if remote_news_publication_complete "$EXISTING_ZH" "$EXISTING_EN"; then
     touch "$DONE_MARK"
-    log "今日 AI 热点双版已在 origin/main；补写完成标记"
+    log "今日 AI 热点双版与索引已在 origin/main；补写完成标记"
+    bash "$HOME/.claude/scripts/daily-digest.sh" >/dev/null 2>&1 || true
     exit 0
   fi
-  log "WARN: 本地已有今日 AI 热点双版但 origin/main 未齐，直接重试审核/提交/push，不重新生成"
+  log "WARN: 本地已有今日 AI 热点但远端发布单元不完整，直接重建索引并重试提交/push"
+  if [ -z "$(git status --porcelain)" ]; then
+    sync_main_checkout || { log "ERROR: retry 前无法安全同步或 rebase origin/main"; exit 1; }
+  fi
   if ! validate_ai_news_pair "$EXISTING_ZH" "$EXISTING_EN"; then
     log "FATAL: 已有 AI 热点双版未通过 5-8 条来源/双语 URL 一致性门禁"
     exit 1
   fi
-  python3 .tools/gen_readme.py >>"$LOG" 2>&1 || true
-  git add "$EXISTING_ZH" "$EXISTING_EN" README.md 2>>"$LOG" || {
+  if ! release_audit_ok "$EXISTING_ZH" "$EXISTING_EN"; then
+    log "FATAL: release audit 未通过；尚未重建或暂存索引，工作区保持可重试"
+    exit 1
+  fi
+  refresh_news_indexes || exit 1
+  git add "$EXISTING_ZH" "$EXISTING_EN" "${PUBLICATION_INDEXES[@]}" 2>>"$LOG" || {
     log "ERROR: retry git add 失败；等待下一补偿时刻"
     exit 1
   }
-  if ! release_audit_ok "$EXISTING_ZH" "$EXISTING_EN"; then
-    log "FATAL: release audit 未通过，不 commit、不 push；等待下一补偿时刻"
-    exit 1
-  fi
   if [ -n "$(git diff --cached --name-only)" ]; then
     git commit -q --only -m "post(ai-news): ${TODAY} AI 圈过去 24 小时热点" -- \
-      "$EXISTING_ZH" "$EXISTING_EN" README.md 2>>"$LOG" || {
+      "$EXISTING_ZH" "$EXISTING_EN" "${PUBLICATION_INDEXES[@]}" 2>>"$LOG" || {
       log "ERROR: retry commit 失败；等待下一补偿时刻"
       exit 1
     }
   fi
-  daily_git_retry push -q origin HEAD:main 2>>"$LOG" && log "retry push 成功"
+  daily_git_retry push -q origin HEAD:main 2>>"$LOG" || {
+    log "ERROR: retry push 失败；等待下一补偿时刻"
+    exit 1
+  }
+  log "retry push 成功"
   daily_git_retry fetch -q origin main 2>>"$LOG" || true
-  if git cat-file -e "origin/main:${EXISTING_ZH}" 2>/dev/null &&
-     git cat-file -e "origin/main:${EXISTING_EN}" 2>/dev/null; then
+  if remote_news_publication_complete "$EXISTING_ZH" "$EXISTING_EN"; then
     touch "$DONE_MARK"
     log "retry 已确认 origin/main 双版齐全，标记完成"
     exit 0
@@ -320,6 +352,12 @@ if ls ai-news/zh/${TODAY}-*.md >/dev/null 2>&1 && ls ai-news/en/${TODAY}-*.md >/
   log "ERROR: retry 后 origin/main 仍未齐；不标记完成，等待下一补偿时刻"
   exit 1
 fi
+sync_main_checkout || { log "FATAL: 启动时无法安全快进到 origin/main，拒绝在不确定状态继续"; exit 1; }
+daily_generation_preflight "daily-ai-news" || exit 1
+daily_codex_ready "daily-ai-news" || {
+  ntfy_send "⚠️ daily-ai-news: Codex CLI 不可执行(平台二进制缺失)，今日($TODAY)热点未生成。修复: npm install -g @openai/codex@latest"
+  exit 1
+}
 LOCK="$HOME/.claude/logs/.daily-ai-news.codex.lock"
 if [ -f "$LOCK" ] && kill -0 "$(cat "$LOCK" 2>/dev/null)" 2>/dev/null; then
   log "上一次任务仍在运行 (PID $(cat "$LOCK")), 本次跳过"; exit 0
@@ -454,7 +492,7 @@ fi
 
 if ! ls "$STAGE_DIR"/ai-news/zh/${TODAY}-*.md >/dev/null 2>&1 ||
    ! ls "$STAGE_DIR"/ai-news/en/${TODAY}-*.md >/dev/null 2>&1; then
-  log "FATAL: Codex 本窗口未产出热点中英双版（rc=$RC）；拒绝 resume/--last，30 分钟后全新重试"
+  log "FATAL: Codex 本窗口未产出热点中英双版（rc=${RC}）；拒绝 resume/--last，30 分钟后全新重试"
   notify_daily_failure_once "Codex 本窗口未生成齐热点中英双版；30 分钟后将启动全新会话补偿。"
   exit 1
 fi
@@ -482,22 +520,27 @@ if [ -n "$STAGED_ZH" ] && [ -n "$STAGED_EN" ]; then
   }
   cd "$WORK" || exit 1
   sync_main_checkout || { log "FATAL: 发布前无法安全快进到 origin/main"; exit 1; }
-  cp -p "$STAGED_ZH" "ai-news/zh/$(basename "$STAGED_ZH")" || { log "ERROR: 中文热点暂存复制失败"; exit 1; }
-  cp -p "$STAGED_EN" "ai-news/en/$(basename "$STAGED_EN")" || { log "ERROR: 英文热点暂存复制失败"; exit 1; }
+  daily_copy_pair_atomic \
+    "$STAGED_ZH" "ai-news/zh/$(basename "$STAGED_ZH")" \
+    "$STAGED_EN" "ai-news/en/$(basename "$STAGED_EN")" || {
+      log "ERROR: 中英热点未能成对原子落位；本轮未留下单侧文件"
+      exit 1
+    }
 fi
 ZH_FILE=$(ls ai-news/zh/${TODAY}-*.md 2>/dev/null | head -1)
 EN_FILE=$(ls ai-news/en/${TODAY}-*.md 2>/dev/null | head -1)
 if [ -n "$ZH_FILE" ] && [ -n "$EN_FILE" ]; then
   log "SUCCESS: zh=$(basename "$ZH_FILE") en=$(basename "$EN_FILE")"
-  python3 .tools/gen_readme.py >>"$LOG" 2>&1 || true
-  git add "$ZH_FILE" "$EN_FILE" README.md 2>>"$LOG" || { log "ERROR: git add 失败"; exit 1; }
+  refresh_news_indexes || exit 1
+  git add "$ZH_FILE" "$EN_FILE" "${PUBLICATION_INDEXES[@]}" 2>>"$LOG" || { log "ERROR: git add 失败"; exit 1; }
   if [ -n "$(git diff --cached --name-only)" ]; then
     git commit -q --only -m "post(ai-news): ${TODAY} AI 圈过去 24 小时热点" -- \
-      "$ZH_FILE" "$EN_FILE" README.md 2>>"$LOG" || { log "ERROR: commit 失败"; exit 1; }
-    daily_git_retry push -q origin HEAD:main 2>>"$LOG" && log "push 成功"
+      "$ZH_FILE" "$EN_FILE" "${PUBLICATION_INDEXES[@]}" 2>>"$LOG" || { log "ERROR: commit 失败"; exit 1; }
+    daily_git_retry push -q origin HEAD:main 2>>"$LOG" || { log "ERROR: push 失败"; exit 1; }
+    log "push 成功"
   fi
   daily_git_retry fetch -q origin main 2>>"$LOG" || true
-  if git cat-file -e "origin/main:${ZH_FILE}" 2>/dev/null && git cat-file -e "origin/main:${EN_FILE}" 2>/dev/null; then
+  if remote_news_publication_complete "$ZH_FILE" "$EN_FILE"; then
     touch "$DONE_MARK"
     log "已验证 origin/main 含今日 AI 热点双版，标记完成"
     log "已验证 GitHub origin/main 含今日 AI 热点双版；触发幂等飞书合并分发"

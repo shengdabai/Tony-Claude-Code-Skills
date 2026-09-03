@@ -10,7 +10,7 @@ TODAY="${DAILY_DIGEST_DATE:-$(date +%Y-%m-%d)}"
 SITE_BASE="http://111.229.77.103:8080"
 FEISHU_TARGET="feishu:oc_43c5ee271f2b76bd073779a169736142"
 FEISHU_CHAT_ID="${FEISHU_TARGET#feishu:}"
-HERMES="$HOME/.local/bin/hermes"
+FEISHU_IDEMPOTENCY_KEY="daily-digest-${TODAY}"
 RENDER="$HOME/.claude/scripts/render-site.py"
 DONE="$HOME/.claude/logs/.daily-digest-done-${TODAY}"
 FEISHU_DONE="$HOME/.claude/logs/.daily-digest-feishu-${TODAY}"
@@ -24,6 +24,25 @@ if ! [[ "$TODAY" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
   log "ERROR: DAILY_DIGEST_DATE 格式错误: $TODAY"
   exit 2
 fi
+NEXT_DAY="$(python3 - "$TODAY" <<'PY'
+import datetime, sys
+print((datetime.date.fromisoformat(sys.argv[1]) + datetime.timedelta(days=1)).isoformat())
+PY
+)" || { log "ERROR: 无法计算飞书查询结束日期"; exit 2; }
+
+# daily-article 完成后会主动触发分发，launchd 也会在整点/半点触发。
+# 用 mkdir 原子抢锁，并在任何网络/仓库检查之前加锁，避免两个进程同时
+# 查重后都发送，或重复执行昂贵的站点同步。
+LOCK_DIR="$HOME/.claude/logs/.daily-digest-${TODAY}.lock.d"
+if ! daily_lock_acquire "$LOCK_DIR" 1200; then
+  log "该日 digest 已有实例运行或锁仍在宽限期，本次幂等跳过"
+  exit 0
+fi
+DIGEST_LOCK_OWNER="$DAILY_LOCK_OWNER"
+digest_cleanup() {
+  daily_lock_release "$LOCK_DIR" "$DIGEST_LOCK_OWNER" 2>/dev/null || true
+}
+trap digest_cleanup EXIT
 
 # 生成任务可在中午前完成并主动触发本脚本，但当天飞书合并摘要必须等到
 # 12:00 才发送。历史补发不受限制；紧急人工恢复可显式覆盖。
@@ -42,7 +61,7 @@ if [ -f "$DONE" ] && [ "${DAILY_DIGEST_DRY_RUN:-0}" != "1" ]; then
   exit 0
 fi
 
-for dep in git python3 lark-cli "$HERMES" "$RENDER"; do
+for dep in git python3 lark-cli "$RENDER"; do
   if [ "${dep#/}" = "$dep" ]; then
     command -v "$dep" >/dev/null 2>&1 || { log "ERROR: 依赖不存在: $dep"; exit 1; }
   elif [ ! -x "$dep" ]; then
@@ -67,17 +86,14 @@ if [ -z "$(git status --porcelain)" ]; then
     git switch -q main 2>>"$LOG" || { log "ERROR: 无法切换到 main"; exit 1; }
   fi
   git merge -q --ff-only origin/main 2>>"$LOG" || { log "ERROR: main 无法安全快进到 origin/main"; exit 1; }
+  [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || {
+    log "ERROR: 本地 HEAD 领先或不同于 origin/main，拒绝用未发布内容生成站点或飞书摘要"
+    exit 1
+  }
 else
   log "ERROR: 主发布 checkout 有未提交改动，拒绝用不确定状态推送飞书"
   exit 1
 fi
-
-# 按日期加锁，补发历史日期时不与今日发送互相覆盖。
-LOCK="$HOME/.claude/logs/.daily-digest-${TODAY}.lock"
-if [ -f "$LOCK" ] && kill -0 "$(cat "$LOCK" 2>/dev/null)" 2>/dev/null; then
-  log "该日 digest 仍在跑 (PID $(cat "$LOCK")), 跳过"; exit 0
-fi
-echo $$ > "$LOCK"; trap 'rm -f "$LOCK"' EXIT
 
 # 中英文各自的思考+热点是否齐；只在远端 main 四文件齐全后分发。
 ZH_ART=$(find "$WORK/articles/zh" -maxdepth 1 -type f -name "${TODAY}-*.md" -print | head -1)
@@ -129,22 +145,42 @@ ntfy_send() {
 # 返回 0=已确认落地, 1=已成功查询但未见消息, 2=回查工具不可用/查询失败。
 feishu_confirm() {
   command -v lark-cli >/dev/null 2>&1 || return 2
-  local _i _out _rc _success=0
+  local _i _page _token _out _rc _found _complete
   for _i in 1 2 3; do
-    _out="$(LARK_CLI_NO_PROXY=1 lark-cli --profile cli_aa80e81017f85bc0 --as user \
-         im +chat-messages-list --chat-id "$FEISHU_CHAT_ID" --page-size 50 2>/dev/null)"
-    _rc=$?
-    if [ "$_rc" -eq 0 ]; then
-      _success=1
-    fi
-    # 避免 set -o pipefail 下 grep -q 提前命中关闭管道，导致 printf 收到
-    # SIGPIPE 并把“已找到消息”误判成失败。
-    if [ "$_rc" -eq 0 ] && grep -q "盛大白每日 · ${TODAY}" <<< "$_out"; then
-      return 0
-    fi
+    _token=""
+    _page=0
+    _complete=0
+    while [ "$_page" -lt 20 ]; do
+      _page=$((_page + 1))
+      if [ -n "$_token" ]; then
+        _out="$(LARK_CLI_NO_PROXY=1 lark-cli --profile cli_aa80e81017f85bc0 --as user \
+          im +chat-messages-list --chat-id "$FEISHU_CHAT_ID" \
+          --start "$TODAY" --end "$NEXT_DAY" --sort desc --page-size 50 \
+          --page-token "$_token" --format json 2>/dev/null)"
+      else
+        _out="$(LARK_CLI_NO_PROXY=1 lark-cli --profile cli_aa80e81017f85bc0 --as user \
+          im +chat-messages-list --chat-id "$FEISHU_CHAT_ID" \
+          --start "$TODAY" --end "$NEXT_DAY" --sort desc --page-size 50 \
+          --format json 2>/dev/null)"
+      fi
+      _rc=$?
+      [ "$_rc" -eq 0 ] || break
+      _found="$(python3 -c 'import json,sys
+d=json.load(sys.stdin).get("data") or {}
+needle=sys.argv[1]
+print("yes" if any(needle in str(m.get("content") or "") for m in (d.get("messages") or [])) else "no")
+print(d.get("page_token") or "-")' "盛大白每日 · ${TODAY}" <<<"$_out" 2>/dev/null)" || { _success=0; break; }
+      [ "${_found%%$'\n'*}" != "yes" ] || return 0
+      _token="${_found#*$'\n'}"
+      [ "$_token" != "-" ] || _token=""
+      if [ -z "$_token" ]; then
+        _complete=1
+        break
+      fi
+    done
+    [ "$_complete" -eq 0 ] || return 1
     sleep 3
   done
-  [ "$_success" -eq 1 ] && return 1
   return 2
 }
 
@@ -153,6 +189,7 @@ feishu_confirm() {
 feishu_confirm; pre_cf=$?
 if [ "$pre_cf" -eq 0 ]; then
   touch "$FEISHU_DONE" "$WECHAT_DISABLED" "$DONE"
+  rm -f "$HOME/.claude/logs/.daily-digest-send-attempt-${TODAY}" 2>/dev/null || true
   log "飞书历史已存在该日 digest，已补齐本地完成标记并跳过发送"
   exit 0
 elif [ "$pre_cf" -eq 2 ]; then
@@ -162,18 +199,34 @@ elif [ "$pre_cf" -eq 2 ]; then
 fi
 
 if [ ! -f "$FEISHU_DONE" ]; then
-  OUT="$("$HERMES" send -t "$FEISHU_TARGET" "$MSG" 2>&1)"; rc=$?
-  if [ "$rc" -eq 0 ] && ! echo "$OUT" | grep -qiE "fail|error"; then
+  SEND_ATTEMPT="$HOME/.claude/logs/.daily-digest-send-attempt-${TODAY}"
+  if [ -f "$SEND_ATTEMPT" ]; then
+    attempt_epoch="$(cat "$SEND_ATTEMPT" 2>/dev/null || echo 0)"
+    attempt_age=$(( $(date +%s) - attempt_epoch ))
+    if [ "$attempt_age" -ge 3600 ] 2>/dev/null; then
+      log "ERROR: 飞书发送结果已不确定超过 1 小时；停止自动重发，避免幂等窗口过期后重复"
+      ntfy_send "⚠️ daily-digest: 飞书发送结果不确定已超过 1 小时($TODAY)，需人工核验后再补发。"
+      exit 1
+    fi
+  else
+    date +%s > "$SEND_ATTEMPT"
+  fi
+  OUT="$(LARK_CLI_NO_PROXY=1 lark-cli --profile cli_aa80e81017f85bc0 --as user \
+    im +messages-send --chat-id "$FEISHU_CHAT_ID" --text "$MSG" \
+    --idempotency-key "$FEISHU_IDEMPOTENCY_KEY" --format json 2>&1)"; rc=$?
+  if [ "$rc" -eq 0 ] && grep -q '"message_id"' <<<"$OUT"; then
     sleep 5
     feishu_confirm; cf=$?
     if [ "$cf" -eq 0 ]; then
-      touch "$FEISHU_DONE"; log "飞书推送成功+回查确认落地 -> $FEISHU_TARGET"
+      touch "$FEISHU_DONE"
+      rm -f "$SEND_ATTEMPT" 2>/dev/null || true
+      log "飞书推送成功+服务端幂等+回查确认落地 -> $FEISHU_TARGET"
     elif [ "$cf" -eq 2 ]; then
       log "WARN: 飞书 rc=0 但回查工具不可用；不信任单一返回值，不标记完成"
       ntfy_send "⚠️ daily-digest: 飞书返回成功但无法回查($TODAY)，已停止标记，后续先查重。"
     else
-      log "WARN: 飞书 rc=0 但回查 3 次未见该日 digest, 不标记完成, 后续自动重推"
-      ntfy_send "⚠️ daily-digest: 飞书报成功但回查未确认送达($TODAY), 已留待下个窗口自动重推。"
+      log "WARN: 飞书 rc=0 但回查未见该日 digest；1 小时幂等窗口内允许后续窗口安全重试"
+      ntfy_send "⚠️ daily-digest: 飞书报成功但回查未确认($TODAY)，后续仅在服务端幂等窗口内重试。"
     fi
   else
     log "飞书推送失败 (rc=$rc): ${OUT:-<空>}"

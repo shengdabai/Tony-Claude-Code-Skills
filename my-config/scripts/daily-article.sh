@@ -46,10 +46,13 @@ COMMON="$HOME/.claude/scripts/daily-publish-common.sh"
 [ -r "$COMMON" ] || { log "FATAL: 公共发布可靠性库不存在: $COMMON"; exit 1; }
 # shellcheck source=$HOME/.claude/scripts/daily-publish-common.sh
 source "$COMMON"
+daily_publication_indexes "$TODAY" || { log "FATAL: 无法建立文章发布索引清单"; exit 1; }
+PUBLICATION_INDEXES=("${DAILY_PUBLICATION_INDEXES[@]}")
 
 article_cleanup() {
-  rm -f "${CLAUDE_SESSION_LOCK:-/tmp/daily-claude-session.lock}/pid" 2>/dev/null || true
-  rmdir "${CLAUDE_SESSION_LOCK:-/tmp/daily-claude-session.lock}" 2>/dev/null || true
+  if [ -n "${CLAUDE_SESSION_OWNER:-}" ]; then
+    daily_lock_release "${CLAUDE_SESSION_LOCK:-/tmp/daily-claude-session.lock}" "$CLAUDE_SESSION_OWNER" 2>/dev/null || true
+  fi
   [ -z "${LOCK:-}" ] || rm -f "$LOCK" 2>/dev/null || true
   [ -z "${GETNOTE_INPUT:-}" ] || rm -f -- "$GETNOTE_INPUT"
   if [ -f "$DONE_MARK" ] && [ -n "${STAGE_DIR:-}" ] &&
@@ -71,26 +74,11 @@ article_on_exit() {
 
 # --- 共享互斥锁:daily-article 与 daily-ai-news 都调用推理 session,排队避免并发抢占 ---
 CLAUDE_SESSION_LOCK="${DAILY_SESSION_LOCK:-/tmp/daily-claude-session.lock}"
-if ! mkdir "$CLAUDE_SESSION_LOCK" 2>/dev/null; then
-  _lock_pid=$(cat "$CLAUDE_SESSION_LOCK/pid" 2>/dev/null || true)
-  if [ -n "$_lock_pid" ] && kill -0 "$_lock_pid" 2>/dev/null; then
-    echo "[lock] another daily generation is running (PID $_lock_pid); retry slot skips" >&2
-    _lock_age="$(daily_process_age_seconds "$_lock_pid" || true)"
-    if [ -n "$_lock_age" ] && [ "$_lock_age" -ge 900 ] 2>/dev/null; then
-      daily_notify_failure_once "daily-article" \
-        "共享生成锁已被 PID ${_lock_pid} 占用 ${_lock_age} 秒，超过 15 分钟。本轮已跳过，需检查占锁任务。" \
-        "$WORK" || true
-    fi
-    exit 0
-  fi
-  rm -f "$CLAUDE_SESSION_LOCK/pid" 2>/dev/null || true
-  rmdir "$CLAUDE_SESSION_LOCK" 2>/dev/null || true
-  mkdir "$CLAUDE_SESSION_LOCK" 2>/dev/null || {
-    echo "[lock] cannot acquire shared lock; retry slot skips" >&2
-    exit 0
-  }
+if ! daily_lock_acquire "$CLAUDE_SESSION_LOCK" 2400; then
+  echo "[lock] another daily generation is running; retry slot skips" >&2
+  exit 0
 fi
-echo $$ > "$CLAUDE_SESSION_LOCK/pid"
+CLAUDE_SESSION_OWNER="$DAILY_LOCK_OWNER"
 trap article_on_exit EXIT
 # --- 锁结束 ---
 
@@ -195,7 +183,50 @@ sync_main_checkout() {
     return 1
   fi
   daily_git_retry fetch -q origin main 2>>"$LOG" || return 1
-  git merge -q --ff-only origin/main 2>>"$LOG" || return 1
+  if git merge -q --ff-only origin/main 2>>"$LOG"; then
+    return 0
+  fi
+  log "WARN: 本地发布提交与 origin/main 分叉；尝试把本机未推送提交安全 rebase 到最新 main"
+  if git rebase origin/main >>"$LOG" 2>&1; then
+    return 0
+  fi
+  git rebase --abort >>"$LOG" 2>&1 || true
+  return 1
+}
+
+refresh_publication_indexes() {
+  python3 .tools/gen_readme.py >>"$LOG" 2>&1 || {
+    log "ERROR: 文章索引生成失败"
+    return 1
+  }
+  python3 .tools/validate_bilingual.py >>"$LOG" 2>&1 || {
+    log "ERROR: 双语文章与索引一致性校验失败"
+    return 1
+  }
+}
+
+remote_publication_complete() {
+  local en_file="$1" zh_file="$2" index_file index_text local_blob remote_blob encoded_zh
+  git cat-file -e "origin/main:${en_file}" 2>/dev/null || return 1
+  git cat-file -e "origin/main:${zh_file}" 2>/dev/null || return 1
+  local_blob="$(git hash-object "$en_file" 2>/dev/null)" || return 1
+  remote_blob="$(git rev-parse "origin/main:${en_file}" 2>/dev/null)" || return 1
+  [ "$local_blob" = "$remote_blob" ] || return 1
+  local_blob="$(git hash-object "$zh_file" 2>/dev/null)" || return 1
+  remote_blob="$(git rev-parse "origin/main:${zh_file}" 2>/dev/null)" || return 1
+  [ "$local_blob" = "$remote_blob" ] || return 1
+  encoded_zh="$(python3 -c 'import os,sys; from urllib.parse import quote; print(quote(os.path.basename(sys.argv[1])))' "$zh_file" 2>/dev/null)" || return 1
+  for index_file in "${PUBLICATION_INDEXES[@]}"; do
+    index_text="$(git show "origin/main:${index_file}" 2>/dev/null)" || return 1
+    case "$index_file" in
+      README.md|articles/en/README.md)
+        grep -qF "$(basename "$en_file")" <<<"$index_text" || return 1 ;;
+      articles/zh/README.md)
+        grep -qF "$encoded_zh" <<<"$index_text" || return 1 ;;
+      archive/*)
+        grep -qF "$(basename "$en_file")" <<<"$index_text" || return 1 ;;
+    esac
+  done
 }
 
 record_today_topic() {
@@ -242,11 +273,15 @@ release_audit_ok() {
     mkdir -p "$audit_dir/$(dirname "$relative")"
     cp -p "$source" "$audit_dir/$relative" || { rm -rf -- "$audit_dir"; return 1; }
   done
-  # One bounded audit attempt per launch window. A second 15-minute launch slot
-  # is the retry boundary; keeping it here would hold the shared lock too long.
-  for attempt in 1; do
-    daily_infra_preflight "article-release-audit-attempt-$attempt" || break
-    audit_log="$(mktemp "${TMPDIR:-/tmp}/tony-article-audit-run.${TODAY}.XXXXXX")" || break
+  # One bounded audit attempt per launch window. The next scheduled launch is
+  # the retry boundary; retrying here would hold the shared lock too long.
+  attempt=1
+  if daily_infra_preflight "article-release-audit-attempt-$attempt"; then
+    audit_log="$(mktemp "${TMPDIR:-/tmp}/tony-article-audit-run.${TODAY}.XXXXXX")" || audit_log=""
+  else
+    audit_log=""
+  fi
+  if [ -n "$audit_log" ]; then
     run_limited "$DAILY_ARTICLE_AUDIT_TIMEOUT" product-release-audit audit --max-cost 1.5 --model gpt-5.6-terra --effort low "$audit_dir" >"$audit_log" 2>&1
     audit_rc=$?
     cat "$audit_log" >>"$LOG"
@@ -254,17 +289,14 @@ release_audit_ok() {
       log "增量 release audit 通过: $# 个当天文件（attempt=${attempt}）"
       rm -f "$audit_log"
       rc=0
-      break
-    fi
-    if [ "$audit_rc" -eq 124 ] || daily_transient_failure_file "$audit_log"; then
+    elif [ "$audit_rc" -eq 124 ] || daily_transient_failure_file "$audit_log"; then
       log "WARN: release audit 命中瞬态故障（rc=${audit_rc}），本窗口止损，下一定时窗口重试"
       daily_repair_transient_failure "$audit_log"
     else
       log "ERROR: 增量 release audit 失败（attempt=${attempt} rc=${audit_rc}），不盲目重试"
     fi
     rm -f "$audit_log"
-    break
-  done
+  fi
   rm -rf -- "$audit_dir"
   return "$rc"
 }
@@ -307,11 +339,83 @@ log "===== 开始每日文章任务(Codex 版) $TODAY ====="
 CURRENT_PHASE="preflight"
 
 if [ -f "$DONE_MARK" ]; then
-  record_today_topic
-  [ -f "$RUN_STATE_DIR/.daily-digest-done-${TODAY}" ] || trigger_digest || true
-  log "今日中英双版已发布, 跳过生成"
-  exit 0
+  log "检测到今日完成标记；先重验 GitHub 文章与全部索引，避免错误标记掩盖部分发布"
 fi
+
+# 1. 进入仓库。先处理上一次由本任务留下的当天发布状态，再要求干净树同步。
+#    2026-09-02 事故：git add 同时包含被 *.log 忽略的本地去重账本，前三个
+#    发布文件已部分暂存后命令失败；后续窗口先做干净树检查，导致永久自锁。
+CURRENT_PHASE="repository-sync"
+cd "$WORK" || { log "FATAL: 工作目录不存在 $WORK"; exit 1; }
+
+# 2. 幂等恢复:先隔离上次异常中断留下的单侧未跟踪文件，再回查完整发布单元。
+EXISTING_EN=$(find articles/en -maxdepth 1 -type f -name "${TODAY}-*.md" -print | head -1)
+EXISTING_ZH=$(find articles/zh -maxdepth 1 -type f -name "${TODAY}-*.md" -print | head -1)
+if { [ -n "$EXISTING_EN" ] && [ -z "$EXISTING_ZH" ]; } ||
+   { [ -z "$EXISTING_EN" ] && [ -n "$EXISTING_ZH" ]; }; then
+  PARTIAL_FILE="${EXISTING_EN:-$EXISTING_ZH}"
+  if git cat-file -e "HEAD:${PARTIAL_FILE}" 2>/dev/null; then
+    log "FATAL: HEAD 中只存在单侧今日文章，拒绝自动移动已跟踪内容"
+    exit 1
+  fi
+  RECOVERY_DIR="$RUN_STATE_DIR/daily-article-partial-${TODAY}-$(date +%s)-$$"
+  mkdir -p "$RECOVERY_DIR" || exit 1
+  git restore --staged -- "$PARTIAL_FILE" 2>/dev/null || true
+  mv "$PARTIAL_FILE" "$RECOVERY_DIR/" || exit 1
+  log "WARN: 已把单侧残留移入可恢复目录 ${RECOVERY_DIR}，继续全新生成"
+  EXISTING_EN=""
+  EXISTING_ZH=""
+fi
+if [ -n "$EXISTING_EN" ] && [ -n "$EXISTING_ZH" ]; then
+  daily_git_retry fetch -q origin main 2>>"$LOG" || true
+  if remote_publication_complete "$EXISTING_EN" "$EXISTING_ZH"; then
+    record_today_topic
+    touch "$DONE_MARK"
+    rm -f "$BLOCKED_MARK" "$BLOCKER_SNIPPET" "$BLOCKER_ALERT_MARK"
+    log "今日双版与全部索引已在 origin/main；补写完成标记"
+    trigger_digest || true
+    exit 0
+  fi
+  log "WARN: 本地已有今日双版但 origin/main 发布单元不完整，直接重建索引并重试提交/push"
+  if [ -z "$(git status --porcelain)" ]; then
+    sync_main_checkout || { log "ERROR: retry 前无法安全同步或 rebase origin/main"; exit 1; }
+  fi
+  if ! release_audit_ok "$EXISTING_EN" "$EXISTING_ZH"; then
+    log "FATAL: release audit 未通过；尚未重建或暂存索引，工作区保持可重试"
+    exit 1
+  fi
+  refresh_publication_indexes || exit 1
+  EXISTING_ZH_T=$(head -1 "$EXISTING_ZH" | sed 's/^#[[:space:]]*//')
+  grep -qxF "$EXISTING_ZH_T" .tools/published-topics.log 2>/dev/null || echo "$EXISTING_ZH_T" >> .tools/published-topics.log
+  git add "$EXISTING_EN" "$EXISTING_ZH" "${PUBLICATION_INDEXES[@]}" 2>>"$LOG" || {
+    log "ERROR: retry git add 失败；等待下一补偿时刻"
+    exit 1
+  }
+  if [ -n "$(git diff --cached --name-only)" ]; then
+    git commit -q --only -m "post: ${TODAY} 中英双版" -- \
+      "$EXISTING_EN" "$EXISTING_ZH" "${PUBLICATION_INDEXES[@]}" 2>>"$LOG" || {
+      log "ERROR: retry commit 失败；等待下一补偿时刻"
+      exit 1
+    }
+  fi
+  daily_git_retry push -q origin HEAD:main 2>>"$LOG" || {
+    log "ERROR: retry push 失败；等待下一补偿时刻"
+    exit 1
+  }
+  log "retry push 成功"
+  daily_git_retry fetch -q origin main 2>>"$LOG" || true
+  if remote_publication_complete "$EXISTING_EN" "$EXISTING_ZH"; then
+    touch "$DONE_MARK"
+    rm -f "$BLOCKED_MARK" "$BLOCKER_SNIPPET" "$BLOCKER_ALERT_MARK"
+    log "retry 已确认 origin/main 双版与全部索引齐全，标记完成"
+    trigger_digest || true
+    exit 0
+  fi
+  log "ERROR: retry 后 origin/main 仍未齐；不标记完成，等待下一补偿时刻"
+  exit 1
+fi
+
+sync_main_checkout || { log "FATAL: 启动时无法安全快进到 origin/main，拒绝在不确定状态继续"; exit 1; }
 
 daily_generation_preflight "daily-article" || exit 1
 daily_codex_ready "daily-article" || {
@@ -327,65 +431,6 @@ command -v product-release-audit >/dev/null 2>&1 || {
     log "FATAL: GetNote 只读采集器、环境文件或客户端不可用"
     exit 1
   }
-
-# 1. 进入仓库。先处理上一次由本任务留下的当天发布状态，再要求干净树同步。
-#    2026-09-02 事故：git add 同时包含被 *.log 忽略的本地去重账本，前三个
-#    发布文件已部分暂存后命令失败；后续窗口先做干净树检查，导致永久自锁。
-CURRENT_PHASE="repository-sync"
-cd "$WORK" || { log "FATAL: 工作目录不存在 $WORK"; exit 1; }
-
-# 2. 幂等恢复:若文件已存在但上次在标记前中断，先回查远端。
-if ls articles/en/${TODAY}-*.md >/dev/null 2>&1 && ls articles/zh/${TODAY}-*.md >/dev/null 2>&1; then
-  EXISTING_EN=$(ls articles/en/${TODAY}-*.md 2>/dev/null | head -1)
-  EXISTING_ZH=$(ls articles/zh/${TODAY}-*.md 2>/dev/null | head -1)
-  daily_git_retry fetch -q origin main 2>>"$LOG" || true
-  if git cat-file -e "origin/main:${EXISTING_EN}" 2>/dev/null &&
-     git cat-file -e "origin/main:${EXISTING_ZH}" 2>/dev/null; then
-    record_today_topic
-    touch "$DONE_MARK"
-    rm -f "$BLOCKED_MARK" "$BLOCKER_SNIPPET" "$BLOCKER_ALERT_MARK"
-    log "今日双版已在 origin/main；补写完成标记"
-    trigger_digest || true
-    exit 0
-  fi
-  log "WARN: 本地已有今日双版但 origin/main 未齐，直接重试审核/提交/push，不重新生成"
-  python3 .tools/gen_readme.py >>"$LOG" 2>&1 || true
-  EXISTING_ZH_T=$(head -1 "$EXISTING_ZH" | sed 's/^#[[:space:]]*//')
-  grep -qxF "$EXISTING_ZH_T" .tools/published-topics.log 2>/dev/null || echo "$EXISTING_ZH_T" >> .tools/published-topics.log
-  git add "$EXISTING_EN" "$EXISTING_ZH" README.md 2>>"$LOG" || {
-    log "ERROR: retry git add 失败；等待下一补偿时刻"
-    exit 1
-  }
-  if ! release_audit_ok "$EXISTING_EN" "$EXISTING_ZH"; then
-    log "FATAL: release audit 未通过，不 commit、不 push；等待下一补偿时刻"
-    exit 1
-  fi
-  if [ -n "$(git diff --cached --name-only)" ]; then
-    git commit -q --only -m "post: ${TODAY} 中英双版" -- \
-      "$EXISTING_EN" "$EXISTING_ZH" README.md 2>>"$LOG" || {
-      log "ERROR: retry commit 失败；等待下一补偿时刻"
-      exit 1
-    }
-  fi
-  daily_git_retry push -q origin HEAD:main 2>>"$LOG" || {
-    log "ERROR: retry push 失败；等待下一补偿时刻"
-    exit 1
-  }
-  log "retry push 成功"
-  daily_git_retry fetch -q origin main 2>>"$LOG" || true
-  if git cat-file -e "origin/main:${EXISTING_EN}" 2>/dev/null &&
-     git cat-file -e "origin/main:${EXISTING_ZH}" 2>/dev/null; then
-    touch "$DONE_MARK"
-    rm -f "$BLOCKED_MARK" "$BLOCKER_SNIPPET" "$BLOCKER_ALERT_MARK"
-    log "retry 已确认 origin/main 双版齐全，标记完成"
-    trigger_digest || true
-    exit 0
-  fi
-  log "ERROR: retry 后 origin/main 仍未齐；不标记完成，等待下一补偿时刻"
-  exit 1
-fi
-
-sync_main_checkout || { log "FATAL: 启动时无法安全快进到 origin/main，拒绝在不确定状态继续"; exit 1; }
 
 if [ -f "$BLOCKED_MARK" ] && [ "$DAILY_ARTICLE_FORCE" != "1" ]; then
   log "今日已有非重试型阻塞标记且远端双版未齐, 跳过。修复 GetNote/草稿后可 DAILY_ARTICLE_FORCE=1 手动重跑。marker=$BLOCKED_MARK"
@@ -592,7 +637,7 @@ if ! ls "$STAGE_DIR"/articles/en/${TODAY}-*.md >/dev/null 2>&1 ||
   if [ "$RC" -eq 124 ]; then
     log "FATAL: 生成超过 ${DAILY_ARTICLE_GENERATION_TIMEOUT}s，未产出双版；拒绝 resume --last，下一定时窗口全新重试"
   else
-    log "FATAL: Codex 已结束但未产出双版（rc=$RC）；下一定时窗口全新重试"
+    log "FATAL: Codex 已结束但未产出双版（rc=${RC}）；下一定时窗口全新重试"
   fi
   exit 1
 fi
@@ -624,29 +669,32 @@ if [ -n "$STAGED_EN" ] && [ -n "$STAGED_ZH" ]; then
   release_audit_ok "$STAGED_EN" "$STAGED_ZH" || { log "FATAL: 暂存文章 release audit 未通过，发布 checkout 保持不变"; exit 1; }
   cd "$WORK" || exit 1
   sync_main_checkout || { log "FATAL: 发布前无法安全快进到 origin/main"; exit 1; }
-  cp -p "$STAGED_EN" "articles/en/$(basename "$STAGED_EN")" || { log "ERROR: 复制英文暂存文章失败"; exit 1; }
-  cp -p "$STAGED_ZH" "articles/zh/$(basename "$STAGED_ZH")" || { log "ERROR: 复制中文暂存文章失败"; exit 1; }
+  daily_copy_pair_atomic \
+    "$STAGED_EN" "articles/en/$(basename "$STAGED_EN")" \
+    "$STAGED_ZH" "articles/zh/$(basename "$STAGED_ZH")" || {
+      log "ERROR: 中英文章未能成对原子落位；本轮未留下单侧文件"
+      exit 1
+    }
 fi
 EN_FILE=$(ls articles/en/${TODAY}-*.md 2>/dev/null | head -1)
 ZH_FILE=$(ls articles/zh/${TODAY}-*.md 2>/dev/null | head -1)
 if [ -n "$EN_FILE" ] && [ -n "$ZH_FILE" ]; then
   log "SUCCESS: 英文=$(basename "$EN_FILE") 中文=$(basename "$ZH_FILE")"
-  python3 .tools/gen_readme.py >>"$LOG" 2>&1 || { log "ERROR: README 生成失败"; exit 1; }
+  refresh_publication_indexes || exit 1
   ZH_T=$(head -1 "$ZH_FILE" | sed 's/^#[[:space:]]*//')
   grep -qxF "$ZH_T" .tools/published-topics.log 2>/dev/null || echo "$ZH_T" >> .tools/published-topics.log
-  git add "$EN_FILE" "$ZH_FILE" README.md 2>>"$LOG" || { log "ERROR: git add 失败"; exit 1; }
+  git add "$EN_FILE" "$ZH_FILE" "${PUBLICATION_INDEXES[@]}" 2>>"$LOG" || { log "ERROR: git add 失败"; exit 1; }
   if [ -n "$(git diff --cached --name-only)" ]; then
     git commit -q --only -m "post: ${TODAY} 中英双版" -- \
-      "$EN_FILE" "$ZH_FILE" README.md 2>>"$LOG" || { log "ERROR: commit 失败"; exit 1; }
+      "$EN_FILE" "$ZH_FILE" "${PUBLICATION_INDEXES[@]}" 2>>"$LOG" || { log "ERROR: commit 失败"; exit 1; }
     daily_git_retry push -q origin HEAD:main 2>>"$LOG" || { log "ERROR: push 失败"; exit 1; }
     log "push 成功"
   fi
   daily_git_retry fetch -q origin main 2>>"$LOG" || true
-  if git cat-file -e "origin/main:${ZH_FILE}" 2>/dev/null && git cat-file -e "origin/main:${EN_FILE}" 2>/dev/null; then
+  if remote_publication_complete "$EN_FILE" "$ZH_FILE"; then
     touch "$DONE_MARK"
     rm -f "$BLOCKED_MARK" "$BLOCKER_SNIPPET" "$BLOCKER_ALERT_MARK"
-    log "已验证远端含今日中文版, 标记完成"
-    log "已验证 GitHub origin/main 含今日双版；触发幂等飞书合并分发"
+    log "已验证 GitHub origin/main 含今日双版与全部索引；标记完成并触发幂等飞书分发"
     trigger_digest || true
   else
     log "WARN: 远端未确认今日文章, 不标记完成, 后续重试"
