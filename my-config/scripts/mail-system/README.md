@@ -1,77 +1,56 @@
-# 邮件自动化系统
+# QQ + Gmail 低打扰邮件系统
 
-两个邮箱(QQ + Gmail)统一治理:广告/不重要邮件自动「标已读 + 移垃圾箱」(保守,30 天可恢复),
-所有新邮件默认标已读,每天 8:00 用本机 Ollama 生成过去 24h 总结发到 QQ 邮箱。
-不再被一条条邮件打扰,每天看一封日报即可。
+目标：两个邮箱保留一份原始邮件，每天 8:00 收到一份能替代逐封打开邮件的中文晨报。
 
-## 架构
+## 当前策略
 
-```
-QQ / Gmail ──IMAP──> mail_client ──> rules 分类 ──┬─ 广告 → 标已读+移垃圾箱
-                                                  └─ 重要 → 标已读 → summarize(Ollama)
-                                                                          └─ SMTP → QQ 日报
-```
+- 每小时扫描未读邮件，正文只读取最多 128 KiB，不下载附件、不访问邮件链接；用于晨报的正文片段在本机最多保留 96 小时，权限固定为 0600。
+- Gmail 与 QQ 使用 `Message-ID` + 发件人/主题/正文指纹去重；同一封 Gmail 转发件优先保留 Gmail 原件，QQ 副本移到垃圾箱（30 天可恢复）。
+- 明确促销自动标已读并移到垃圾箱；带 `List-Unsubscribe` 的普通订阅不再一律当广告。
+- AI、科技、开发者、SaaS、独立开发等订阅进入重点关注。
+- 每天 8:00 使用 Codex 的 GPT-5.6 Sol 生成统一晨报；失败时依次降级到本地 Ollama 和规则列表。若 8:00 投递失败，9:00 后的整点扫描会自动补发，直到当天成功。
+- 邮件正文视为不可信数据：摘要模型不能执行其中指令、调用工具、访问链接或补充外部事实。
 
-- **零第三方依赖**:仅 Python 标准库 + 本机 Ollama
-- **零外泄**:总结由本地模型生成,邮件内容不出本机
-- **凭证安全**:授权码经 `setup_credentials.py` 隐藏录入,只进 `.env`(600 权限,git 忽略),不进对话/日志
+## 晨报结构
 
-## 安装(三步)
-
-```bash
-cd ~/.claude/scripts/mail-system
-
-# 1. 录入凭证(隐藏输入,不回显)
-python3 setup_credentials.py
-
-# 2. 安全预览(不动任何邮件,只分析 + 打印总结)
-python3 mail_agent.py --mode digest --dry-run
-
-# 3. 确认无误后加载定时任务
-launchctl load ~/Library/LaunchAgents/com.tony.mail-sweep.plist
-launchctl load ~/Library/LaunchAgents/com.tony.mail-digest.plist
-```
-
-## 凭证怎么拿
-
-- **QQ 授权码**:QQ 邮箱设置 → 账号 → 开启「IMAP/SMTP 服务」→ 生成授权码(16 位,不是登录密码)
-- **Gmail 应用专用密码**:先开 Google 账号两步验证 → https://myaccount.google.com/apppasswords → 生成 16 位密码
-
-## 日常命令
-
-```bash
-python3 mail_agent.py --mode sweep              # 手动清理一次
-python3 mail_agent.py --mode digest             # 手动清理+发总结
-python3 mail_agent.py --mode digest --dry-run   # 预览不动手
-
-tail -f run.log                                 # 看运行日志
-```
+1. 昨日核心：2–4 条全局结论
+2. 今天需要处理：原因、下一步、明确期限
+3. AI / 科技 / 重点订阅：发生了什么、为什么值得关注
+4. 其他有价值信息
+5. 收件、去重、广告过滤数量与实际摘要引擎
 
 ## 定时任务
 
 | 任务 | 频率 | 作用 |
 |------|------|------|
-| `com.tony.mail-sweep` | 每小时整点 | 新邮件标已读 + 广告移垃圾箱 |
-| `com.tony.mail-digest` | 每天 8:00 | 清理 + 发过去 24h 总结到 QQ |
+| `com.tony.mail-sweep` | 每小时整点（08:00 自动让位） | 分类、标已读、过滤广告 |
+| `com.tony.mail-digest` | 每天 08:00 | 扫描、跨邮箱去重、GPT 晨报 |
 
-## 调整规则
+`run.sh` 使用系统文件锁避免 sweep/digest 并发重复处理。
 
-编辑 `rules.py`:
-- `WHITELIST_KEYWORDS` — 这些词命中则永远视为重要(安全/账单/验证码),绝不清理
-- `PROMO_KEYWORDS` — 营销关键词,命中则判广告
-- `BULK_SENDER_HINTS` — 群发发件人特征
-
-策略保守:**宁可漏判(留收件箱)也不误判(误清重要邮件)**。
-
-## 卸载
+## 安全预览与维护
 
 ```bash
-launchctl unload ~/Library/LaunchAgents/com.tony.mail-sweep.plist
-launchctl unload ~/Library/LaunchAgents/com.tony.mail-digest.plist
+cd ~/.claude/scripts/mail-system
+python3 mail_agent.py --mode digest --dry-run
+python3 mail_agent.py --mode dedupe --hours 30 --dry-run
+python3 -m unittest discover -s tests -v
+tail -f run.log
 ```
 
-## 排错
+去重确认无误后，可手动整理最近 30 小时：
 
-- **发信失败**:本机 Clash TUN 会劫持 SMTP,`mailer.py` 已内置 DoH+绑物理网卡绕过,通常自动生效
-- **总结是纯列表不是智能摘要**:Ollama 没跑或模型缺失 → `ollama serve` + `ollama pull qwen3:8b`
-- **IMAP 登录失败**:确认用的是授权码/应用专用密码而非登录密码;QQ 需已开 IMAP 服务
+```bash
+python3 mail_agent.py --mode dedupe --hours 30
+```
+
+凭证仍只保存在本地 `.env`（权限 600）；本次系统不读取、不修改、不复制其内容。
+
+## 调整关注方向
+
+- `rules.py` 的 `URGENT_KEYWORDS`：安全、失败、到期等高风险邮件
+- `ACTION_KEYWORDS`：账单、订单、邀请、审批等待办
+- `FOCUS_KEYWORDS`：AI / 科技 / 开发者重点订阅
+- `PROMO_KEYWORDS`：只有明确营销信号才进垃圾箱
+
+退订链接不会自动点击，因为发件人和链接可能伪造；若要永久退订，应先审核具体发件人再操作。

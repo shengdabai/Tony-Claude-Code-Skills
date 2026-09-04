@@ -4,7 +4,7 @@
 # 迁移 delta(相对 daily-ai-news.sh,只换推理引擎,锁/done-mark/重试结构原样保留):
 #   - CLAUDE=~/.local/bin/claude          → CODEX=~/.nvm/versions/node/v24.14.0/bin/codex(绝对路径,防后台 PATH 丢失 exit 127)
 #   - claude -p --session-id $SID         → 单个有界 codex exec --json
-#   - 失败补偿                            → 30 分钟后的 launchd 窗口启动全新会话
+#   - 失败补偿                            → 下一个 launchd 整点窗口启动全新会话
 #   - --mcp-config getnote-only.json      → 删除(getnote 已在 ~/.codex/config.toml 静态注册)
 #   - 后台权限                         → workspace-write 沙箱 + 自动安全审批
 #   - --add-dir $WORK                     → -C $WORK + --add-dir $WORK + --skip-git-repo-check
@@ -16,7 +16,7 @@
 set -uo pipefail
 WORK="${TONY_ARTICLES_WORK:-$HOME/.local/share/tony-articles}"
 LOG="$HOME/.claude/logs/daily-ai-news.codex.log"
-TODAY="$(date +%Y-%m-%d)"
+TODAY="$(TZ=Asia/Shanghai date +%Y-%m-%d)"
 RUN_STATE_DIR="$HOME/.claude/logs"
 DONE_MARK="$HOME/.claude/logs/.daily-ai-news-done-${TODAY}"
 LOCK=""
@@ -27,6 +27,16 @@ COMMON="$HOME/.claude/scripts/daily-publish-common.sh"
 source "$COMMON"
 daily_publication_indexes "$TODAY" || { log "FATAL: 无法建立 AI 热点发布索引清单"; exit 1; }
 PUBLICATION_INDEXES=("${DAILY_PUBLICATION_INDEXES[@]}")
+AUDIT_BUDGET_BLOCK_MARK="$RUN_STATE_DIR/.daily-ai-news-audit-budget-blocked-${TODAY}"
+DAILY_AI_NEWS_FORCE="${DAILY_AI_NEWS_FORCE:-0}"
+
+if [ "${DAILY_POLICY_PROBE:-0}" != "1" ] && ! daily_require_shanghai_noon; then
+  exit 0
+fi
+if [ -f "$AUDIT_BUDGET_BLOCK_MARK" ] && [ "$DAILY_AI_NEWS_FORCE" != "1" ]; then
+  log "STOP: 今日 Sol 发布审计已超过成本上限，停止自动重试"
+  exit 0
+fi
 
 # --- 共享互斥锁:daily-article 与 daily-ai-news 都调用推理 session,排队避免并发抢占 ---
 # 注意:沿用同一把锁名,使 Codex 版与 Claude 版互斥(同机不会两个引擎同时抢额度/工作区)
@@ -156,23 +166,26 @@ release_audit_ok() {
     mkdir -p "$audit_dir/$(dirname "$relative")"
     cp -p "$source" "$audit_dir/$relative" || { rm -rf -- "$audit_dir"; return 1; }
   done
-  # 每个 launchd 窗口只做一次有界审计；瞬态失败交给 30 分钟后的
+  # 每个 launchd 窗口只做一次有界审计；瞬态失败交给下一定时窗口。
   # 新窗口，避免本轮长时占有共享锁。
   # shellcheck disable=SC2043
   for attempt in 1; do
     daily_infra_preflight "ai-news-release-audit-attempt-$attempt" || break
     audit_log="$(mktemp "${TMPDIR:-/tmp}/tony-ai-news-audit-run.${TODAY}.XXXXXX")" || break
-    run_limited "$DAILY_AI_NEWS_AUDIT_TIMEOUT" product-release-audit audit --max-cost 1.5 --model gpt-5.6-terra --effort low "$audit_dir" >"$audit_log" 2>&1
+    run_limited "$DAILY_AI_NEWS_AUDIT_TIMEOUT" product-release-audit audit --max-cost 3.0 --model gpt-5.6-sol --effort low "$audit_dir" >"$audit_log" 2>&1
     audit_rc=$?
     cat "$audit_log" >>"$LOG"
-    if [ "$audit_rc" -eq 0 ] && product-release-audit verify "$audit_dir" >>"$LOG" 2>&1; then
+    if [ "$audit_rc" -eq 0 ] && run_limited 300 product-release-audit verify "$audit_dir" >>"$LOG" 2>&1; then
       log "增量 release audit 通过: $# 个当天文件（attempt=${attempt}）"
       rm -f "$audit_log"
       rc=0
       break
     fi
-    if [ "$audit_rc" -eq 124 ] || daily_transient_failure_file "$audit_log"; then
-      log "WARN: release audit 命中瞬态基础设施故障（rc=${audit_rc}），本窗口止损，30 分钟后全新重试"
+    if daily_audit_budget_exceeded_file "$audit_log"; then
+      touch "$AUDIT_BUDGET_BLOCK_MARK"
+      log "FATAL: Sol 发布审计超过 \$3.00 成本上限，今日已停止自动重试"
+    elif [ "$audit_rc" -eq 124 ] || daily_transient_failure_file "$audit_log"; then
+      log "WARN: release audit 命中瞬态基础设施故障（rc=${audit_rc}），本窗口止损，下一定时窗口全新重试"
       daily_repair_transient_failure "$audit_log"
     fi
     log "ERROR: 增量 release audit 失败（attempt=${attempt} rc=${audit_rc}），非瞬态错误不盲目重试"
@@ -201,7 +214,7 @@ run_limited() {
   fi
 }
 DAILY_AI_NEWS_GENERATION_TIMEOUT="${DAILY_AI_NEWS_GENERATION_TIMEOUT:-600}"
-DAILY_AI_NEWS_AUDIT_TIMEOUT="${DAILY_AI_NEWS_AUDIT_TIMEOUT:-600}"
+DAILY_AI_NEWS_AUDIT_TIMEOUT="${DAILY_AI_NEWS_AUDIT_TIMEOUT:-900}"
 if [ -z "$TIMEOUT_CMD" ] && [ "${DAILY_POLICY_PROBE:-0}" != "1" ]; then
   log "FATAL: timeout/gtimeout 不可用，每日 AI 热点任务拒绝启动"
   exit 1
@@ -469,7 +482,7 @@ hit_session_limit() {
 }
 
 # 每个定时窗口只跑一个有界新会话。未生成双版时直接失败，
-# 由 30 分钟后的 launchd 窗口重新取数、重新生成，不复用任何旧会话。
+# 由下一定时窗口重新取数、重新生成，不复用任何旧会话。
 echo "$PROMPT" | run_limited "$DAILY_AI_NEWS_GENERATION_TIMEOUT" env CODEX_NOTIFY_DISABLE=1 "$CODEX" --search exec --json "${CODEX_FLAGS[@]}" - \
   > "$RELAY_JSON" 2>"$RELAY_OUT"
 RC=$?
@@ -478,7 +491,7 @@ log "  Codex 单窗口调用 rc=$RC (124=超时)"
 if hit_session_limit; then
   log "  撞用量上限, 止损退出, 后续 launchd 时刻自动重试"
   notify_daily_failure_once "Codex 本窗口触发用量或速率限制；下一定时窗口会自动补偿。"
-  ntfy_send "⚠️ daily-ai-news 撞 Codex 429 限额, 今日($TODAY)日报暂未出, 等下个 launchd 窗口(5h窗重置后)自动重试。如需立即出稿可手动跑或临时切 API key。"
+  ntfy_send "⚠️ daily-ai-news 撞 Codex 429 限额，今日($TODAY)日报暂未出。若仍有 12:45–15:45 窗口将自动重试；否则需人工处理。"
   exit 1
 fi
 if [ "$RC" -ne 0 ]; then
@@ -490,10 +503,16 @@ if [ "$RC" -ne 0 ]; then
   fi
 fi
 
+if [ "$RC" -eq 124 ]; then
+  log "FATAL: AI 热点生成超过 ${DAILY_AI_NEWS_GENERATION_TIMEOUT}s，即使暂存文件存在也拒绝发布"
+  notify_daily_failure_once "AI 热点生成超时，为避免发布未完成自审的内容，已拒绝使用暂存产物。"
+  exit 1
+fi
+
 if ! ls "$STAGE_DIR"/ai-news/zh/${TODAY}-*.md >/dev/null 2>&1 ||
    ! ls "$STAGE_DIR"/ai-news/en/${TODAY}-*.md >/dev/null 2>&1; then
-  log "FATAL: Codex 本窗口未产出热点中英双版（rc=${RC}）；拒绝 resume/--last，30 分钟后全新重试"
-  notify_daily_failure_once "Codex 本窗口未生成齐热点中英双版；30 分钟后将启动全新会话补偿。"
+  log "FATAL: Codex 本窗口未产出热点中英双版（rc=${RC}）；拒绝 resume/--last，下一定时窗口全新重试"
+  notify_daily_failure_once "Codex 本窗口未生成齐热点中英双版；下一定时窗口将启动全新会话补偿。"
   exit 1
 fi
 
@@ -547,7 +566,7 @@ if [ -n "$ZH_FILE" ] && [ -n "$EN_FILE" ]; then
     if bash "$HOME/.claude/scripts/daily-digest.sh" >/dev/null 2>&1; then
       log "幂等合并分发已执行"
     else
-      log "WARN: 合并分发本轮未确认送达；daily-digest 会在后续 30 分钟窗口重试"
+      log "WARN: 合并分发本轮未确认送达；daily-digest 会在后续每小时 :30 窗口重试"
       notify_daily_failure_once "AI 热点已发布到 GitHub，但合并飞书分发本轮未确认送达；后续窗口将自动重试。"
     fi
   else

@@ -121,6 +121,7 @@ def _build_message(subject: str, html_body: str, text_body: str, cfg: dict) -> M
     msg["From"] = cfg["user"]
     msg["To"] = cfg["to"]
     msg["Date"] = formatdate(localtime=True)
+    msg["X-Tony-Mail-Digest"] = "v2"
     msg.attach(MIMEText(text_body, "plain", "utf-8"))
     msg.attach(MIMEText(html_body, "html", "utf-8"))
     return msg

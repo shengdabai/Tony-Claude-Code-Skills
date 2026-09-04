@@ -78,7 +78,4 @@ def get_smtp_config() -> dict | None:
 
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen3:8b")
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
-CODEX_BIN = os.environ.get("CODEX_BIN", str(Path.home() / ".local/bin/codex"))
-CODEX_MODEL = os.environ.get("CODEX_MODEL", "gpt-5.6-sol")
-CODEX_REASONING_EFFORT = os.environ.get("CODEX_REASONING_EFFORT", "medium")
 PHYSICAL_IFACE = os.environ.get("PHYSICAL_IFACE", "").strip()

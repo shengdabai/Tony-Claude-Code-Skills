@@ -10,6 +10,7 @@ DOCTOR="$SCRIPT_DIR/daily-publish-doctor.sh"
 ARTICLE_PLIST="$HOME/Library/LaunchAgents/com.tony.daily-article.plist"
 AI_NEWS_PLIST="$HOME/Library/LaunchAgents/com.tony.daily-ai-news.plist"
 DIGEST_PLIST="$HOME/Library/LaunchAgents/com.tony.daily-digest.plist"
+HERMES_PYTHON="$(/usr/libexec/PlistBuddy -c 'Print :ProgramArguments:0' "$HOME/Library/LaunchAgents/ai.hermes.gateway.plist")"
 
 bash -n "$ARTICLE"
 bash -n "$AI_NEWS"
@@ -42,7 +43,33 @@ PY
 # Two launch sources can invoke daily-digest in the same minute. Its lock must
 # be an atomic mkdir lock and must be acquired before infrastructure preflight.
 grep -q 'daily_lock_acquire "$LOCK_DIR"' "$DIGEST"
-grep -q -- '--idempotency-key "$FEISHU_IDEMPOTENCY_KEY"' "$DIGEST"
+grep -Fq '"$HERMES_GATEWAY_PY" "$HERMES_SEND_WRAPPER" send' "$DIGEST"
+grep -q -- '--file "$MSGFILE" --json' "$DIGEST"
+grep -q 'env -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY' "$DIGEST"
+grep -q 'PlistBuddy.*ProgramArguments:0' "$DIGEST"
+grep -q '存在未确认的飞书发送尝试' "$DIGEST"
+grep -q 'daily_run_with_timeout 120 env' "$DIGEST"
+grep -q 'daily-digest-delivery:' "$DIGEST"
+grep -q 'MSG_CHARS.*7000' "$DIGEST"
+grep -q '_total.*-eq 1' "$DIGEST"
+"$HERMES_PYTHON" -m py_compile "$HOME/.claude/scripts/hermes-send-direct-feishu.py"
+if grep -q -- '--as user.*messages-send\|im +messages-send' "$DIGEST"; then
+  echo "daily-digest still sends as Tony user and can wake Commander" >&2
+  exit 1
+fi
+
+"$HERMES_PYTHON" - "$HOME/.hermes/config.yaml" <<'PY'
+import sys
+import yaml
+with open(sys.argv[1], encoding="utf-8") as source:
+    config = yaml.safe_load(source) or {}
+assert config.get("model") == {"default": "gpt-5.6-sol", "provider": "openai-codex"}
+assert "fallback_providers" in config and config["fallback_providers"] == []
+assert (config.get("agent") or {}).get("reasoning_effort") == "high"
+assert (((config.get("platforms") or {}).get("feishu") or {}).get("extra") or {}).get("require_mention") is True
+title = ((config.get("auxiliary") or {}).get("title_generation") or {})
+assert title.get("provider") == "openai-codex" and title.get("model") == "gpt-5.6-sol"
+PY
 grep -q -- '--start "$TODAY" --end "$NEXT_DAY"' "$DIGEST"
 grep -q 'git rev-parse HEAD.*git rev-parse origin/main' "$DIGEST"
 grep -q '_complete=1' "$DIGEST"
@@ -73,8 +100,10 @@ PY
 
 grep -q '^CODEX_MODEL="gpt-5\.6-sol"$' "$ARTICLE"
 grep -q '^CODEX_MODEL="gpt-5\.6-sol"$' "$AI_NEWS"
-if grep -q '^CODEX_MODEL="gpt-5\.5"$' "$ARTICLE" "$AI_NEWS"; then
-  echo "daily generation still selects gpt-5.5" >&2
+if [ "$(grep -c '^CODEX_MODEL=' "$ARTICLE")" -ne 1 ] ||
+   [ "$(grep -c '^CODEX_MODEL=' "$AI_NEWS")" -ne 1 ] ||
+   grep -qE 'gpt-5\.6-(terra|luna)' "$ARTICLE" "$AI_NEWS"; then
+  echo "daily generation contains a non-Sol or duplicate model selector" >&2
   exit 1
 fi
 
@@ -83,10 +112,14 @@ if grep -qE '"\$CODEX".*exec[[:space:]]+resume|exec[[:space:]]+resume[[:space:]]
   exit 1
 fi
 
-grep -q 'DAILY_ARTICLE_GENERATION_TIMEOUT.*480' "$ARTICLE"
-grep -q 'DAILY_ARTICLE_AUDIT_TIMEOUT.*300' "$ARTICLE"
+grep -q 'DAILY_ARTICLE_GENERATION_TIMEOUT.*900' "$ARTICLE"
+grep -q 'DAILY_ARTICLE_AUDIT_TIMEOUT.*900' "$ARTICLE"
 grep -q 'DAILY_AI_NEWS_GENERATION_TIMEOUT.*600' "$AI_NEWS"
-grep -q 'DAILY_AI_NEWS_AUDIT_TIMEOUT.*600' "$AI_NEWS"
+grep -q 'DAILY_AI_NEWS_AUDIT_TIMEOUT.*900' "$AI_NEWS"
+grep -q -- '--max-cost 3\.0 --model gpt-5\.6-sol' "$ARTICLE"
+grep -q -- '--max-cost 3\.0 --model gpt-5\.6-sol' "$AI_NEWS"
+grep -Fq 'if [ "$RC" -eq 124 ]; then' "$ARTICLE"
+grep -Fq 'if [ "$RC" -eq 124 ]; then' "$AI_NEWS"
 grep -q 'CLAUDE_SESSION_LOCK="${DAILY_SESSION_LOCK:-/tmp/daily-claude-session.lock}"' "$AI_NEWS"
 grep -q 'timeout/gtimeout 不可用，拒绝无界执行' "$AI_NEWS"
 grep -q 'git commit -q --only' "$AI_NEWS"
@@ -98,38 +131,57 @@ python3 - "$ARTICLE_PLIST" "$AI_NEWS_PLIST" "$DIGEST_PLIST" <<'PY'
 import plistlib, sys
 
 seen = {}
+expected = {
+    "com.tony.daily-article": [(12, 0), (13, 0), (14, 0), (15, 0)],
+    "com.tony.daily-ai-news": [(12, 45), (13, 45), (14, 45), (15, 45)],
+    "com.tony.daily-digest": [(13, 30), (14, 30), (15, 30), (16, 30)],
+}
 for name in sys.argv[1:]:
     with open(name, "rb") as source:
         data = plistlib.load(source)
     slots = data.get("StartCalendarInterval") or []
     if not isinstance(slots, list) or not slots:
         raise SystemExit(f"{name}: missing StartCalendarInterval list")
-    minutes = sorted({int(slot["Minute"]) for slot in slots})
-    if len(minutes) != 2 or (minutes[1] - minutes[0]) % 60 != 30:
-        raise SystemExit(f"{name}: retry minutes are not 30 minutes apart: {minutes}")
+    label = data.get("Label")
+    actual = [(int(slot["Hour"]), int(slot["Minute"])) for slot in slots]
+    if actual != expected.get(label):
+        raise SystemExit(f"{label}: unexpected schedule {actual}")
     for slot in slots:
         key = (int(slot["Hour"]), int(slot["Minute"]))
         if key in seen:
             raise SystemExit(f"schedule collision at {key}: {seen[key]} and {name}")
         seen[key] = name
+PY
 
-with open(sys.argv[1], "rb") as source:
-    article = plistlib.load(source)
-article_slots = article["StartCalendarInterval"]
-if min(int(slot["Hour"]) * 60 + int(slot["Minute"]) for slot in article_slots) > 10 * 60 + 35:
-    raise SystemExit("daily-article has no pre-noon generation window")
+DAILY_NOW_HHMM=1159 bash -c '
+  log() { :; }
+  source "$1"
+  ! daily_require_shanghai_noon
+' _ "$COMMON"
+DAILY_NOW_HHMM=1200 bash -c '
+  log() { :; }
+  source "$1"
+  daily_require_shanghai_noon
+' _ "$COMMON"
 
-with open(sys.argv[2], "rb") as source:
-    news = plistlib.load(source)
-news_slots = news["StartCalendarInterval"]
-if min(int(slot["Hour"]) * 60 + int(slot["Minute"]) for slot in news_slots) > 10 * 60 + 40:
-    raise SystemExit("daily-ai-news starts too late for a 12:00 retry budget")
+LINK_PROBE="$(mktemp -d "${TMPDIR:-/tmp}/daily-link-probe.XXXXXX")"
+printf '# English\n\n[Chinese](../zh/%%E4%%B8%%AD%%20%%E6%%96%%87.md) [English](../en/english.md)\n' > "$LINK_PROBE/english.md"
+printf '# 中文\n\n[Chinese](../zh/%%E4%%B8%%AD%%20%%E6%%96%%87.md) [English](../en/english.md)\n' > "$LINK_PROBE/中 文.md"
+LINK_PROBE="$LINK_PROBE" bash -c '
+  log() { :; }
+  source "$1"
+  daily_bilingual_links_match "$LINK_PROBE/english.md" "$LINK_PROBE/中 文.md"
+' _ "$COMMON"
+find "$LINK_PROBE" -depth -delete
 
-with open(sys.argv[3], "rb") as source:
-    digest = plistlib.load(source)
-digest_slots = digest["StartCalendarInterval"]
-if not any(int(slot["Hour"]) == 12 and int(slot["Minute"]) == 0 for slot in digest_slots):
-    raise SystemExit("daily-digest is missing the 12:00 delivery window")
+python3 - "$ARTICLE" "$AI_NEWS" <<'PY'
+import pathlib, sys
+for name in sys.argv[1:]:
+    text = pathlib.Path(name).read_text()
+    guard = text.index("daily_require_shanghai_noon")
+    lock = text.index("daily_lock_acquire")
+    if guard > lock:
+        raise SystemExit(f"{name}: noon guard runs after lock acquisition")
 PY
 
 DAILY_TASK_BRIDGE=/nonexistent bash -c '

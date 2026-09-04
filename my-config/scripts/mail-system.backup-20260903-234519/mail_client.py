@@ -9,30 +9,9 @@ import email
 import email.message
 import imaplib
 import re
-import calendar
 from datetime import datetime, timedelta, timezone
 from email.header import decode_header
 from email.utils import parsedate_to_datetime
-from html.parser import HTMLParser
-
-
-class _TextExtractor(HTMLParser):
-    def __init__(self):
-        super().__init__()
-        self.parts: list[str] = []
-        self.ignored = 0
-
-    def handle_starttag(self, tag, attrs):
-        if tag.lower() in {"script", "style", "noscript"}:
-            self.ignored += 1
-
-    def handle_endtag(self, tag):
-        if tag.lower() in {"script", "style", "noscript"} and self.ignored:
-            self.ignored -= 1
-
-    def handle_data(self, data):
-        if not self.ignored:
-            self.parts.append(data)
 
 
 def _decode_mime(value: str | None) -> str:
@@ -64,16 +43,10 @@ def _extract_snippet(msg: email.message.Message, limit: int = 300) -> str:
         if not body:
             for part in msg.walk():
                 if part.get_content_type() == "text/html":
-                    parser = _TextExtractor()
-                    parser.feed(_payload_text(part))
-                    body = " ".join(parser.parts)
+                    body = re.sub(r"<[^>]+>", " ", _payload_text(part))
                     break
     else:
         body = _payload_text(msg)
-        if msg.get_content_type() == "text/html":
-            parser = _TextExtractor()
-            parser.feed(body)
-            body = " ".join(parser.parts)
     body = re.sub(r"\s+", " ", body).strip()
     return body[:limit]
 
@@ -87,32 +60,6 @@ def _payload_text(part: email.message.Message) -> str:
         return raw.decode(charset, errors="replace")
     except (LookupError, ValueError, TypeError):
         return ""
-
-
-def _parse_fetched_message(meta: bytes, raw: bytes) -> dict | None:
-    msg = email.message_from_bytes(raw)
-    try:
-        dt = parsedate_to_datetime(msg.get("Date"))
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-    except (TypeError, ValueError):
-        dt = datetime.now(timezone.utc)
-    m_uid = re.search(rb"UID (\d+)", meta)
-    uid = m_uid.group(1).decode() if m_uid else ""
-    if not uid:
-        return None
-    return {
-        "uid": uid,
-        "subject": _decode_mime(msg.get("Subject")),
-        "sender": _decode_mime(msg.get("From")),
-        "recipient": _decode_mime(msg.get("To")),
-        "message_id": (msg.get("Message-ID") or "").strip(),
-        "is_system_digest": (msg.get("X-Tony-Mail-Digest") or "").strip() == "v2",
-        "date": dt,
-        "has_list_unsub": bool(msg.get("List-Unsubscribe")),
-        "is_unread": True,
-        "snippet": _extract_snippet(msg, limit=2400),
-    }
 
 
 class MailBox:
@@ -161,7 +108,11 @@ class MailBox:
             if cand in folders:
                 self.trash_folder = cand
                 return cand
-        # Fail closed: never guess a user-created folder as the system trash.
+        # 兜底:模糊匹配
+        for f in folders:
+            if any(k in f.lower() for k in ("trash", "deleted", "垃圾", "已删除")):
+                self.trash_folder = f
+                return f
         return None
 
     def fetch_unseen(self) -> list[dict]:
@@ -176,36 +127,32 @@ class MailBox:
             return []
         uids = data[0].split()
 
-        # A bounded body prefix is enough for a useful digest while avoiding
-        # large attachments. BODY.PEEK keeps unread state unchanged.
-        spec = "(UID FLAGS BODY.PEEK[]<0.131072>)"
-
-        results = []
-        for meta, raw in self._batch_fetch(uids, spec, batch_size=50):
-            parsed = _parse_fetched_message(meta, raw)
-            if parsed:
-                results.append(parsed)
-        return results
-
-    def fetch_recent(self, hours: int = 30) -> list[dict]:
-        """Fetch recent headers, including already-read copies, for exact dedupe."""
-        self.conn.select("INBOX")
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
-        since = f"{cutoff.day:02d}-{calendar.month_abbr[cutoff.month]}-{cutoff.year}"
-        typ, data = self.conn.uid("SEARCH", None, f'(SINCE "{since}")')
-        if typ != "OK" or not data or not data[0]:
-            return []
-        # QQ can return thousands of stale candidates for SINCE. Recent mail is
-        # at the tail of monotonically increasing UIDs; cap work so the daily
-        # task remains bounded and responsive.
-        uids = data[0].split()[-500:]
-        fields = "(DATE FROM TO SUBJECT MESSAGE-ID LIST-UNSUBSCRIBE)"
+        # 批量抓 header(只取分类必需字段),逐封会在大邮箱上卡死
+        fields = "(DATE FROM SUBJECT LIST-UNSUBSCRIBE)"
         spec = f"(UID FLAGS BODY.PEEK[HEADER.FIELDS {fields}])"
+
         results = []
-        for meta, raw in self._batch_fetch(uids, spec, batch_size=100):
-            parsed = _parse_fetched_message(meta, raw)
-            if parsed and parsed["date"] >= cutoff:
-                results.append(parsed)
+        for meta, raw in self._batch_fetch(uids, spec):
+            msg = email.message_from_bytes(raw)
+            try:
+                dt = parsedate_to_datetime(msg.get("Date"))
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+            except (TypeError, ValueError):
+                dt = datetime.now(timezone.utc)
+            m_uid = re.search(rb"UID (\d+)", meta)
+            uid = m_uid.group(1).decode() if m_uid else ""
+            if not uid:
+                continue
+            results.append({
+                "uid": uid,
+                "subject": _decode_mime(msg.get("Subject")),
+                "sender": _decode_mime(msg.get("From")),
+                "date": dt,
+                "has_list_unsub": bool(msg.get("List-Unsubscribe")),
+                "is_unread": True,
+                "snippet": "",
+            })
         return results
 
     def _batch_fetch(self, uids: list, spec: str, batch_size: int = 400):
@@ -240,27 +187,13 @@ class MailBox:
         if not trash:
             return 0
         self.conn.select("INBOX")
-        capabilities = {
-            cap.decode().upper() if isinstance(cap, bytes) else str(cap).upper()
-            for cap in self.conn.capabilities
-        }
         count = 0
         for i in range(0, len(uids), batch_size):
             chunk = ",".join(uids[i:i + batch_size])
-            if "MOVE" in capabilities:
-                typ, _ = self.conn.uid("MOVE", chunk, f'"{trash}"')
-                if typ == "OK":
-                    count += len(uids[i:i + batch_size])
-                continue
-            if "UIDPLUS" not in capabilities:
-                continue
-            copied, _ = self.conn.uid("COPY", chunk, f'"{trash}"')
-            if copied != "OK":
-                continue
-            stored, _ = self.conn.uid("STORE", chunk, "+FLAGS", "(\\Deleted)")
-            if stored != "OK":
-                continue
-            expunged, _ = self.conn.uid("EXPUNGE", chunk)
-            if expunged == "OK":
+            typ, _ = self.conn.uid("COPY", chunk, f'"{trash}"')
+            if typ == "OK":
+                self.conn.uid("STORE", chunk, "+FLAGS", "(\\Deleted)")
                 count += len(uids[i:i + batch_size])
+        if count:
+            self.conn.expunge()
         return count

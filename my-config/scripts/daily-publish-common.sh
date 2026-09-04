@@ -17,6 +17,62 @@ daily_common_log() {
   fi
 }
 
+daily_shanghai_hhmm() {
+  local value="${DAILY_NOW_HHMM:-}"
+  if [ -z "$value" ]; then
+    value="$(TZ=Asia/Shanghai date +%H%M)"
+  fi
+  case "$value" in
+    [0-2][0-9][0-5][0-9]) printf '%s\n' "$value" ;;
+    *) daily_common_log "FATAL: 无效的上海时间 HHMM: $value"; return 1 ;;
+  esac
+}
+
+daily_require_shanghai_noon() {
+  local now
+  now="$(daily_shanghai_hhmm)" || return 1
+  if [ "$((10#$now))" -lt 1200 ]; then
+    daily_common_log "当前上海时间 ${now:0:2}:${now:2:2} 早于 12:00，拒绝执行每日发布任务"
+    return 1
+  fi
+  return 0
+}
+
+daily_retry_guidance() {
+  local final_hhmm="$1" now
+  now="$(daily_shanghai_hhmm)" || return 1
+  if [ "$((10#$now))" -lt "$((10#$final_hhmm))" ]; then
+    printf '若仍有当日定时窗口，将自动全新重试。\n'
+  else
+    printf '今日自动重试窗口已耗尽，需要人工处理。\n'
+  fi
+}
+
+daily_audit_budget_exceeded_file() {
+  grep -qiE 'estimated cost .* exceeded the .* limit|cost limit.*exceeded' "$1" 2>/dev/null
+}
+
+daily_bilingual_links_match() {
+  local en_file="$1" zh_file="$2"
+  python3 - "$en_file" "$zh_file" <<'PY'
+import re
+import sys
+from pathlib import Path
+from urllib.parse import unquote
+
+en_path, zh_path = map(Path, sys.argv[1:])
+expected = {f"../en/{en_path.name}", f"../zh/{zh_path.name}"}
+for path in (en_path, zh_path):
+    text = path.read_text(encoding="utf-8", errors="strict")
+    links = {
+        unquote(value)
+        for value in re.findall(r"\]\((\.\./(?:en|zh)/[^)]+)\)", text)
+    }
+    if not expected.issubset(links):
+        raise SystemExit(1)
+PY
+}
+
 daily_export_proxy() {
   export HTTP_PROXY="$DAILY_PROXY_URL" HTTPS_PROXY="$DAILY_PROXY_URL" ALL_PROXY="$DAILY_PROXY_URL"
   export http_proxy="$DAILY_PROXY_URL" https_proxy="$DAILY_PROXY_URL" all_proxy="$DAILY_PROXY_URL"
