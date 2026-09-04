@@ -37,10 +37,11 @@
 set -uo pipefail
 WORK="${TONY_ARTICLES_WORK:-$HOME/.local/share/tony-articles}"
 LOG="$HOME/.claude/logs/daily-article.codex.log"
-TODAY="$(date +%Y-%m-%d)"
+TODAY="$(TZ=Asia/Shanghai date +%Y-%m-%d)"
 RUN_STATE_DIR="$HOME/.claude/logs"
 DONE_MARK="$RUN_STATE_DIR/.daily-article-done-${TODAY}"
 CURRENT_PHASE="startup"
+ARTICLE_FAILURE_DETAIL=""
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG"; }
 COMMON="$HOME/.claude/scripts/daily-publish-common.sh"
 [ -r "$COMMON" ] || { log "FATAL: 公共发布可靠性库不存在: $COMMON"; exit 1; }
@@ -48,6 +49,15 @@ COMMON="$HOME/.claude/scripts/daily-publish-common.sh"
 source "$COMMON"
 daily_publication_indexes "$TODAY" || { log "FATAL: 无法建立文章发布索引清单"; exit 1; }
 PUBLICATION_INDEXES=("${DAILY_PUBLICATION_INDEXES[@]}")
+AUDIT_BUDGET_BLOCK_MARK="$RUN_STATE_DIR/.daily-article-audit-budget-blocked-${TODAY}"
+
+if [ "${DAILY_POLICY_PROBE:-0}" != "1" ] && ! daily_require_shanghai_noon; then
+  exit 0
+fi
+if [ -f "$AUDIT_BUDGET_BLOCK_MARK" ] && [ "${DAILY_ARTICLE_FORCE:-0}" != "1" ]; then
+  log "STOP: 今日 Sol 发布审计已超过成本上限，停止自动重试"
+  exit 0
+fi
 
 article_cleanup() {
   if [ -n "${CLAUDE_SESSION_OWNER:-}" ]; then
@@ -62,11 +72,13 @@ article_cleanup() {
 }
 
 article_on_exit() {
-  local rc=$?
+  local rc=$? guidance summary
   article_cleanup
   if [ "$rc" -ne 0 ] && [ ! -f "$DONE_MARK" ]; then
+    guidance="$(daily_retry_guidance 1500 2>/dev/null || true)"
+    summary="${ARTICLE_FAILURE_DETAIL:-每日文章在阶段「${CURRENT_PHASE}」失败（rc=${rc}）。本次未标记完成，详情已记录到 daily-article.codex.log。} ${guidance}"
     daily_notify_failure_once "daily-article" \
-      "每日文章在阶段「${CURRENT_PHASE}」失败（rc=${rc}）。本次未标记完成，下一定时窗口会全新重试；详情已记录到 daily-article.codex.log。" \
+      "$summary" \
       "$WORK" || true
   fi
   return "$rc"
@@ -107,7 +119,7 @@ GETNOTE_INPUT="$STAGE_DIR/inputs/getnote.json"
 BLOCKED_MARK="$RUN_STATE_DIR/.daily-article-blocked-${TODAY}"
 BLOCKER_SNIPPET="$RUN_STATE_DIR/.daily-article-blocker-${TODAY}.txt"
 BLOCKER_ALERT_MARK="$RUN_STATE_DIR/.daily-article-blocker-alerted-${TODAY}"
-DAILY_ARTICLE_AUDIT_TIMEOUT="${DAILY_ARTICLE_AUDIT_TIMEOUT:-300}"
+DAILY_ARTICLE_AUDIT_TIMEOUT="${DAILY_ARTICLE_AUDIT_TIMEOUT:-900}"
 DAILY_ARTICLE_FORCE="${DAILY_ARTICLE_FORCE:-0}"
 # This background job has its own logs and final digest. Suppress generic
 # Codex Stop-hook Feishu progress messages so relay attempts do not spam chat.
@@ -282,13 +294,17 @@ release_audit_ok() {
     audit_log=""
   fi
   if [ -n "$audit_log" ]; then
-    run_limited "$DAILY_ARTICLE_AUDIT_TIMEOUT" product-release-audit audit --max-cost 1.5 --model gpt-5.6-terra --effort low "$audit_dir" >"$audit_log" 2>&1
+    run_limited "$DAILY_ARTICLE_AUDIT_TIMEOUT" product-release-audit audit --max-cost 3.0 --model gpt-5.6-sol --effort low "$audit_dir" >"$audit_log" 2>&1
     audit_rc=$?
     cat "$audit_log" >>"$LOG"
-    if [ "$audit_rc" -eq 0 ] && product-release-audit verify "$audit_dir" >>"$LOG" 2>&1; then
+    if [ "$audit_rc" -eq 0 ] && run_limited 300 product-release-audit verify "$audit_dir" >>"$LOG" 2>&1; then
       log "增量 release audit 通过: $# 个当天文件（attempt=${attempt}）"
       rm -f "$audit_log"
       rc=0
+    elif daily_audit_budget_exceeded_file "$audit_log"; then
+      touch "$AUDIT_BUDGET_BLOCK_MARK"
+      ARTICLE_FAILURE_DETAIL="Sol 发布审计超过 \$3.00 成本上限，今日已停止自动重试，避免重复消耗。"
+      log "FATAL: $ARTICLE_FAILURE_DETAIL"
     elif [ "$audit_rc" -eq 124 ] || daily_transient_failure_file "$audit_log"; then
       log "WARN: release audit 命中瞬态故障（rc=${audit_rc}），本窗口止损，下一定时窗口重试"
       daily_repair_transient_failure "$audit_log"
@@ -542,7 +558,7 @@ PROMPT_EOF
 
 # Codex 调用 flags。每个定时窗口只跑一个有界新会话；失败由下一窗口全新重试。
 CODEX_FLAGS=(--sandbox workspace-write --skip-git-repo-check -C "$STAGE_DIR" --add-dir "$STAGE_DIR" -m "$CODEX_MODEL" "${CODEX_ISOLATION_FLAGS[@]}" -c "model_reasoning_effort=\"$CODEX_REASONING_EFFORT\"")
-DAILY_ARTICLE_GENERATION_TIMEOUT="${DAILY_ARTICLE_GENERATION_TIMEOUT:-480}"
+DAILY_ARTICLE_GENERATION_TIMEOUT="${DAILY_ARTICLE_GENERATION_TIMEOUT:-900}"
 
 RELAY_OUT="$HOME/.claude/logs/.daily-relay-codex-out.txt"
 RELAY_JSON="$HOME/.claude/logs/.daily-relay-codex-events.jsonl"
@@ -630,15 +646,17 @@ if [ "$RC" -ne 0 ]; then
   fi
 fi
 
+if [ "$RC" -eq 124 ]; then
+  ARTICLE_FAILURE_DETAIL="文章生成超过 ${DAILY_ARTICLE_GENERATION_TIMEOUT}s，即使暂存文件存在也拒绝发布，避免交付未完成自审的内容。"
+  log "FATAL: $ARTICLE_FAILURE_DETAIL"
+  exit 1
+fi
+
 # Never resume with --last. On 2026-09-01 it selected a read-only session and
 # held the shared lock for hours, so every scheduled retry silently skipped.
 if ! ls "$STAGE_DIR"/articles/en/${TODAY}-*.md >/dev/null 2>&1 ||
    ! ls "$STAGE_DIR"/articles/zh/${TODAY}-*.md >/dev/null 2>&1; then
-  if [ "$RC" -eq 124 ]; then
-    log "FATAL: 生成超过 ${DAILY_ARTICLE_GENERATION_TIMEOUT}s，未产出双版；拒绝 resume --last，下一定时窗口全新重试"
-  else
-    log "FATAL: Codex 已结束但未产出双版（rc=${RC}）；下一定时窗口全新重试"
-  fi
+  log "FATAL: Codex 已结束但未产出双版（rc=${RC}）；下一定时窗口全新重试"
   exit 1
 fi
 
@@ -655,8 +673,7 @@ STAGED_ZH=$(find "$STAGE_DIR/articles/zh" -maxdepth 1 -type f -name "${TODAY}-*.
 if [ -n "$STAGED_EN" ] && [ -n "$STAGED_ZH" ]; then
   STAGED_EN_BASE=$(basename "$STAGED_EN")
   STAGED_ZH_BASE=$(basename "$STAGED_ZH")
-  if ! grep -Fq "../zh/${STAGED_ZH_BASE}" "$STAGED_EN" ||
-     ! grep -Fq "../en/${STAGED_EN_BASE}" "$STAGED_ZH"; then
+  if ! daily_bilingual_links_match "$STAGED_EN" "$STAGED_ZH"; then
     log "FATAL: 暂存中英文互链不一致，拒绝审核和发布"
     exit 1
   fi

@@ -1,42 +1,35 @@
-"""邮件分类规则 —— 保守策略。
+"""Conservative mail classification for a low-noise daily digest."""
 
-判定逻辑(宁可漏判,不可误判):
-  1. 命中「白名单」(安全/账单/验证码等)→ 永远视为重要,绝不清理
-  2. 否则,满足「广告强信号」→ 视为广告(标已读 + 移垃圾箱)
-  3. 其余 → 重要(只标已读,留收件箱)
+import re
 
-广告强信号 = 有退订头(List-Unsubscribe) 或 命中明确营销关键词。
-"""
-
-# 白名单关键词:出现在主题/发件人里就强制判为「重要」,即使带退订头
-# (安全告警、账单、验证码、订单等绝不能被误清)
-WHITELIST_KEYWORDS = [
-    # 安全 / 账户
-    "security", "安全", "verification", "verify", "验证码", "verification code",
-    "sign-in", "signin", "登录", "login", "password", "密码", "2fa", "otp",
-    "alert", "告警", "警报", "suspicious", "异常",
-    # 财务 / 交易
-    "invoice", "账单", "receipt", "收据", "payment", "付款", "支付",
-    "order", "订单", "refund", "退款", "subscription renew", "续费",
-    "发票", "transaction", "交易",
-    # 物流
-    "shipped", "delivery", "已发货", "快递", "物流", "tracking",
+URGENT_KEYWORDS = [
+    "security", "安全", "verification", "验证码", "sign-in", "signin", "登录",
+    "password", "密码", "2fa", "otp", "alert", "告警", "suspicious", "异常",
+    "failed", "失败", "overdue", "逾期", "expires today", "今日到期",
 ]
 
-# 营销/广告关键词(主题或发件人命中,且不在白名单 → 广告)
+ACTION_KEYWORDS = [
+    "invoice", "账单", "receipt", "收据", "payment", "付款", "支付", "order",
+    "订单", "refund", "退款", "subscription renew", "续费", "发票",
+    "transaction", "交易", "shipped", "delivery", "已发货", "快递", "物流",
+    "tracking", "邀请", "invitation", "approval", "审批", "confirm", "确认",
+]
+
+# These subscriptions are valuable input, not advertising.
+FOCUS_KEYWORDS = [
+    "artificial intelligence", "generative ai", "machine learning", "大模型", "人工智能",
+    "openai", "chatgpt", "gpt", "codex", "anthropic", "claude", "gemini",
+    "deepseek", "kimi", "qwen", "通义", "智谱", "glm", "minimax", "mistral",
+    "llama", "hugging face", "github", "cursor", "windsurf", "manus", "agent",
+    "mcp", "model context protocol", "cloudflare", "vercel", "developer", "sdk",
+    "api", "科技", "技术", "开源", "saas", "indie hacker", "独立开发",
+]
+
 PROMO_KEYWORDS = [
     "促销", "优惠", "折扣", "限时", "秒杀", "特惠", "钜惠", "大促", "清仓",
-    "newsletter", "sale", "deal", "discount", "% off", "off!", "save",
-    "promotion", "promo", "coupon", "clearance", "bargain", "free shipping",
-    "限量", "新品上市", "立减", "满减", "领券", "抢购", "种草",
-    "unsubscribe", "退订", "取消订阅",
-    "weekly digest", "monthly newsletter", "广告",
-]
-
-# 典型营销发件人前缀(@ 前的本地部分命中 → 倾向广告,但仍需配合其它信号)
-BULK_SENDER_HINTS = [
-    "newsletter", "marketing", "promo", "deals", "noreply-marketing",
-    "campaign", "mailer", "bulk", "news@", "info@", "hello@",
+    "sale", "deal", "discount", "% off", "off!", "save now", "promotion",
+    "promo", "coupon", "clearance", "free shipping", "限量", "新品上市", "立减",
+    "满减", "领券", "抢购", "种草", "广告", "会员专享", "buy now",
 ]
 
 
@@ -44,31 +37,35 @@ def _norm(text: str) -> str:
     return (text or "").lower()
 
 
-def is_whitelisted(subject: str, sender: str) -> bool:
-    blob = _norm(subject) + " " + _norm(sender)
-    return any(kw.lower() in blob for kw in WHITELIST_KEYWORDS)
-
-
-def is_promo(subject: str, sender: str, has_list_unsubscribe: bool) -> bool:
-    """返回 True 表示判定为广告/不重要。保守:白名单优先。"""
-    if is_whitelisted(subject, sender):
-        return False
-
-    blob = _norm(subject) + " " + _norm(sender)
-
-    # 强信号 1:命中明确营销关键词
-    if any(kw.lower() in blob for kw in PROMO_KEYWORDS):
-        return True
-
-    # 强信号 2:带 List-Unsubscribe 退订头 = 订阅/营销邮件。
-    # 真人来信、账单、安全警报、订单通常没有此头;白名单已在上方放行重要订阅。
-    # (保守策略下即便误判也只进垃圾箱,30天可恢复)
-    if has_list_unsubscribe:
-        return True
-
+def _contains(blob: str, keywords: list[str]) -> bool:
+    for keyword in keywords:
+        needle = keyword.lower()
+        if needle.isascii():
+            pattern = rf"(?<![a-z0-9]){re.escape(needle)}(?![a-z0-9])"
+            if re.search(pattern, blob):
+                return True
+        elif needle in blob:
+            return True
     return False
 
 
 def classify(subject: str, sender: str, has_list_unsubscribe: bool) -> str:
-    """返回 'promo'(广告) 或 'important'(重要)。"""
-    return "promo" if is_promo(subject, sender, has_list_unsubscribe) else "important"
+    """Return urgent, action, focus, subscription, promo, or info."""
+    subject_blob = _norm(subject)
+    blob = f"{subject_blob} {_norm(sender)}"
+    if _contains(blob, URGENT_KEYWORDS):
+        return "urgent"
+    if _contains(blob, ACTION_KEYWORDS):
+        return "action"
+    if _contains(blob, FOCUS_KEYWORDS):
+        return "focus"
+    # Never move a message solely because a sender address contains sales/promo.
+    if _contains(subject_blob, PROMO_KEYWORDS):
+        return "promo"
+    if has_list_unsubscribe:
+        return "subscription"
+    return "info"
+
+
+def is_promo(subject: str, sender: str, has_list_unsubscribe: bool) -> bool:
+    return classify(subject, sender, has_list_unsubscribe) == "promo"

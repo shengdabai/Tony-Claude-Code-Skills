@@ -3,7 +3,7 @@
 set -uo pipefail
 
 WORK="${TONY_ARTICLES_WORK:-$HOME/.local/share/tony-articles}"
-TODAY="${DAILY_DOCTOR_DATE:-$(date +%Y-%m-%d)}"
+TODAY="${DAILY_DOCTOR_DATE:-$(TZ=Asia/Shanghai date +%Y-%m-%d)}"
 SCRIPT_DIR="$HOME/.claude/scripts"
 COMMON="$SCRIPT_DIR/daily-publish-common.sh"
 PLISTS=(
@@ -75,16 +75,86 @@ for name in sys.argv[1:]:
             raise SystemExit(2)
         seen[key] = label
 
-article_first = min(e["Hour"] * 60 + e["Minute"] for e in schedules["com.tony.daily-article"])
-news_first = min(e["Hour"] * 60 + e["Minute"] for e in schedules["com.tony.daily-ai-news"])
-digest_slots = {(e["Hour"], e["Minute"]) for e in schedules["com.tony.daily-digest"]}
-if article_first > 10 * 60 + 35 or news_first > 10 * 60 + 40 or (12, 0) not in digest_slots:
-    raise SystemExit(3)
+expected_schedules = {
+    "com.tony.daily-article": [(12, 0), (13, 0), (14, 0), (15, 0)],
+    "com.tony.daily-ai-news": [(12, 45), (13, 45), (14, 45), (15, 45)],
+    "com.tony.daily-digest": [(13, 30), (14, 30), (15, 30), (16, 30)],
+}
+for label, expected_slots in expected_schedules.items():
+    actual_slots = [(entry["Hour"], entry["Minute"]) for entry in schedules[label]]
+    if actual_slots != expected_slots:
+        raise SystemExit(3)
 PY
 then
-  pass "LaunchAgent 路由正确且触发时刻无碰撞"
+  pass "LaunchAgent 仅在 12:00 后串行生成、补偿和分发，且时刻无碰撞"
 else
   fail "LaunchAgent 路由或触发时刻冲突"
+fi
+
+if python3 - <<'PY'
+import os, re, subprocess
+
+expected = {
+    "com.tony.daily-article": {(12, 0), (13, 0), (14, 0), (15, 0)},
+    "com.tony.daily-ai-news": {(12, 45), (13, 45), (14, 45), (15, 45)},
+    "com.tony.daily-digest": {(13, 30), (14, 30), (15, 30), (16, 30)},
+}
+uid = os.getuid()
+for label, wanted in expected.items():
+    text = subprocess.check_output(
+        ["launchctl", "print", f"gui/{uid}/{label}"], text=True, stderr=subprocess.DEVNULL
+    )
+    blocks = re.findall(r"descriptor = \{(.*?)\n\s*\}", text, re.S)
+    actual = set()
+    for block in blocks:
+        minute = re.search(r'"Minute" => (\d+)', block)
+        hour = re.search(r'"Hour" => (\d+)', block)
+        if minute and hour:
+            actual.add((int(hour.group(1)), int(minute.group(1))))
+    if actual != wanted:
+        raise SystemExit(f"{label}: loaded={sorted(actual)} expected={sorted(wanted)}")
+PY
+then
+  pass "launchd 实际已加载时刻与 plist 契约一致"
+else
+  fail "launchd 实际已加载时刻与 plist 不一致（可能忘记 reload）"
+fi
+
+if [ "$(grep -c '^CODEX_MODEL="gpt-5.6-sol"$' "$SCRIPT_DIR/daily-article.sh")" -eq 1 ] &&
+   [ "$(grep -c '^CODEX_MODEL="gpt-5.6-sol"$' "$SCRIPT_DIR/daily-ai-news.sh")" -eq 1 ] &&
+   ! grep -qE 'gpt-5\.6-(terra|luna)' "$SCRIPT_DIR/daily-article.sh" "$SCRIPT_DIR/daily-ai-news.sh" &&
+   grep -q -- '--max-cost 3.0 --model gpt-5.6-sol --effort low' "$SCRIPT_DIR/daily-article.sh" &&
+   grep -q -- '--max-cost 3.0 --model gpt-5.6-sol --effort low' "$SCRIPT_DIR/daily-ai-news.sh"; then
+  pass "生成与发布审计唯一模型契约为 gpt-5.6-sol"
+else
+  fail "生成或发布审计存在非 Sol 模型/旧预算参数"
+fi
+
+HERMES_PYTHON="$HOME/.hermes/hermes-agent/venv/bin/python"
+if [ -x "$HERMES_PYTHON" ] && "$HERMES_PYTHON" - "$HOME/.hermes/config.yaml" <<'PY'
+import sys
+import yaml
+
+with open(sys.argv[1], encoding="utf-8") as source:
+    config = yaml.safe_load(source) or {}
+model = config.get("model") or {}
+assert "fallback_providers" in config
+fallbacks = config["fallback_providers"]
+feishu = (((config.get("platforms") or {}).get("feishu") or {}).get("extra") or {})
+agent = config.get("agent") or {}
+assert model.get("provider") == "openai-codex"
+assert model.get("default") == "gpt-5.6-sol"
+assert fallbacks == []
+assert feishu.get("require_mention") is True
+assert agent.get("reasoning_effort") == "high"
+title_generation = ((config.get("auxiliary") or {}).get("title_generation") or {})
+assert title_generation.get("provider") == "openai-codex"
+assert title_generation.get("model") == "gpt-5.6-sol"
+PY
+then
+  pass "Commander 主回复/fallback/标题生成锁定 GPT-5.6 Sol，群聊侧必须 @提及"
+else
+  fail "Commander 模型或飞书群聊门禁回归"
 fi
 
 if daily_infra_preflight "doctor"; then
@@ -113,8 +183,10 @@ else
   fail "GetNote 配置或 Codex MCP"
 fi
 
-ARTICLE_POLICY="$(DAILY_POLICY_PROBE=1 "$SCRIPT_DIR/daily-article.sh" 2>/dev/null)"
-NEWS_POLICY="$(DAILY_POLICY_PROBE=1 "$SCRIPT_DIR/daily-ai-news.sh" 2>/dev/null)"
+ARTICLE_POLICY_LOCK="${TMPDIR:-/tmp}/daily-doctor-article-policy.$$"
+NEWS_POLICY_LOCK="${TMPDIR:-/tmp}/daily-doctor-news-policy.$$"
+ARTICLE_POLICY="$(DAILY_SESSION_LOCK="$ARTICLE_POLICY_LOCK" DAILY_POLICY_PROBE=1 "$SCRIPT_DIR/daily-article.sh" 2>/dev/null)"
+NEWS_POLICY="$(DAILY_SESSION_LOCK="$NEWS_POLICY_LOCK" DAILY_POLICY_PROBE=1 "$SCRIPT_DIR/daily-ai-news.sh" 2>/dev/null)"
 if [ "$ARTICLE_POLICY" = "article policy ok: readonly exporter + ignore-user-config + workspace-write" ] &&
    [ "$NEWS_POLICY" = "ai-news policy ok: ignore-user-config + plugins/apps disabled + workspace-write" ]; then
   pass "生成任务最小权限策略：只读采集器 + 无用户配置/MCP + 暂存区沙箱"
@@ -166,7 +238,12 @@ PY
 then
   pass "当日 AI 热点中英双版均含 5–8 个相同来源 URL"
 else
-  fail "当日 AI 热点文件或来源 URL 门槛"
+  SHANGHAI_HHMM="$(TZ=Asia/Shanghai date +%H%M)"
+  if [ "$((10#$SHANGHAI_HHMM))" -lt 1630 ]; then
+    warn "当日 AI 热点尚未完成；12:45–15:45 生成/补偿窗口仍有效"
+  else
+    fail "当日 AI 热点文件或来源 URL 门槛"
+  fi
 fi
 
 if node --check "$SCRIPT_DIR/getnote-readonly-export.mjs" >/dev/null 2>&1 &&
@@ -207,23 +284,31 @@ fi
 
 if grep -q '发送前先查飞书真实历史' "$SCRIPT_DIR/daily-digest.sh" &&
    grep -q '回查工具不可用；不信任单一返回值' "$SCRIPT_DIR/daily-digest.sh" &&
-   grep -q -- '--idempotency-key "$FEISHU_IDEMPOTENCY_KEY"' "$SCRIPT_DIR/daily-digest.sh"; then
-  pass "飞书服务端幂等、发送前查重、发送后回查均已启用"
+   grep -Fq '"$HERMES_GATEWAY_PY" "$HERMES_SEND_WRAPPER" send' "$SCRIPT_DIR/daily-digest.sh" &&
+   grep -q -- '--file "$MSGFILE" --json' "$SCRIPT_DIR/daily-digest.sh" &&
+   grep -q 'env -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY' "$SCRIPT_DIR/daily-digest.sh" &&
+   grep -q 'PlistBuddy.*ProgramArguments:0' "$SCRIPT_DIR/daily-digest.sh" &&
+   grep -q 'daily_run_with_timeout 120 env' "$SCRIPT_DIR/daily-digest.sh" &&
+   grep -q 'daily-digest-delivery:' "$SCRIPT_DIR/daily-digest.sh" &&
+   grep -q 'MSG_CHARS.*7000' "$SCRIPT_DIR/daily-digest.sh" &&
+   "$HERMES_PYTHON" -m py_compile "$SCRIPT_DIR/hermes-send-direct-feishu.py" &&
+   ! grep -q 'im +messages-send' "$SCRIPT_DIR/daily-digest.sh"; then
+  pass "Commander release bot 无模型直发、无代理、发送前查重、发送后精确计数均已启用"
 else
-  fail "飞书双重幂等门"
+  fail "飞书 bot 直发/查重/回查门禁"
 fi
 
 if command -v lark-cli >/dev/null 2>&1; then
   LARK_SCOPE_TMP="$(mktemp "${TMPDIR:-/tmp}/daily-doctor-lark-scope.XXXXXX")"
   if lark-cli --profile cli_aa80e81017f85bc0 auth check \
-       --scope 'im:message.send_as_user im:message im:message:readonly im:chat:read' \
+       --scope 'im:message:readonly im:chat:read' \
        --json >"$LARK_SCOPE_TMP" 2>/dev/null &&
      python3 -c 'import json,sys
 d=json.load(open(sys.argv[1]))
 raise SystemExit(0 if d.get("ok") and not d.get("missing") else 1)' "$LARK_SCOPE_TMP"; then
-    pass "飞书用户身份具备发送与回查最小权限"
+    pass "飞书用户身份仅保留历史回查权限"
   else
-    fail "飞书用户身份缺少发送或回查权限"
+    fail "飞书用户身份缺少历史回查权限"
   fi
   rm -f "$LARK_SCOPE_TMP"
   LARK_TMP="$(mktemp "${TMPDIR:-/tmp}/daily-doctor-lark.XXXXXX")"
