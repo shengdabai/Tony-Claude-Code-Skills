@@ -495,3 +495,24 @@ daily_codex_binary_failure_file() {
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
   daily_infra_preflight "standalone-check"
 fi
+
+# Generation uses one lock per job; only shared checkout operations serialize.
+daily_checkout_acquire() {
+  local deadline=$((SECONDS + ${DAILY_CHECKOUT_WAIT_SECONDS:-600}))
+  DAILY_CHECKOUT_LOCK="${DAILY_PUBLICATION_LOCK:-/tmp/daily-claude-session.lock}"
+  while ! daily_lock_acquire "$DAILY_CHECKOUT_LOCK" 2400; do
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      daily_common_log "ERROR: 等待共享发布仓库锁超时，保留状态供下个窗口重试"
+      return 1
+    fi
+    sleep 2
+  done
+  DAILY_CHECKOUT_OWNER="$DAILY_LOCK_OWNER"
+}
+
+daily_checkout_release() {
+  if [ -n "${DAILY_CHECKOUT_OWNER:-}" ]; then
+    daily_lock_release "$DAILY_CHECKOUT_LOCK" "$DAILY_CHECKOUT_OWNER" || return 1
+    DAILY_CHECKOUT_OWNER=""
+  fi
+}

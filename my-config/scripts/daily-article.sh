@@ -60,6 +60,7 @@ if [ -f "$AUDIT_BUDGET_BLOCK_MARK" ] && [ "${DAILY_ARTICLE_FORCE:-0}" != "1" ]; 
 fi
 
 article_cleanup() {
+  daily_checkout_release 2>/dev/null || true
   if [ -n "${CLAUDE_SESSION_OWNER:-}" ]; then
     daily_lock_release "${CLAUDE_SESSION_LOCK:-/tmp/daily-claude-session.lock}" "$CLAUDE_SESSION_OWNER" 2>/dev/null || true
   fi
@@ -84,10 +85,10 @@ article_on_exit() {
   return "$rc"
 }
 
-# --- 共享互斥锁:daily-article 与 daily-ai-news 都调用推理 session,排队避免并发抢占 ---
-CLAUDE_SESSION_LOCK="${DAILY_SESSION_LOCK:-/tmp/daily-claude-session.lock}"
+# 每类任务独占生成锁；两篇可并行创作，共享仓库另行加发布锁。
+CLAUDE_SESSION_LOCK="${DAILY_SESSION_LOCK:-/tmp/daily-article-generation.lock}"
 if ! daily_lock_acquire "$CLAUDE_SESSION_LOCK" 2400; then
-  echo "[lock] another daily generation is running; retry slot skips" >&2
+  echo "[lock] this daily job is already running; duplicate skips" >&2
   exit 0
 fi
 CLAUDE_SESSION_OWNER="$DAILY_LOCK_OWNER"
@@ -318,6 +319,7 @@ release_audit_ok() {
 }
 
 trigger_digest() {
+  daily_checkout_release || return 1
   local digest="$HOME/.claude/scripts/daily-digest.sh"
   [ -x "$digest" ] || { log "ERROR: 合并分发脚本不可执行: $digest"; return 1; }
   if bash "$digest" >/dev/null 2>&1; then
@@ -362,6 +364,7 @@ fi
 #    2026-09-02 事故：git add 同时包含被 *.log 忽略的本地去重账本，前三个
 #    发布文件已部分暂存后命令失败；后续窗口先做干净树检查，导致永久自锁。
 CURRENT_PHASE="repository-sync"
+daily_checkout_acquire || exit 1
 cd "$WORK" || { log "FATAL: 工作目录不存在 $WORK"; exit 1; }
 
 # 2. 幂等恢复:先隔离上次异常中断留下的单侧未跟踪文件，再回查完整发布单元。
@@ -474,6 +477,8 @@ if [ ! -f "$PUB_LOG" ]; then
   done 2>/dev/null | sed '/^[[:space:]]*$/d' | sort -u > "$PUB_LOG"
   log "bootstrap published-topics.log: $(wc -l < "$PUB_LOG" 2>/dev/null | tr -d ' ') 条历史主题(全量)"
 fi
+
+daily_checkout_release || exit 1
 
 # 3. 调 Codex 非交互完成全流程(中英双版)
 #    注意:13-phase 已展开成显式步骤(Codex 无 xiaolai-write subagent 编排)
@@ -684,6 +689,7 @@ if [ -n "$STAGED_EN" ] && [ -n "$STAGED_ZH" ]; then
   log "GetNote 证据通过：只读 listNotes + 3 次 recall，且生成器零 MCP 调用"
   rm -f -- "$GETNOTE_INPUT"
   release_audit_ok "$STAGED_EN" "$STAGED_ZH" || { log "FATAL: 暂存文章 release audit 未通过，发布 checkout 保持不变"; exit 1; }
+  daily_checkout_acquire || exit 1
   cd "$WORK" || exit 1
   sync_main_checkout || { log "FATAL: 发布前无法安全快进到 origin/main"; exit 1; }
   daily_copy_pair_atomic \

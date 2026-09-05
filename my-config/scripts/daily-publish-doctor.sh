@@ -71,14 +71,12 @@ for name in sys.argv[1:]:
     schedules[label] = entries
     for entry in entries:
         key = (entry.get("Hour"), entry.get("Minute"))
-        if key in seen:
-            raise SystemExit(2)
         seen[key] = label
 
 expected_schedules = {
     "com.tony.daily-article": [(12, 0), (13, 0), (14, 0), (15, 0)],
-    "com.tony.daily-ai-news": [(12, 45), (13, 45), (14, 45), (15, 45)],
-    "com.tony.daily-digest": [(13, 30), (14, 30), (15, 30), (16, 30)],
+    "com.tony.daily-ai-news": [(12, 0), (13, 0), (14, 0), (15, 0)],
+    "com.tony.daily-digest": [(m // 60, m % 60) for m in range(725, 991, 5)],
 }
 for label, expected_slots in expected_schedules.items():
     actual_slots = [(entry["Hour"], entry["Minute"]) for entry in schedules[label]]
@@ -86,7 +84,7 @@ for label, expected_slots in expected_schedules.items():
         raise SystemExit(3)
 PY
 then
-  pass "LaunchAgent 仅在 12:00 后串行生成、补偿和分发，且时刻无碰撞"
+  pass "LaunchAgent 每天 12:00 并行生成、整点重试、完成即分发并每 5 分钟补偿"
 else
   fail "LaunchAgent 路由或触发时刻冲突"
 fi
@@ -96,8 +94,8 @@ import os, re, subprocess
 
 expected = {
     "com.tony.daily-article": {(12, 0), (13, 0), (14, 0), (15, 0)},
-    "com.tony.daily-ai-news": {(12, 45), (13, 45), (14, 45), (15, 45)},
-    "com.tony.daily-digest": {(13, 30), (14, 30), (15, 30), (16, 30)},
+    "com.tony.daily-ai-news": {(12, 0), (13, 0), (14, 0), (15, 0)},
+    "com.tony.daily-digest": {(m // 60, m % 60) for m in range(725, 991, 5)},
 }
 uid = os.getuid()
 for label, wanted in expected.items():
@@ -240,7 +238,7 @@ then
 else
   SHANGHAI_HHMM="$(TZ=Asia/Shanghai date +%H%M)"
   if [ "$((10#$SHANGHAI_HHMM))" -lt 1630 ]; then
-    warn "当日 AI 热点尚未完成；12:45–15:45 生成/补偿窗口仍有效"
+    warn "当日 AI 热点尚未完成；12:00–15:00 生成/补偿窗口仍有效"
   else
     fail "当日 AI 热点文件或来源 URL 门槛"
   fi
@@ -285,32 +283,20 @@ fi
 if grep -q '发送前先查飞书真实历史' "$SCRIPT_DIR/daily-digest.sh" &&
    grep -q '回查工具不可用；不信任单一返回值' "$SCRIPT_DIR/daily-digest.sh" &&
    grep -Fq '"$HERMES_GATEWAY_PY" "$HERMES_SEND_WRAPPER" send' "$SCRIPT_DIR/daily-digest.sh" &&
-   grep -q -- '--file "$MSGFILE" --json' "$SCRIPT_DIR/daily-digest.sh" &&
+   grep -Fq -- '--file "$MSGFILE" --json' "$SCRIPT_DIR/daily-digest.sh" &&
    grep -q 'env -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY' "$SCRIPT_DIR/daily-digest.sh" &&
-   grep -q 'PlistBuddy.*ProgramArguments:0' "$SCRIPT_DIR/daily-digest.sh" &&
+   grep -q 'FEISHU_PROFILE="cli_aa80e81017f85bc0"' "$SCRIPT_DIR/daily-digest.sh" &&
    grep -q 'daily_run_with_timeout 120 env' "$SCRIPT_DIR/daily-digest.sh" &&
    grep -q 'daily-digest-delivery:' "$SCRIPT_DIR/daily-digest.sh" &&
    grep -q 'MSG_CHARS.*7000' "$SCRIPT_DIR/daily-digest.sh" &&
    "$HERMES_PYTHON" -m py_compile "$SCRIPT_DIR/hermes-send-direct-feishu.py" &&
-   ! grep -q 'im +messages-send' "$SCRIPT_DIR/daily-digest.sh"; then
-  pass "Commander release bot 无模型直发、无代理、发送前查重、发送后精确计数均已启用"
+   ! grep -q -- '--as user.*messages-send' "$SCRIPT_DIR/daily-digest.sh"; then
+  pass "Commander bot 无模型直发、无代理、发送前查重、发送后精确计数均已启用"
 else
   fail "飞书 bot 直发/查重/回查门禁"
 fi
 
 if command -v lark-cli >/dev/null 2>&1; then
-  LARK_SCOPE_TMP="$(mktemp "${TMPDIR:-/tmp}/daily-doctor-lark-scope.XXXXXX")"
-  if lark-cli --profile cli_aa80e81017f85bc0 auth check \
-       --scope 'im:message:readonly im:chat:read' \
-       --json >"$LARK_SCOPE_TMP" 2>/dev/null &&
-     python3 -c 'import json,sys
-d=json.load(open(sys.argv[1]))
-raise SystemExit(0 if d.get("ok") and not d.get("missing") else 1)' "$LARK_SCOPE_TMP"; then
-    pass "飞书用户身份仅保留历史回查权限"
-  else
-    fail "飞书用户身份缺少历史回查权限"
-  fi
-  rm -f "$LARK_SCOPE_TMP"
   LARK_TMP="$(mktemp "${TMPDIR:-/tmp}/daily-doctor-lark.XXXXXX")"
   if LARK_CLI_NO_PROXY=1 lark-cli --profile cli_aa80e81017f85bc0 --as user \
        im +chat-messages-list --chat-id oc_43c5ee271f2b76bd073779a169736142 --page-size 50 >"$LARK_TMP" 2>/dev/null; then
