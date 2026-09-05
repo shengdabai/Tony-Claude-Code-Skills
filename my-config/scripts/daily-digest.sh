@@ -9,6 +9,7 @@ LOG="$HOME/.claude/logs/daily-digest.log"
 TODAY="${DAILY_DIGEST_DATE:-$(TZ=Asia/Shanghai date +%Y-%m-%d)}"
 SITE_BASE="http://111.229.77.103:8080"
 FEISHU_TARGET="feishu:oc_43c5ee271f2b76bd073779a169736142"
+FEISHU_PROFILE="cli_aa80e81017f85bc0"
 FEISHU_CHAT_ID="${FEISHU_TARGET#feishu:}"
 RENDER="$HOME/.claude/scripts/render-site.py"
 HERMES_GATEWAY_PLIST="$HOME/Library/LaunchAgents/ai.hermes.gateway.plist"
@@ -32,7 +33,7 @@ print((datetime.date.fromisoformat(sys.argv[1]) + datetime.timedelta(days=1)).is
 PY
 )" || { log "ERROR: 无法计算飞书查询结束日期"; exit 2; }
 
-# 两个生成任务完成后会主动触发分发，launchd 也会在 13:30–16:30 每小时补偿。
+# 两个生成任务完成后会主动触发分发，launchd 也会在 12:05–16:30 每 5 分钟补偿。
 # 用 mkdir 原子抢锁，并在任何网络/仓库检查之前加锁，避免两个进程同时
 # 查重后都发送，或重复执行昂贵的站点同步。
 LOCK_DIR="$HOME/.claude/logs/.daily-digest-${TODAY}.lock.d"
@@ -42,6 +43,7 @@ if ! daily_lock_acquire "$LOCK_DIR" 1200; then
 fi
 DIGEST_LOCK_OWNER="$DAILY_LOCK_OWNER"
 digest_cleanup() {
+  daily_checkout_release 2>/dev/null || true
   daily_lock_release "$LOCK_DIR" "$DIGEST_LOCK_OWNER" 2>/dev/null || true
 }
 trap digest_cleanup EXIT
@@ -72,6 +74,8 @@ for dep in git python3 lark-cli "$RENDER" "$HERMES_GATEWAY_PY"; do
 done
 
 daily_infra_preflight "daily-digest" 0 || { log "ERROR: 发布基础设施预检失败，等待下个窗口"; exit 1; }
+
+daily_checkout_acquire || exit 1
 
 # launchd 独立触发时也先同步 GitHub main。只允许干净 checkout 做安全快进。
 cd "$WORK" || { log "FATAL: 工作目录不存在 $WORK"; exit 1; }
@@ -125,11 +129,12 @@ if [ "${DAILY_DIGEST_DRY_RUN:-0}" = "1" ]; then
   exit 0
 fi
 
-# 渲染 + 同步国内站；失败时摘要仍可阅读，因此继续发送并记录告警。
+# 渲染 + 同步国内站；只有链接可交付才发送，失败由定时窗口重试。
 if bash "$HOME/.claude/scripts/sync-site.sh" >>"$LOG" 2>&1; then
   log "站点同步成功"
 else
-  log "WARN: 站点同步失败, 仍推送(摘要可读, 链接稍后生效)"
+  log "ERROR: 站点同步失败，暂停飞书发送，等待下个补偿窗口"
+  exit 1
 fi
 
 ntfy_send() {
@@ -164,12 +169,12 @@ feishu_confirm() {
     while [ "$_page" -lt 20 ]; do
       _page=$((_page + 1))
       if [ -n "$_token" ]; then
-        _out="$(LARK_CLI_NO_PROXY=1 lark-cli --profile cli_aa80e81017f85bc0 --as user \
+        _out="$(LARK_CLI_NO_PROXY=1 lark-cli --profile "$FEISHU_PROFILE" --as user \
           im +chat-messages-list --chat-id "$FEISHU_CHAT_ID" \
           --start "$TODAY" --end "$NEXT_DAY" --sort desc --page-size 50 \
           --page-token "$_token" --format json 2>/dev/null)"
       else
-        _out="$(LARK_CLI_NO_PROXY=1 lark-cli --profile cli_aa80e81017f85bc0 --as user \
+        _out="$(LARK_CLI_NO_PROXY=1 lark-cli --profile "$FEISHU_PROFILE" --as user \
           im +chat-messages-list --chat-id "$FEISHU_CHAT_ID" \
           --start "$TODAY" --end "$NEXT_DAY" --sort desc --page-size 50 \
           --format json 2>/dev/null)"
@@ -232,7 +237,7 @@ if [ ! -f "$FEISHU_DONE" ]; then
       exit 1
     fi
   fi
-  # 通过 Commander bot 直接发送；hermes send 不运行 LLM/Agent loop。
+  # 通过 Commander bot 直接发送；hermes send 只发送正文，不运行 LLM/Agent loop。
   # 禁止以 Tony 用户身份向 Commander 私聊发送，否则会被当成新指令。
   SEND_ERR="$HOME/.claude/logs/.daily-digest-send-${TODAY}.stderr.log"
   OUT="$(daily_run_with_timeout 120 env -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY \

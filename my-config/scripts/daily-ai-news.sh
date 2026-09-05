@@ -38,11 +38,10 @@ if [ -f "$AUDIT_BUDGET_BLOCK_MARK" ] && [ "$DAILY_AI_NEWS_FORCE" != "1" ]; then
   exit 0
 fi
 
-# --- 共享互斥锁:daily-article 与 daily-ai-news 都调用推理 session,排队避免并发抢占 ---
-# 注意:沿用同一把锁名,使 Codex 版与 Claude 版互斥(同机不会两个引擎同时抢额度/工作区)
-CLAUDE_SESSION_LOCK="${DAILY_SESSION_LOCK:-/tmp/daily-claude-session.lock}"
+# 每类任务独占生成锁；两篇可并行创作，共享仓库另行加发布锁。
+CLAUDE_SESSION_LOCK="${DAILY_SESSION_LOCK:-/tmp/daily-ai-news-generation.lock}"
 if ! daily_lock_acquire "$CLAUDE_SESSION_LOCK" 2400; then
-  echo "[lock] another daily generation is running; retry slot skips" >&2
+  echo "[lock] this daily job is already running; duplicate skips" >&2
   exit 0
 fi
 CLAUDE_SESSION_OWNER="$DAILY_LOCK_OWNER"
@@ -74,6 +73,7 @@ TASK_BRIDGE="$HOME/Desktop/01-项目开发/15-飞书桥接/task-progress-bridge.
 CODEX_FLAGS=(--sandbox workspace-write --skip-git-repo-check -C "$STAGE_DIR" --add-dir "$STAGE_DIR" -m "$CODEX_MODEL" "${CODEX_ISOLATION_FLAGS[@]}" -c "model_reasoning_effort=\"$CODEX_REASONING_EFFORT\"")
 
 news_cleanup() {
+  daily_checkout_release 2>/dev/null || true
   if [ -n "${LOCK:-}" ]; then
     rm -f -- "$LOCK" 2>/dev/null || true
   fi
@@ -299,6 +299,7 @@ if [ -f "$DONE_MARK" ]; then
 fi
 
 # 1. 先检查并恢复上个窗口留下的当天发布状态。
+daily_checkout_acquire || exit 1
 cd "$WORK" || { log "FATAL: $WORK 不存在"; exit 1; }
 
 # 2. 幂等恢复:隔离单侧残留；双版齐时先回查并补齐完整发布单元。
@@ -324,6 +325,7 @@ if [ -n "$EXISTING_ZH" ] && [ -n "$EXISTING_EN" ]; then
   if remote_news_publication_complete "$EXISTING_ZH" "$EXISTING_EN"; then
     touch "$DONE_MARK"
     log "今日 AI 热点双版与索引已在 origin/main；补写完成标记"
+    daily_checkout_release || exit 1
     bash "$HOME/.claude/scripts/daily-digest.sh" >/dev/null 2>&1 || true
     exit 0
   fi
@@ -360,6 +362,8 @@ if [ -n "$EXISTING_ZH" ] && [ -n "$EXISTING_EN" ]; then
   if remote_news_publication_complete "$EXISTING_ZH" "$EXISTING_EN"; then
     touch "$DONE_MARK"
     log "retry 已确认 origin/main 双版齐全，标记完成"
+    daily_checkout_release || exit 1
+    bash "$HOME/.claude/scripts/daily-digest.sh" >/dev/null 2>&1 || true
     exit 0
   fi
   log "ERROR: retry 后 origin/main 仍未齐；不标记完成，等待下一补偿时刻"
@@ -377,6 +381,8 @@ if [ -f "$LOCK" ] && kill -0 "$(cat "$LOCK" 2>/dev/null)" 2>/dev/null; then
 fi
 echo $$ > "$LOCK"
 mkdir -p ai-news/zh ai-news/en
+
+daily_checkout_release || exit 1
 
 # 3. 拉 aihot 过去 24h 精选数据 → 写到临时文件供 codex 读
 UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 aihot-skill/0.2.0"
@@ -491,7 +497,7 @@ log "  Codex 单窗口调用 rc=$RC (124=超时)"
 if hit_session_limit; then
   log "  撞用量上限, 止损退出, 后续 launchd 时刻自动重试"
   notify_daily_failure_once "Codex 本窗口触发用量或速率限制；下一定时窗口会自动补偿。"
-  ntfy_send "⚠️ daily-ai-news 撞 Codex 429 限额，今日($TODAY)日报暂未出。若仍有 12:45–15:45 窗口将自动重试；否则需人工处理。"
+  ntfy_send "⚠️ daily-ai-news 撞 Codex 429 限额，今日($TODAY)日报暂未出。若仍有 12:00–15:00 窗口将自动重试；否则需人工处理。"
   exit 1
 fi
 if [ "$RC" -ne 0 ]; then
@@ -537,6 +543,7 @@ if [ -n "$STAGED_ZH" ] && [ -n "$STAGED_EN" ]; then
     notify_daily_failure_once "AI 热点双版已生成，但暂存发布审计未通过；发布 checkout 未改动。"
     exit 1
   }
+  daily_checkout_acquire || exit 1
   cd "$WORK" || exit 1
   sync_main_checkout || { log "FATAL: 发布前无法安全快进到 origin/main"; exit 1; }
   daily_copy_pair_atomic \
@@ -563,10 +570,11 @@ if [ -n "$ZH_FILE" ] && [ -n "$EN_FILE" ]; then
     touch "$DONE_MARK"
     log "已验证 origin/main 含今日 AI 热点双版，标记完成"
     log "已验证 GitHub origin/main 含今日 AI 热点双版；触发幂等飞书合并分发"
+    daily_checkout_release || exit 1
     if bash "$HOME/.claude/scripts/daily-digest.sh" >/dev/null 2>&1; then
       log "幂等合并分发已执行"
     else
-      log "WARN: 合并分发本轮未确认送达；daily-digest 会在后续每小时 :30 窗口重试"
+      log "WARN: 合并分发本轮未确认送达；daily-digest 会在后续每 5 分钟的补偿窗口重试"
       notify_daily_failure_once "AI 热点已发布到 GitHub，但合并飞书分发本轮未确认送达；后续窗口将自动重试。"
     fi
   else

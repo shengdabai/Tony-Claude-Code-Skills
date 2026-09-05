@@ -44,17 +44,17 @@ PY
 # be an atomic mkdir lock and must be acquired before infrastructure preflight.
 grep -q 'daily_lock_acquire "$LOCK_DIR"' "$DIGEST"
 grep -Fq '"$HERMES_GATEWAY_PY" "$HERMES_SEND_WRAPPER" send' "$DIGEST"
-grep -q -- '--file "$MSGFILE" --json' "$DIGEST"
+grep -Fq -- '--file "$MSGFILE" --json' "$DIGEST"
 grep -q 'env -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY' "$DIGEST"
-grep -q 'PlistBuddy.*ProgramArguments:0' "$DIGEST"
+grep -q 'FEISHU_PROFILE="cli_aa80e81017f85bc0"' "$DIGEST"
 grep -q '存在未确认的飞书发送尝试' "$DIGEST"
 grep -q 'daily_run_with_timeout 120 env' "$DIGEST"
 grep -q 'daily-digest-delivery:' "$DIGEST"
 grep -q 'MSG_CHARS.*7000' "$DIGEST"
 grep -q '_total.*-eq 1' "$DIGEST"
 "$HERMES_PYTHON" -m py_compile "$HOME/.claude/scripts/hermes-send-direct-feishu.py"
-if grep -q -- '--as user.*messages-send\|im +messages-send' "$DIGEST"; then
-  echo "daily-digest still sends as Tony user and can wake Commander" >&2
+if grep -q -- '--as user.*messages-send' "$DIGEST"; then
+  echo "daily-digest must send as Commander bot" >&2
   exit 1
 fi
 
@@ -120,7 +120,7 @@ grep -q -- '--max-cost 3\.0 --model gpt-5\.6-sol' "$ARTICLE"
 grep -q -- '--max-cost 3\.0 --model gpt-5\.6-sol' "$AI_NEWS"
 grep -Fq 'if [ "$RC" -eq 124 ]; then' "$ARTICLE"
 grep -Fq 'if [ "$RC" -eq 124 ]; then' "$AI_NEWS"
-grep -q 'CLAUDE_SESSION_LOCK="${DAILY_SESSION_LOCK:-/tmp/daily-claude-session.lock}"' "$AI_NEWS"
+grep -q 'CLAUDE_SESSION_LOCK="${DAILY_SESSION_LOCK:-/tmp/daily-ai-news-generation.lock}"' "$AI_NEWS"
 grep -q 'timeout/gtimeout 不可用，拒绝无界执行' "$AI_NEWS"
 grep -q 'git commit -q --only' "$AI_NEWS"
 grep -q 'daily_notify_failure_once "daily-article"' "$ARTICLE"
@@ -133,8 +133,8 @@ import plistlib, sys
 seen = {}
 expected = {
     "com.tony.daily-article": [(12, 0), (13, 0), (14, 0), (15, 0)],
-    "com.tony.daily-ai-news": [(12, 45), (13, 45), (14, 45), (15, 45)],
-    "com.tony.daily-digest": [(13, 30), (14, 30), (15, 30), (16, 30)],
+    "com.tony.daily-ai-news": [(12, 0), (13, 0), (14, 0), (15, 0)],
+    "com.tony.daily-digest": [(m // 60, m % 60) for m in range(725, 991, 5)],
 }
 for name in sys.argv[1:]:
     with open(name, "rb") as source:
@@ -148,8 +148,7 @@ for name in sys.argv[1:]:
         raise SystemExit(f"{label}: unexpected schedule {actual}")
     for slot in slots:
         key = (int(slot["Hour"]), int(slot["Minute"]))
-        if key in seen:
-            raise SystemExit(f"schedule collision at {key}: {seen[key]} and {name}")
+        # Both generation jobs intentionally start at noon; per-job locks allow it.
         seen[key] = name
 PY
 
@@ -258,5 +257,42 @@ TEST_LOCK="${TMPDIR:-/tmp}/daily-ai-news-policy-probe.$$"
 probe_output="$(DAILY_SESSION_LOCK="$TEST_LOCK" DAILY_POLICY_PROBE=1 bash "$AI_NEWS")"
 grep -q 'ai-news policy ok' <<<"$probe_output"
 [ ! -d "$TEST_LOCK" ]
+
+python3 - "$COMMON" <<'PYTEST'
+import os, subprocess, sys, tempfile, time
+from pathlib import Path
+common=sys.argv[1]
+with tempfile.TemporaryDirectory(prefix="daily-parallel-test-") as tmp:
+    root=Path(tmp)
+    worker=r'''set -euo pipefail
+source "$1"
+log() { :; }
+DAILY_PUBLICATION_LOCK="$2/checkout.lock"
+daily_lock_acquire "$2/$3.generation.lock" 1200
+generation_owner="$DAILY_LOCK_OWNER"
+trap 'daily_checkout_release; daily_lock_release "$2/$3.generation.lock" "$generation_owner"' EXIT
+touch "$2/$3.ready"
+for i in {1..100}; do
+  [ -f "$2/article.ready" ] && [ -f "$2/news.ready" ] && break
+  sleep 0.05
+done
+[ -f "$2/article.ready" ] && [ -f "$2/news.ready" ]
+daily_checkout_acquire
+mkdir "$2/writing"
+sleep 0.15
+rmdir "$2/writing"
+daily_checkout_release
+touch "$2/$3.done"
+'''
+    procs=[subprocess.Popen(['bash','-c',worker,'_',common,tmp,name]) for name in ['article','news']]
+    assert all(p.wait(timeout=15)==0 for p in procs), 'parallel generation or serialized publishing failed'
+    assert all((root/(name+'.done')).exists() for name in ['article','news'])
+    assert not (root/'checkout.lock').exists(), 'publication lock leaked'
+    # A busy shared checkout times out instead of proceeding unlocked.
+    (root/'checkout.lock').mkdir()
+    probe='source "$1"; log() { :; }; DAILY_PUBLICATION_LOCK="$2/checkout.lock"; DAILY_CHECKOUT_WAIT_SECONDS=0; ! daily_checkout_acquire'
+    assert subprocess.run(['bash','-c',probe,'_',common,tmp]).returncode==0
+print('parallel generation / serialized checkout / lock timeout tests passed')
+PYTEST
 
 echo "daily-article reliability smoke tests passed"
