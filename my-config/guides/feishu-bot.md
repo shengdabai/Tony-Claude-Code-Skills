@@ -8,20 +8,7 @@ description: 飞书 bot 专用规则。仅当条用户消息顶部带 <bridge_co
 
 **Why**:本文件的每一节都会触发真实外部动作——发消息到某个 chat、渲染长图推送、指挥远程设备。在本地终端会话里误触发,轻则把无关内容推到飞书,重则对着错误的 chat_id 外发。`<bridge_context>` 是唯一可靠的来源判据。
 
-> 本文件从 CLAUDE.md 正文抽出。**本地终端会话永不需要本文件**——只有当条用户消息顶部带 `<bridge_context>` 块(来自飞书 lark-channel-bridge bot)时,才 Read 本文件并按下列章节执行。
-> 抽离原因:这 6 段飞书规则对 96%+ 的本地会话是死重量(近 30 天仅 3.7% 会话含 bridge_context),不该常驻 CLAUDE.md。
-
-<!-- AI_LANGUAGE_PROTOCOL:BEGIN -->
-## Language Protocol
-
-- When a substantive user request is in Chinese, silently create a faithful English task representation before analysis; do not alter intent, scope, constraints, names, or quoted text.
-- Use English by default for internal planning, technical reasoning, evaluation, web-search formulation, tool instructions, and subagent prompts. For Chinese-first domains or sources, query and read the source language when that improves accuracy.
-- Keep code, commands, identifiers, filenames, API fields, proper nouns, and user-provided literals in their original or technically correct form; never translate them mechanically.
-- An explicit user request for an output language takes precedence. Otherwise, for a request whose primary user-facing language is Chinese, return all user-visible progress updates, clarification questions, explanations, and final answers in concise Simplified Chinese; when another language is primary, match it; when mixed or unclear, default to Simplified Chinese.
-- Do not reveal hidden chain-of-thought or private scratch work. If a client exposes an opt-in reasoning summary or tool trace, keep it concise and in English; for Chinese-primary requests, provide Chinese conclusions, key reasons, evidence, assumptions, risks, and verification results in the user-facing answer.
-- Generated artifacts follow their intended audience and the user's explicit language requirement; the accompanying chat handoff matches the conversation's primary language, defaulting to Chinese when mixed or unclear.
-- A higher-priority system/developer instruction or a more specific project rule may override this protocol. When relevant, state the chosen output language briefly.
-<!-- AI_LANGUAGE_PROTOCOL:END -->
+> 本文件位于 `~/.claude/guides/`(2026-09-06 起,不常驻),只在当条用户消息顶部带 `<bridge_context>` 块(来自飞书 lark-channel-bridge bot)时 Read。语言协议见常驻 `rules/language-protocol.md`,此处不再重复。
 
 ## 🧠 飞书记忆查询
 

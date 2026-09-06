@@ -30,8 +30,8 @@ HTML 交付前逐项过：
 3. **占位符扫描**：页面不得残留 `undefined` / `NaN` / `null` / `TODO` / `XXX` 字样
 4. **中文渲染**：CJK 不得出现乱码方块（UTF-8 截断的典型表现）
 
-飞书场景的 HTML→PDF 另有专门流水线，见 `rules/feishu-bot.md`。
-本地深度页走想法工坊，见 `rules/ideaforge.md`（写 HTML 已由 hook 自动归档，但**归档不等于验证过**）。
+飞书场景的 HTML→PDF 另有专门流水线，见 `guides/feishu-bot.md`。
+本地深度页走想法工坊，见 `guides/ideaforge.md`（写 HTML 已由 hook 自动归档，但**归档不等于验证过**）。
 
 ## Gate 3 — 数字必须可溯源
 

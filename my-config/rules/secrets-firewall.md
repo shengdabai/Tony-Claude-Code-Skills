@@ -29,4 +29,4 @@ description: 机密文件零信任铁律。触及 .env* / *.pem / *.key / id_rsa
 
 ---
 
-详细场景范例、hook 验证方法、`env-guard` 与 `secret-scan` 分工 → 需要时 Read `rules/secrets-firewall-examples.md`。
+详细场景范例、hook 验证方法、`env-guard` 与 `secret-scan` 分工 → 需要时 Read `guides/secrets-firewall-examples.md`。

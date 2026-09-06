@@ -34,7 +34,7 @@ description: Claude × Codex 双模型协同：按 benchmark 强项分工、通�
 | **Codex MCP** | 默认 | 对话内第二意见/review/咨询，求快 | `mcp__plugin_nlpm_codex-cli__codex`（deferred，**先 `ToolSearch` select schema 再调**）。必传 `model: "gpt-5.5"`；**默认 `sandbox: "read-only"`**——Codex 是顾问不是改文件的手。`config: {model_reasoning_effort: "high"}` 做深活。**要 Codex 实际改文件 → 只在隔离 worktree 或明确划定的生成文件里 `workspace-write`；主工作区的修复由 Claude 评估后亲自落（防 stomp）** |
 | **`codex:rescue` agent** | 默认 | Claude 卡住、要独立诊断、要第二实现 | Agent `subagent_type: "codex:codex-rescue"` 或 `/codex:rescue` |
 | **`codex exec`（shell）** | 默认 | 严格超时/审计/CI gate/无人值守批量 | 绝对路径 `$HOME/.nvm/versions/node/v24.14.0/bin/codex exec "<prompt>" -m gpt-5.5 -s read-only 2>&1 \| head -200`。**前台**、abspath、`head` 限流（[[feedback_codex-gemini-foreground]]）。续轮 `codex exec resume <SID>` 不接受 `-C/--add-dir`，脚本须先 `cd $WORK`（[[reference_codex-exec-resume-flags]]） |
-| **cc-suite 命令** | 进阶 | **只做两件事**:①审 NLP 工件(`/cc-suite:audit-skill\|-rules\|-command\|-plugin\|-nlp`) ②Codex job 管理(`/cc-suite:status\|result\|cancel\|continue`)。编码协作流程一律让位给 `cc`(cc-suite 无风险分级/无 VERDICT 闸门/无 UNKNOWN≠通过)。桥接必走 `~/.claude/scripts/cc-suite-bridge.sh`,详见 `rules/cc-suite.md` | 见 `rules/cc-suite.md` 裁决表 |
+| **cc-suite 命令** | 进阶 | **只做两件事**:①审 NLP 工件(`/cc-suite:audit-skill\|-rules\|-command\|-plugin\|-nlp`) ②Codex job 管理(`/cc-suite:status\|result\|cancel\|continue`)。编码协作流程一律让位给 `cc`(cc-suite 无风险分级/无 VERDICT 闸门/无 UNKNOWN≠通过)。桥接必走 `~/.claude/scripts/cc-suite-bridge.sh`,详见 `guides/cc-suite.md` | 见 `guides/cc-suite.md` 裁决表 |
 | **`/oh-my-claudecode:ccg`** | 进阶 | 要 Claude+Codex+Gemini 三方意见再综合 | tri-model 编排 |
 | **worktree best-of-N** | 进阶 | 高价值/方案不明，多实现择优 | Agent `isolation: "worktree"` 跑 N 个独立实现 → meta-judge |
 
@@ -88,7 +88,7 @@ Claude 收到 REVISE 后按 receiving-code-review 纪律评估（先验证对不
 - **幻觉共识**：两边"看起来都同意"但都错了——比无限循环更阴险。高风险变更别只靠互评，留人工 diff gate。
 - **无限互评循环**：缺 VERDICT 退出条件 / resume 上下文偏见让 Codex 抗拒重提问题 → 硬上 ≤5 轮 + 终审用全新 session。
 - **Token 二次方螺旋**：每轮全量重算 history，20 步 loop 可烧 10× 估算。大输出存外部文件，context 只传短引用；循环必有 Budget。
-- **convention 漂移**：`CLAUDE.md`（Claude 侧）与 `~/.codex/AGENTS.md`（Codex 侧）各自演化 → 两模型认知不一致。改护栏/分工时两边同步（90 天主战场护栏已在两侧顶部）。
+- **convention 漂移**：`CLAUDE.md`（Claude 侧）与 `~/.codex/AGENTS.md`（Codex 侧）各自演化 → 两模型认知不一致。改护栏/分工时两边同步。
 - **同文件并发 stomp**：Claude 和 Codex 同时改同一批文件互相覆盖 → 并行必用 worktree 隔离。
 - **过度工具化**：只需一个工具的活别上两个。简单任务 Claude 直接做完，不为仪式感派 Codex。
 - **交接灌全量 transcript**：让前一方"总结现状"再交接，不要把整段对话塞给对方。

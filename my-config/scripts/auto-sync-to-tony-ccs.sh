@@ -38,9 +38,9 @@ fi
 
 log "=== auto-sync start ==="
 
-# --- 1. 同步 rules / commands / agents / hooks / output-styles / mcp-servers ---
+# --- 1. 同步 rules / guides / commands / agents / hooks / output-styles / mcp-servers ---
 changed=0
-for sub in rules commands agents hooks output-styles mcp-servers scripts; do
+for sub in rules guides commands agents hooks output-styles mcp-servers scripts; do
   if [ -d "$SRC/$sub" ]; then
     mkdir -p "$DST/$sub"
     # rsync 镜像,删除目标多余文件,排除 secrets / local
@@ -72,7 +72,7 @@ fi
 # --- 3. 脱敏:替换路径/邮箱里的个人标识 ---
 # 覆盖所有同步的文本目录(不只 rules/commands/agents 的 .md,scripts/hooks/mcp-servers 也含 PII)
 # specific 规则在前(Documents/Tony),再做通用 $HOME→$HOME;邮箱用通用 gmail 模式
-find "$DST/rules" "$DST/commands" "$DST/agents" "$DST/hooks" "$DST/scripts" "$DST/mcp-servers" \
+find "$DST/rules" "$DST/guides" "$DST/commands" "$DST/agents" "$DST/hooks" "$DST/scripts" "$DST/mcp-servers" \
   -type f \( -name "*.md" -o -name "*.sh" -o -name "*.py" -o -name "*.mjs" -o -name "*.js" \
              -o -name "*.json" -o -name "*.txt" -o -name "*.ts" \) -print0 2>/dev/null | \
   xargs -0 sed -i '' \

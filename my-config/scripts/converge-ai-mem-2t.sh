@@ -30,7 +30,7 @@ for L in $JOBS; do P="$HOME/Library/LaunchAgents/$L.plist"
   [ -f "$P" ] && launchctl bootstrap gui/$U "$P" 2>/dev/null && echo "  载 $L" || true; done
 
 echo "== 5) 飞书入口指回 2T =="
-sed -i '' "s#$HOME_ROOT#$T2_ROOT#g" "$HOME/.claude/rules/feishu-bot.md" 2>/dev/null && echo "✅ feishu-bot.md → 2T"
+sed -i '' "s#$HOME_ROOT#$T2_ROOT#g" "$HOME/.claude/guides/feishu-bot.md" 2>/dev/null && echo "✅ feishu-bot.md → 2T"
 
 echo "== 6) 全量刷新 2T + 验证会话数 =="
 AI_MEM_ROOT="$T2_ROOT" "$T2_ROOT/bin/ai-mem" fast
@@ -52,4 +52,4 @@ echo ""
 echo "🎉 完成。验证:手机飞书发「记忆」应看到最新;桌面 ai-mem 命令(软链已指 2T)也读 2T。"
 echo "↩️ 若第7步是 ⚠️ 且不想折腾 FDA,撤回 home 为准:"
 echo "   for L in $JOBS; do P=\$HOME/Library/LaunchAgents/\$L.plist; sed -i '' \"s#$T2_ROOT#$HOME_ROOT#g\" \$P; launchctl bootout gui/$U/\$L 2>/dev/null; launchctl bootstrap gui/$U \$P; done"
-echo "   sed -i '' \"s#$T2_ROOT#$HOME_ROOT#g\" \$HOME/.claude/rules/feishu-bot.md; mv ~/ai-memory-system.migrated-$TS ~/ai-memory-system"
+echo "   sed -i '' \"s#$T2_ROOT#$HOME_ROOT#g\" \$HOME/.claude/guides/feishu-bot.md; mv ~/ai-memory-system.migrated-$TS ~/ai-memory-system"

@@ -5,7 +5,7 @@ argument-hint: [仓库路径或 owner/repo，默认当前目录]
 
 # Loop: Babysit PRs（盯 PR）
 
-loop engineering 循环体（规范见 `~/.claude/rules/loop-engineering.md`）。执行**一轮**：
+loop engineering 循环体（规范见 `~/.claude/guides/loop-engineering.md`）。执行**一轮**：
 
 ## 五要素
 - Trigger: 被调用即跑一轮（推荐 `/loop 10m /loops:babysit-prs`）

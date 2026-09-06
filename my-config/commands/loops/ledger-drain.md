@@ -5,7 +5,7 @@ argument-hint: [ledger 文件名，默认自动选最旧的含 [ ] 的 ledger]
 
 # Loop: Ledger Drain（清账本）
 
-loop engineering 循环体（规范见 `~/.claude/rules/loop-engineering.md`）。执行**一轮**：
+loop engineering 循环体（规范见 `~/.claude/guides/loop-engineering.md`）。执行**一轮**：
 
 ## 五要素
 - Trigger: 被调用即跑一轮（推荐每天定时一轮，或会话空闲时手动 `/loops:ledger-drain`）
