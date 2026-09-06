@@ -21,7 +21,7 @@ description: UI 设计任务的品牌设计系统参考来源与选型判据。�
 |---|---|---|
 | 色板 / 字体配对 / 组件规范 | `ui-ux-pro-max` skill | 本机已装,内含 161 色板、57 字体配对、50+ 风格、99 条 UX 准则,覆盖 10 个技术栈 |
 | 从零建设计系统 | `/design-consultation`(gstack) | 会先调研产品与竞品,再产出完整设计系统 + 字体色彩预览 |
-| 已有界面要打磨 / 审查 | `impeccable:*` | 按具体诉求分流(colorize / layout / typeset / critique / polish),见 `rules/gstack-routing.md` |
+| 已有界面要打磨 / 审查 | `impeccable:*` | 按具体诉求分流(colorize / layout / typeset / critique / polish),见 `guides/gstack-routing.md` |
 | 高保真原型 / 幻灯片 / 动画 | `huashu-design` skill | 内置 40 种网页风格 + 20 种 PPT 风格弹药库 |
 | 需要真实品牌的当前规范 | 抓官方设计站 | 用 `mcp__firecrawl__firecrawl_scrape` 抓品牌官方 design system 页,拿到的是当下版本而非快照 |
 
@@ -38,4 +38,4 @@ description: UI 设计任务的品牌设计系统参考来源与选型判据。�
 
 ## 品牌设计系统与 CLAUDE.md 的关系
 
-`rules/gstack-routing.md` 负责"用哪个 skill",本文件负责"参考哪套视觉语言"。两者叠加使用,不互相替代。
+`guides/gstack-routing.md` 负责"用哪个 skill",本文件负责"参考哪套视觉语言"。两者叠加使用,不互相替代。

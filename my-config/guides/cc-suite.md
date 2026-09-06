@@ -103,6 +103,6 @@ bash ~/.claude/scripts/cc-suite-verify.sh               # 检出需要 relink �
 ## 与其他体系的边界
 
 - 编码协作流程 → `cc` skill（本文件不接管）
-- Codex 通路选择 / 5 个配合模式 → `rules/claude-codex-collab.md`
-- 循环化审计（把 audit 跑成 loop）→ `rules/loop-engineering.md` 的五要素
+- Codex 通路选择 / 5 个配合模式 → `guides/claude-codex-collab.md`
+- 循环化审计（把 audit 跑成 loop）→ `guides/loop-engineering.md` 的五要素
 - 交接班 → `/handoff` `/pickup`（cc-suite 不涉及）

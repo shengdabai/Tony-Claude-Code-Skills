@@ -17,7 +17,7 @@
 #   bash ~/.claude/scripts/cc-suite-bridge.sh relink     # 升级后修软链
 #   bash ~/.claude/scripts/cc-suite-bridge.sh unbridge   # 拆桥 + 清残留 + 关反向通路
 #
-# 详见 ~/.claude/rules/cc-suite.md
+# 详见 ~/.claude/guides/cc-suite.md
 
 set -euo pipefail
 

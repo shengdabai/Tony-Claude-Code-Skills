@@ -27,7 +27,7 @@ allowed-tools: Bash(gpt5pro:*), Bash(~/.local/bin/gpt5pro:*), Task, Read, Edit, 
    - 结合本地代码事实校验它的假设(它没看过你的仓库)。
    - 产出一份融合后的方案,注明哪些采纳了 Pro 的建议、哪些没采纳及原因。
 
-4. **执行编排**(若任务需要落地):按 `rules/claude-codex-collab.md` 分工——
+4. **执行编排**(若任务需要落地):按 `guides/claude-codex-collab.md` 分工——
    - 机械批量 / 独立实现 / 第二实现 → 交 Codex(`codex exec` 或 codex MCP `gpt-5.5`,Codex 桶)。
    - 复杂语义改动 → Claude 自己落,关键节点交 Codex 独立 review。
 

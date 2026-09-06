@@ -1,5 +1,7 @@
 ---
-description: 本机编码风格偏好：不可变优先、小文件高内聚、外部输入必校验、完成自查清单、新功能先找轮子。写或重构代码前加载。
+description: 本机编码风格偏好：不可变优先、小文件高内聚、外部输入必校验、完成自查清单、新功能先找轮子。path 作用域规则，读到代码文件时自动加载。
+paths:
+  - "**/*.{ts,tsx,js,jsx,mjs,cjs,py,go,rs,swift,rb,java,kt,sh}"
 ---
 
 # Coding Style

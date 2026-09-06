@@ -61,6 +61,12 @@ fi
 
 # 已完成日期的定时重入必须完全无副作用；dry-run 仍执行全链路只读检查。
 if [ -f "$DONE" ] && [ "${DAILY_DIGEST_DRY_RUN:-0}" != "1" ]; then
+  # 幂等补清理：发送成功后若在清理前崩溃，这里补一次；哨兵保证当日只补清一次，
+  # 之后每 5 分钟的重入不再动本地文件（避免删掉人工 FORCE 补跑正在用的暂存）。
+  CLEANED="$HOME/.claude/logs/.daily-digest-cleaned-${TODAY}"
+  if [ ! -f "$CLEANED" ]; then
+    daily_cleanup_after_publish "$TODAY" >>"$LOG" 2>&1 && touch "$CLEANED"
+  fi
   log "该日已推送, 跳过"
   exit 0
 fi
@@ -215,6 +221,7 @@ if [ "$pre_cf" -eq 0 ]; then
   touch "$FEISHU_DONE" "$WECHAT_DISABLED" "$DONE"
   rm -f "$HOME/.claude/logs/.daily-digest-send-attempt-${TODAY}" 2>/dev/null || true
   log "飞书历史已存在该日 digest，已补齐本地完成标记并跳过发送"
+  daily_cleanup_after_publish "$TODAY" >>"$LOG" 2>&1 || true
   exit 0
 elif [ "$pre_cf" -eq 2 ]; then
   log "ERROR: 发送前飞书回查不可用；为避免重复推送，本窗口暂停发送"
@@ -279,6 +286,12 @@ log "微信通道已关闭,只走飞书"
 
 if [ -f "$FEISHU_DONE" ]; then
   touch "$DONE"; log "已标记该日完成(GitHub 已发布 + 飞书送达)"
+  # 两篇都已在 GitHub + 飞书，可在线查看：清掉本地暂存/保留稿/审核证据（不动 git 工作副本）。
+  if daily_cleanup_after_publish "$TODAY" >>"$LOG" 2>&1; then
+    touch "$HOME/.claude/logs/.daily-digest-cleaned-${TODAY}"
+  else
+    log "WARN: 本地清理未完成，下次 digest 或 14 天兜底再清"
+  fi
 else
   log "飞书未送达, 不标记完成, 后续定时重试"
   exit 1

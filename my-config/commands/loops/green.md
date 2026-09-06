@@ -5,7 +5,7 @@ argument-hint: [verify 命令，默认自动探测 npm test / pytest / make test
 
 # Loop: Green（修到全绿）
 
-这是一个 loop engineering 循环体（规范见 `~/.claude/rules/loop-engineering.md`）。执行**一轮**：
+这是一个 loop engineering 循环体（规范见 `~/.claude/guides/loop-engineering.md`）。执行**一轮**：
 
 ## 五要素
 - Trigger: 被调用即跑一轮

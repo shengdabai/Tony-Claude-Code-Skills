@@ -57,8 +57,8 @@ test -d openspec && echo "SDD-ready" || echo "not-init"
 - 如果用户在 `/spec` 后接了 feature 描述(`/spec add dark mode`),把描述直接传给 `/opsx:propose`
 - 如果只输了 `/spec` 没接描述,问用户要 feature 描述(这是少数允许打断的场景之一,因为没描述没法 propose)
 - 全程不暂停问"要不要继续"—— 每个 phase 衔接处直接走
-- 完整规则在 `~/.claude/rules/spec-driven-trio.md`
+- 完整规则在 `~/.claude/guides/spec-driven-trio.md`
 
 ## 4. 等价的裸词触发
 
-如果用户说 "spec"/"写 spec"/"write spec"/"提案"/"propose this"/"先做规格" 等同义触发词,等同于调用本命令,走同样的 Phase A-F 流程。详见 `rules/spec-driven-trio.md` 的"裸词触发"节。
+如果用户说 "spec"/"写 spec"/"write spec"/"提案"/"propose this"/"先做规格" 等同义触发词,等同于调用本命令,走同样的 Phase A-F 流程。详见 `guides/spec-driven-trio.md` 的"裸词触发"节。

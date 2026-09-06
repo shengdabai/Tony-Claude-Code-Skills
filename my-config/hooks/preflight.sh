@@ -38,7 +38,7 @@ if printf '%s' "$CODE" | grep -qE '^[0-9]{3}$'; then
 else
     bad "api.anthropic.com 连接异常: ${CODE}"
     log "     → 证书类错误多半是 TUN/中间人代理。切直连或稳定节点后再开工。"
-    log "     → 别用正在坏的链路去诊断这条链路(rules/diagnose-network-selfcheck.md 关 1)。"
+    log "     → 别用正在坏的链路去诊断这条链路(guides/diagnose-network-selfcheck.md 关 1)。"
 fi
 
 # ── 2. macOS TCC 磁盘权限 ────────────────────────────────────

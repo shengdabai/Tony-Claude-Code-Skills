@@ -33,8 +33,9 @@ DAILY_AI_NEWS_FORCE="${DAILY_AI_NEWS_FORCE:-0}"
 if [ "${DAILY_POLICY_PROBE:-0}" != "1" ] && ! daily_require_shanghai_noon; then
   exit 0
 fi
-if [ -f "$AUDIT_BUDGET_BLOCK_MARK" ] && [ "$DAILY_AI_NEWS_FORCE" != "1" ]; then
-  log "STOP: 今日 Sol 发布审计已超过成本上限，停止自动重试"
+AUDIT_ATTEMPTS_BLOCK_MARK="$RUN_STATE_DIR/.daily-ai-news-audit-attempts-blocked-${TODAY}"
+if { [ -f "$AUDIT_BUDGET_BLOCK_MARK" ] || [ -f "$AUDIT_ATTEMPTS_BLOCK_MARK" ]; } && [ "$DAILY_AI_NEWS_FORCE" != "1" ]; then
+  log "STOP: 今日发布审计已超过成本或次数上限，停止自动重试（DAILY_AI_NEWS_FORCE=1 可强制）"
   exit 0
 fi
 
@@ -50,7 +51,23 @@ CLAUDE_SESSION_OWNER="$DAILY_LOCK_OWNER"
 # 首选路径仅是候选，真正生效的值由 daily_codex_ready 探活后回写（见预检处）。
 CODEX="${CODEX:-$HOME/.local/bin/codex}"
 CODEX_MODEL="gpt-5.6-sol"
-CODEX_REASONING_EFFORT="xhigh"
+# 日报是整理稿不是长文：high 已足够，xhigh 只多花 1-2 分钟推理（2026-09-06 提速）。
+CODEX_REASONING_EFFORT="${DAILY_AI_NEWS_GEN_EFFORT:-high}"
+# 审核 effort：gpt-5.6-sol 不接受 minimal（400 unsupported_value，2026-09-06 实测），
+# 最低可用档是 low；两份 markdown 日报用 low 即可，高风险发布另行提高。
+AUDIT_EFFORT="${DAILY_AI_NEWS_AUDIT_EFFORT:-low}"
+# 审核失败（工具侧瞬态/超时）时保留已生成稿，下一 10 分钟窗口只重审不重写。
+PENDING_DIR="$RUN_STATE_DIR/daily-ai-news-pending-${TODAY}"
+# 每日内容审核失败上限：只计真实审核失败（超时/瞬态故障不计），超过后写 attempts mark 停止自动重试，
+# 保留稿不删，DAILY_AI_NEWS_FORCE=1 跳过上限。24 个窗口对应默认 8 次。
+AUDIT_ATTEMPT_COUNTER="$RUN_STATE_DIR/.daily-ai-news-audit-attempts-${TODAY}"
+MAX_AUDIT_ATTEMPTS="${DAILY_AI_NEWS_MAX_AUDIT_ATTEMPTS:-8}"
+# 笔记快照原件放在生成器写不到的位置（生成器沙箱可覆盖/删除 STAGE_DIR 内文件，2026-09-06 实测）。
+NOTES_ORIG="$RUN_STATE_DIR/.daily-ai-news-notes-${TODAY}-$$.json"
+# GetNote 过去 24 小时笔记：只读软输入，失败不阻塞热点生成。
+GETNOTE_RECENT_EXPORTER="$HOME/.claude/scripts/getnote-recent-export.mjs"
+GETNOTE_RECENT_HOURS="${DAILY_AI_NEWS_GETNOTE_HOURS:-24}"
+NODE_BIN="${NODE_BIN:-$HOME/.nvm/versions/node/v24.14.0/bin/node}"
 # External feed/page text is processed with no user config, no plugins/apps,
 # no local MCP, and a workspace-write sandbox rooted at the stage directory.
 CODEX_ISOLATION_FLAGS=(
@@ -81,6 +98,8 @@ news_cleanup() {
   if [[ "$STAGE_DIR" == "$HOME/.claude/logs/daily-ai-news-stage-${TODAY}-"* ]] && [ -d "$STAGE_DIR" ]; then
     find "$STAGE_DIR" -depth -delete 2>/dev/null || true
   fi
+  [ -z "${NOTES_ORIG:-}" ] || rm -f -- "$NOTES_ORIG" 2>/dev/null || true
+  rm -f -- "$RUN_STATE_DIR/.daily-ai-news-aihot-${TODAY}-$$.json" 2>/dev/null || true
 }
 trap news_cleanup EXIT
 
@@ -136,7 +155,7 @@ remote_news_publication_complete() {
 }
 
 release_audit_ok() {
-  local audit_dir supplied source relative rc attempt audit_log audit_rc
+  local audit_dir supplied source relative rc attempt audit_log audit_rc verify_rc
   command -v product-release-audit >/dev/null 2>&1 || {
     log "FATAL: product-release-audit 不可用，拒绝公开发布"
     return 1
@@ -166,29 +185,51 @@ release_audit_ok() {
     mkdir -p "$audit_dir/$(dirname "$relative")"
     cp -p "$source" "$audit_dir/$relative" || { rm -rf -- "$audit_dir"; return 1; }
   done
-  # 每个 launchd 窗口只做一次有界审计；瞬态失败交给下一定时窗口。
+  # 给审核器发布上下文，避免 markdown 目标被判 coverage partial（2026-09-06 根因）。
+  daily_write_audit_context "$audit_dir" || { log "FATAL: 无法写入审核上下文"; rm -rf -- "$audit_dir"; return 1; }
+  # 每个 launchd 窗口只做一次有界审计；瞬态失败交给下一定时窗口（每 10 分钟）。
   # 新窗口，避免本轮长时占有共享锁。
   # shellcheck disable=SC2043
   for attempt in 1; do
+    local day_attempts
+    day_attempts=$(cat "$AUDIT_ATTEMPT_COUNTER" 2>/dev/null || echo 0)
+    case "$day_attempts" in ''|*[!0-9]*) day_attempts=0 ;; esac
+    if [ "$day_attempts" -ge "$MAX_AUDIT_ATTEMPTS" ] && [ "$DAILY_AI_NEWS_FORCE" != "1" ]; then
+      touch "$AUDIT_ATTEMPTS_BLOCK_MARK"
+      log "FATAL: 今日 release audit 真实失败已达 ${day_attempts} 次（上限 ${MAX_AUDIT_ATTEMPTS}），停止自动重试；保留稿仍在，人工排查后 DAILY_AI_NEWS_FORCE=1 重跑"
+      notify_daily_failure_once "AI 热点发布审计今日已真实失败 ${day_attempts} 次，已停止自动重试；稿件已保留，需要人工排查 codex-security 后用 DAILY_AI_NEWS_FORCE=1 重跑。"
+      break
+    fi
     daily_infra_preflight "ai-news-release-audit-attempt-$attempt" || break
     audit_log="$(mktemp "${TMPDIR:-/tmp}/tony-ai-news-audit-run.${TODAY}.XXXXXX")" || break
-    run_limited "$DAILY_AI_NEWS_AUDIT_TIMEOUT" product-release-audit audit --max-cost 3.0 --model gpt-5.6-sol --effort low "$audit_dir" >"$audit_log" 2>&1
+    log "release audit 开始（今日真实失败已 ${day_attempts} 次，effort=${AUDIT_EFFORT}，超时 ${DAILY_AI_NEWS_AUDIT_TIMEOUT}s）"
+    run_limited "$DAILY_AI_NEWS_AUDIT_TIMEOUT" product-release-audit audit --max-cost 3.0 --model gpt-5.6-sol --effort "$AUDIT_EFFORT" "$audit_dir" >"$audit_log" 2>&1
     audit_rc=$?
     cat "$audit_log" >>"$LOG"
-    if [ "$audit_rc" -eq 0 ] && run_limited 300 product-release-audit verify "$audit_dir" >>"$LOG" 2>&1; then
-      log "增量 release audit 通过: $# 个当天文件（attempt=${attempt}）"
-      rm -f "$audit_log"
-      rc=0
-      break
+    verify_rc=0
+    if [ "$audit_rc" -eq 0 ]; then
+      # verify 的返回码与输出单独记录：verify 超时/瞬态故障同样不计入失败次数（第 2 轮复审 P1）。
+      run_limited 300 product-release-audit verify "$audit_dir" >>"$audit_log" 2>&1
+      verify_rc=$?
+      tail -n 5 "$audit_log" >>"$LOG"
+      if [ "$verify_rc" -eq 0 ]; then
+        log "增量 release audit 通过: $# 个当天文件（attempt=${attempt}）"
+        rm -f "$audit_log"
+        rc=0
+        break
+      fi
     fi
     if daily_audit_budget_exceeded_file "$audit_log"; then
       touch "$AUDIT_BUDGET_BLOCK_MARK"
       log "FATAL: Sol 发布审计超过 \$3.00 成本上限，今日已停止自动重试"
-    elif [ "$audit_rc" -eq 124 ] || daily_transient_failure_file "$audit_log"; then
-      log "WARN: release audit 命中瞬态基础设施故障（rc=${audit_rc}），本窗口止损，下一定时窗口全新重试"
+    elif [ "$audit_rc" -eq 124 ] || [ "$verify_rc" -eq 124 ] || daily_transient_failure_file "$audit_log"; then
+      # 超时/瞬态基础设施故障不消耗当日次数（Codex+Claude 交叉审核 2026-09-06）。
+      log "WARN: release audit 命中瞬态基础设施故障（rc=${audit_rc}），不计入失败次数，下一窗口重试"
       daily_repair_transient_failure "$audit_log"
+    else
+      echo $((day_attempts + 1)) > "$AUDIT_ATTEMPT_COUNTER"
     fi
-    log "ERROR: 增量 release audit 失败（attempt=${attempt} rc=${audit_rc}），非瞬态错误不盲目重试"
+    log "ERROR: 增量 release audit 失败（attempt=${attempt} rc=${audit_rc}），本窗口止损"
     rm -f "$audit_log"
     break
   done
@@ -230,7 +271,7 @@ minimum = int(sys.argv[3])
 sets = []
 for name in sys.argv[1:3]:
     text = Path(name).read_text(encoding="utf-8", errors="replace")
-    urls = set(re.findall(r"\[source\]\((https?://[^)]+)\)", text, flags=re.I))
+    urls = set(re.findall(r"\[source\]\((https://[^)]+)\)", text, flags=re.I))
     if not (minimum <= len(urls) <= 8):
         raise SystemExit(1)
     sets.append(urls)
@@ -238,6 +279,52 @@ if sets[0] != sets[1]:
     raise SystemExit(2)
 raise SystemExit(0)
 PY
+}
+
+# 防泄漏硬门禁统一用 daily_notes_leak_check（common lib，fail-closed，news 模式）。
+# 快照原件 NOTES_ORIG 在生成器写不到的位置；aihot.json 作为公开 URL 白名单。
+
+# 审核失败（工具侧）时保留已生成稿；下一窗口只重审不重写（省 3-5 分钟 + 一次生成额度）。
+# 同时保留笔记快照与 aihot 白名单（600 权限），恢复时重新跑当前版本的防泄漏门禁。
+save_pending_pair() {
+  local zh="$1" en="$2"
+  rm -rf -- "$PENDING_DIR"
+  mkdir -p "$PENDING_DIR/ai-news/zh" "$PENDING_DIR/ai-news/en" || return 1
+  if ! cp -p "$zh" "$PENDING_DIR/ai-news/zh/" || ! cp -p "$en" "$PENDING_DIR/ai-news/en/" ||
+     ! cp -p "$NOTES_ORIG" "$PENDING_DIR/notes.json" || ! cp -p "$AIHOT_RAW" "$PENDING_DIR/aihot.json"; then
+    rm -rf -- "$PENDING_DIR"
+    return 1
+  fi
+  chmod 600 "$PENDING_DIR/notes.json" "$PENDING_DIR/aihot.json"
+  log "已保留本轮热点双版到 ${PENDING_DIR}；下一窗口直接重审，不重新生成"
+}
+
+restore_pending_pair() {
+  local zh en
+  [ -d "$PENDING_DIR" ] || return 1
+  zh=$(find "$PENDING_DIR/ai-news/zh" -maxdepth 1 -type f -name "${TODAY}-*.md" -print 2>/dev/null | head -1)
+  en=$(find "$PENDING_DIR/ai-news/en" -maxdepth 1 -type f -name "${TODAY}-*.md" -print 2>/dev/null | head -1)
+  if [ -z "$zh" ] || [ -z "$en" ] || [ ! -s "$PENDING_DIR/notes.json" ] || [ ! -s "$PENDING_DIR/aihot.json" ]; then
+    log "WARN: 保留稿不完整（缺文件或缺笔记快照），丢弃并重新生成"
+    rm -rf -- "$PENDING_DIR"
+    return 1
+  fi
+  if ! validate_ai_news_pair "$zh" "$en"; then
+    log "WARN: 保留稿未通过来源门禁，丢弃并重新生成"
+    rm -rf -- "$PENDING_DIR"
+    return 1
+  fi
+  mkdir -p "$STAGE_DIR/ai-news/zh" "$STAGE_DIR/ai-news/en" || return 1
+  cp -p "$zh" "$STAGE_DIR/ai-news/zh/" || return 1
+  cp -p "$en" "$STAGE_DIR/ai-news/en/" || return 1
+  # 依据文件拷到 PENDING_DIR 之外：save_pending_pair 会先 rm -rf PENDING_DIR，
+  # 若 AIHOT_RAW 仍指向目录内部，复用窗口再次审核失败时会把保留稿连依据一起删掉（第 2 轮复审 P1）。
+  cp -p "$PENDING_DIR/notes.json" "$NOTES_ORIG" || return 1
+  chmod 600 "$NOTES_ORIG"
+  AIHOT_RAW="$RUN_STATE_DIR/.daily-ai-news-aihot-${TODAY}-$$.json"
+  cp -p "$PENDING_DIR/aihot.json" "$AIHOT_RAW" || return 1
+  chmod 600 "$AIHOT_RAW"
+  log "复用上一窗口保留的热点双版（$(basename "$zh")）：跳过取数与生成，重跑防泄漏门禁后直接审核"
 }
 
 # Headless Codex turns are implementation details of this one daily job. Suppress
@@ -384,6 +471,12 @@ mkdir -p ai-news/zh ai-news/en
 
 daily_checkout_release || exit 1
 
+# 2b. 上一窗口审核失败但稿件已生成：直接复用，只重审。
+REUSED_PENDING=0
+if restore_pending_pair; then
+  REUSED_PENDING=1
+fi
+if [ "$REUSED_PENDING" -eq 0 ]; then
 # 3. 拉 aihot 过去 24h 精选数据 → 写到临时文件供 codex 读
 UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 aihot-skill/0.2.0"
 SINCE=$(date -u -v-24H +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ)
@@ -405,6 +498,32 @@ if [ "$ITEM_N" -lt "$MIN_HOT_ITEMS" ]; then
 fi
 mkdir -p "$STAGE_DIR/ai-news/zh" "$STAGE_DIR/ai-news/en" "$STAGE_DIR/inputs"
 cp -p "$AIHOT_RAW" "$STAGE_DIR/inputs/aihot.json"
+
+# 3b. GetNote 过去 24h 笔记：固定只读采集器、60s 超时、失败不阻塞（写显式空快照）。
+#     原件 NOTES_ORIG 在 logs 下（生成器写不到，600 权限，EXIT trap 删除）；生成器只拿一份副本。
+#     防泄漏门禁只认原件：即使生成器覆盖/删除副本，门禁依据不变。
+GETNOTE_RECENT_INPUT="$STAGE_DIR/inputs/getnote-24h.json"
+GETNOTE_RECENT_N=0
+rm -f -- "$NOTES_ORIG"
+if [ -r "$HOME/.config/getnote/.env" ] && [ -x "$GETNOTE_RECENT_EXPORTER" ] && [ -x "$NODE_BIN" ]; then
+  if (
+    set -a
+    # shellcheck disable=SC1091
+    source "$HOME/.config/getnote/.env"
+    set +a
+    run_limited 60 "$NODE_BIN" "$GETNOTE_RECENT_EXPORTER" "$NOTES_ORIG" "$GETNOTE_RECENT_HOURS"
+  ) >>"$LOG" 2>&1 && [ -s "$NOTES_ORIG" ]; then
+    GETNOTE_RECENT_N=$(python3 -c "import json;print(int(json.load(open('$NOTES_ORIG'))['receipt'].get('note_count',0)))" 2>/dev/null || echo 0)
+    log "GetNote 过去 ${GETNOTE_RECENT_HOURS}h 笔记只读采集完成：${GETNOTE_RECENT_N} 条"
+  else
+    log "WARN: GetNote 24h 采集失败或超时；热点生成不依赖它，继续（空快照）"
+  fi
+else
+  log "WARN: GetNote 采集器/环境/node 不可用，本轮不带 24h 笔记信号（空快照）"
+fi
+[ -s "$NOTES_ORIG" ] || printf '{"receipt":{"collector":"none","note_count":0},"notes":[]}\n' > "$NOTES_ORIG"
+chmod 600 "$NOTES_ORIG"
+cp -p "$NOTES_ORIG" "$GETNOTE_RECENT_INPUT" || { log "FATAL: 无法为生成器准备笔记副本"; exit 1; }
 
 # 4. 调隔离 Codex(headless)做结构化整理 + 个人化过滤
 PROMPT=$(cat <<PROMPT_EOF
@@ -431,6 +550,12 @@ PROMPT=$(cat <<PROMPT_EOF
 - 优先补 Claude Code / Anthropic / OpenAI / AI Agent / MCP / AI 编程工具 / 独立开发者 / 国产大模型 / 开源模型 / AI 产品发布。
 - 每条补充热点必须有可打开的原文 URL, 不要用只有二手转述且无来源的内容。
 - 最终必须形成至少 5 条有原文 URL 的热点；如果本窗口无法核实满 5 条，就不要生成可发布文件，留给下一定时窗口补偿，严禁用无来源内容凑数。
+- 速度要求: 原始数据够 5 条时不要逐条上网核验，只对最终入选且信息有疑点的条目各做最多 1 次 WebSearch；全程 WebSearch 不超过 8 次。
+
+【第一步补充: 读过去 24 小时私人笔记信号 inputs/getnote-24h.json】
+这是作者过去 ${GETNOTE_RECENT_HOURS} 小时的私人笔记快照(本轮 ${GETNOTE_RECENT_N:-0} 条; 字段 title/content/ref_content/created_at)。它是**私密数据**，只允许一种用法:
+- 笔记主题与某条热点明显相关 → 该热点加权 +2(说明作者正在关注)。
+严禁: 把笔记里的任何链接写进输出(热点来源只能来自 inputs/aihot.json 或你自己 WebSearch 到的公开页面)，严禁引用/转述/摘录笔记原文，严禁提到"笔记""GetNote""作者记录了"等字样，严禁把笔记里的个人信息、学员、客户、收费、家庭等任何内容写进输出。快照为空或不可用时直接跳过本步。
 
 【第二步: 个人化过滤(Tony 的兴趣画像)】
 **Tony 高度关注的方向**(命中加权 +3):
@@ -521,6 +646,7 @@ if ! ls "$STAGE_DIR"/ai-news/zh/${TODAY}-*.md >/dev/null 2>&1 ||
   notify_daily_failure_once "Codex 本窗口未生成齐热点中英双版；下一定时窗口将启动全新会话补偿。"
   exit 1
 fi
+fi # REUSED_PENDING
 
 # 5. 外层脚本唯一负责审核、提交、推送；先审暂存文件，失败不污染发布 checkout
 STAGED_ZH_COUNT=$(find "$STAGE_DIR/ai-news/zh" -maxdepth 1 -type f -name "${TODAY}-*.md" 2>/dev/null | wc -l | tr -d ' ')
@@ -538,9 +664,31 @@ if [ -n "$STAGED_ZH" ] && [ -n "$STAGED_EN" ]; then
     exit 1
   fi
   log "AI 热点来源门禁通过：双语各 5-8 条且 URL 集合一致"
+  # 防泄漏硬门禁（fail-closed，新稿与保留稿都跑）：依据生成器写不到的快照原件 + aihot 公开 URL 白名单。
+  if ! daily_notes_leak_check "$STAGED_ZH" "$STAGED_EN" "$NOTES_ORIG" news "$AIHOT_RAW" 2>>"$LOG"; then
+    log "FATAL: 生成稿命中私密笔记防泄漏门禁（或快照不可信）；拒绝发布、不保留稿，下一窗口重新生成"
+    rm -rf -- "$PENDING_DIR"
+    notify_daily_failure_once "AI 热点生成稿疑似包含私密笔记内容，已拒绝发布；下一窗口将重新生成。"
+    exit 1
+  fi
+  if ! daily_https_only_ok "$STAGED_ZH" "$STAGED_EN"; then
+    log "FATAL: 生成稿含 http:// 链接，拒绝发布；下一窗口重新生成"
+    rm -rf -- "$PENDING_DIR"
+    exit 1
+  fi
   release_audit_ok "$STAGED_ZH" "$STAGED_EN" || {
     log "FATAL: 暂存 AI 热点 release audit 未通过，发布 checkout 保持不变"
-    notify_daily_failure_once "AI 热点双版已生成，但暂存发布审计未通过；发布 checkout 未改动。"
+    if [ -f "$AUDIT_BUDGET_BLOCK_MARK" ]; then
+      # 只有成本超限才放弃稿件；次数上限只停重试、稿件保留供 FORCE 复用。
+      rm -rf -- "$PENDING_DIR"
+      notify_daily_failure_once "AI 热点双版已生成，但发布审计已超成本上限；已停止自动重试，需人工处理。"
+    elif [ -f "$AUDIT_ATTEMPTS_BLOCK_MARK" ]; then
+      # 本轮没跑审核、没生成新稿：不覆盖已有保留稿。
+      [ "$REUSED_PENDING" -eq 1 ] || save_pending_pair "$STAGED_ZH" "$STAGED_EN" || log "WARN: 保留稿写入失败"
+    else
+      save_pending_pair "$STAGED_ZH" "$STAGED_EN" || log "WARN: 保留稿写入失败，下一窗口将重新生成"
+      notify_daily_failure_once "AI 热点双版已生成，但暂存发布审计未通过；稿件已保留，10 分钟后自动只重审。"
+    fi
     exit 1
   }
   daily_checkout_acquire || exit 1
@@ -552,6 +700,7 @@ if [ -n "$STAGED_ZH" ] && [ -n "$STAGED_EN" ]; then
       log "ERROR: 中英热点未能成对原子落位；本轮未留下单侧文件"
       exit 1
     }
+  rm -rf -- "$PENDING_DIR"
 fi
 ZH_FILE=$(ls ai-news/zh/${TODAY}-*.md 2>/dev/null | head -1)
 EN_FILE=$(ls ai-news/en/${TODAY}-*.md 2>/dev/null | head -1)

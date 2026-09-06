@@ -5,7 +5,7 @@ argument-hint: [可选：要审的路径/范围，默认当前 git diff]
 
 # Loop: Codex Review（跨模型族独立审查）
 
-loop engineering 循环体（规范见 `~/.claude/rules/loop-engineering.md`，分工见 `~/.claude/rules/claude-codex-collab.md`）。执行**一轮** implement→review→fix。
+loop engineering 循环体（规范见 `~/.claude/guides/loop-engineering.md`，分工见 `~/.claude/guides/claude-codex-collab.md`）。执行**一轮** implement→review→fix。
 
 ## 五要素
 - Trigger: 被调用即跑一轮（持续审用 `/loop 10m /loops:codex-review` 或 `ralph: 审到 Codex APPROVED 且测试绿`）

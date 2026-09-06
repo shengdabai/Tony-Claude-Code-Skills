@@ -5,7 +5,7 @@ argument-hint: <一句话目标，如"每天早上把昨天的飞书群消息总
 
 # /loop-design — 循环设计器
 
-把一句话目标变成一个合规的 loop engineering 循环。规范 = `~/.claude/rules/loop-engineering.md`（先 Read 它）。
+把一句话目标变成一个合规的 loop engineering 循环。规范 = `~/.claude/guides/loop-engineering.md`（先 Read 它）。
 
 ## 流程
 

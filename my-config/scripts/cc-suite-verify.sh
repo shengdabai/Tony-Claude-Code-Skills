@@ -257,11 +257,11 @@ if [ ! -f "$BR" ]; then
   bad "缺少 $BR"
 fi
 
-if [ -f "$HOME/.claude/rules/cc-suite.md" ]; then ok "规则文件 rules/cc-suite.md 存在"; else bad "缺少 rules/cc-suite.md"; fi
-if grep_file "rules/cc-suite\.md" "$HOME/.claude/CLAUDE.md"; then
+if [ -f "$HOME/.claude/guides/cc-suite.md" ]; then ok "规则文件 guides/cc-suite.md 存在"; else bad "缺少 guides/cc-suite.md"; fi
+if grep_file "cc-suite\.md" "$HOME/.claude/CLAUDE.md"; then
   ok "CLAUDE.md 已挂载规则指针"
 else
-  bad "CLAUDE.md 未挂载 rules/cc-suite.md 指针"
+  bad "CLAUDE.md 未挂载 guides/cc-suite.md 指针"
 fi
 
 # ---------------------------------------------------------------- 4. 全局未污染
