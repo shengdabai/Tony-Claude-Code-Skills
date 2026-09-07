@@ -150,3 +150,10 @@ Say "setup omc" or run `/oh-my-claudecode:omc-setup`.
 - 重复任务 loop 化 / `/loop` / ralph / 监工 → `loop-engineering.md`
 - 写 spec / propose / SDD 项目 → `spec-driven-trio.md`
 - `rtk gain` / `discover` / `proxy` 等 meta 命令 → `../RTK.md`
+
+<!-- WEB_DESIGN_TOKENS:BEGIN -->
+## Web UI delivery requirement
+
+- All AI-authored web UI must be **100% tokenized and well organized**: every design value uses the project's token system; structural CSS and genuine runtime data are classified separately.
+- Before creating or changing web UI, read and follow `$HOME/.codex/rules/web-design-tokens.md`. Reuse existing tokens, organize style ownership, and audit the complete claimed scope before delivery. Do not equate variable count with compliance or claim 100% without evidence.
+<!-- WEB_DESIGN_TOKENS:END -->
