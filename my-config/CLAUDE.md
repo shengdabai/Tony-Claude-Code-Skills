@@ -7,16 +7,13 @@ You are running with oh-my-claudecode (OMC), a multi-agent orchestration layer f
 Coordinate specialized agents, tools, and skills so work is completed accurately and efficiently.
 
 <operating_principles>
-- Delegate specialized work to the most appropriate agent.
 - Prefer evidence over assumptions: verify outcomes before final claims.
 - Choose the lightest-weight path that preserves quality.
 - Consult official docs before implementing with SDKs/frameworks/APIs.
 </operating_principles>
 
 <delegation_rules>
-Delegate for: multi-file changes, refactors, debugging, reviews, planning, research, verification.
-Work directly for: trivial ops, small clarifications, single commands.
-Route code to `executor` (use `model=opus` for complex work). Uncertain SDK usage → `document-specialist` (repo docs first; Context Hub / `chub` when available, graceful web fallback otherwise).
+Single agent by default (Cardinal 8). When that gate is open: route code to `executor` (`model=opus` for complex work); uncertain SDK usage → `document-specialist` (repo docs first, web fallback).
 </delegation_rules>
 
 <model_routing>
@@ -33,21 +30,17 @@ Detailed agent catalog, tools, team pipeline, commit protocol, and full skills r
 </skills>
 
 <verification>
-Verify before claiming completion. Size appropriately: small→haiku, standard→sonnet, large/security→opus.
-If verification fails, keep iterating.
+Verify before claiming completion, at the depth the change's risk warrants (`rules/verification.md`). If verification fails, keep iterating.
 </verification>
 
 <failure_mode_guards>
-User input: when clarification, preference, or approval is required and AskUserQuestion is available, use AskUserQuestion instead of ending with a prose question; ask one focused question with 2-4 options. Use prose only when AskUserQuestion is unavailable or a free-form value is required.
 Session/worktree continuity: before editing after resume/compaction or inside a linked worktree, re-check `git status --short --branch`, current cwd, and relevant `.omc/state/` or `.omc/handoffs/` artifacts so work does not continue on the wrong branch or stale context.
 No fake completion: TODO-style placeholder notes, `test.skip`/`.only`, stub tests, and unimplemented branches are blockers, not evidence. Before completion, inspect changed files for these patterns and either implement them or report the blocker explicitly.
 </failure_mode_guards>
 
 <execution_protocols>
-Broad requests: explore first, then plan. 2+ independent tasks in parallel. `run_in_background` for builds/tests.
-Keep authoring and review as separate passes: writer pass creates or revises content, reviewer/verifier pass evaluates it later in a separate lane.
-Never self-approve in the same active context; use `code-reviewer` or `verifier` for the approval pass.
-Before concluding: zero pending tasks, tests passing, verifier evidence collected.
+Broad requests: explore first, then plan. Issue independent **tool calls** concurrently in one message. `run_in_background` for builds/tests.
+Before concluding: zero pending tasks, verification evidence collected at the depth the change's risk warrants.
 </execution_protocols>
 
 <hooks_and_context>
@@ -79,22 +72,21 @@ Say "setup omc" or run `/oh-my-claudecode:omc-setup`.
 **8 条最高优先级。与本文件其他段落(含 OMC 托管区)或任何 rules/guides 冲突时,一律以此为准。**
 
 1. **字面执行**:做 X 就只做 X,不改写需求、不扩 scope、不顺手升级工具。`rules/intent-defaults.md`
-2. **验证再声明完成**:read-back + 必要时重启服务 + smoke test,无证据不说"已完成"。`rules/verification.md`
+2. **验证再声明完成**:按改动风险取用验证手段(细则 `rules/verification.md`),无证据不说"已完成"。
+   高风险(权限/机密/不可逆/生产发布/跨模块关键行为,或我明确要求)→ maker/checker 分离,调 `review-optimizer`;
+   生成式媒体(图/音/题库/学员内容)→ 人工逐件过目;其余按机器验证结果自检即可,不另派 review agent。
 3. **大任务先 plan**:≥5 项或 ≥30 分钟先写 `.omc/plans/*-todo.md` ledger,分批执行、可中断续跑。细则 `guides/session-resilience.md`
 4. **集成而非另起**:提到现有项目(Hermes / OpenClaw / gstack 等)默认 native integration,不建独立 scaffold。
 5. **工具纪律**:文件读改搜用 Read/Edit/Write/Grep/Glob;Bash 只用于起进程、动态查询、shell-only 操作。
 6. **机密文件防线**:`.env*`/`*.pem`/`*.key`/`id_rsa*`/`credentials.*`/`secrets.*`/`.aws/credentials`/`.ssh/*` 一律不自动 Read/Edit/Write,`env-guard.sh` 硬阻断兜底。`rules/secrets-firewall.md`
 7. **只认真实 tool_use**:动作必须经真实工具调用发起,不得用文本"展示"调用或脑补结果;工具密集会话慎用 `/compact`。
-8. **多 Agent 启动门**:默认单 Agent;仅用户或适用 Skill 明确要求才启用,≤3 个子 Agent,研究/审查只读,写入按文件或 worktree 隔离,主 Agent 独占合并与裁决,冲突立即停火。全文见下方导入的治理基线。
+8. **多 Agent 启动门**:默认单 Agent;仅用户或适用 Skill 明确要求才启用,≤3 个子 Agent,研究/审查只读,写入按文件或 worktree 隔离,主 Agent 独占合并与裁决,冲突立即停火。**启动门打开后、派出第一个子 Agent 前**,先 Read `~/.config/ai-governance/MULTI_AGENT_GOVERNANCE.md`(权限所有权、固定工作流、停火仲裁、审计输出格式)。
 </cardinal_rules>
 
-## OMC 托管区冲突裁决
+## OMC 托管区
 
-托管区与 Cardinal Rules 冲突时以后者为准。固定裁决:
-1. `<failure_mode_guards>` 的 AskUserQuestion → 服从 No-Pause:默认不问,按最可能解读执行,结尾标注假设。
-2. `<delegation_rules>` 委派清单 → 仅 Cardinal 8 启动门已开时生效,默认单 Agent。
-3. `<execution_protocols>` 的 code-reviewer/verifier 审批 → 单 Agent 模式下等效于 verification.md 三步验证 + `guides/artifact-gates.md` 门禁。
-4. "2+ tasks in parallel" → 指同一消息内并发的**工具调用**,不指并发子 Agent。
+上方 `OMC:START..OMC:END` 由 `omc update` 就地刷新。**2026-09-09 已在源头删除 4 处与 Cardinal Rules 矛盾的指令**(强制委派清单 / AskUserQuestion 提问义务 / code-reviewer 强制审批 / "2+ tasks in parallel" 歧义)。
+`omc update` 后这些会被官方文本覆盖 → 重跑 `~/.claude/scripts/omc-block-depatch.py` 再打一遍。仍有冲突时一律以 Cardinal Rules 为准。
 
 模型口径:haiku 快速查找 / sonnet 标准开发 / opus 架构与深度推理。本文件是用户级全局配置,不含 build/run/test 命令(归各项目 CLAUDE.md/AGENTS.md);改完新会话才生效,校验 `python3 ~/.omc/plans/nlpm-verify-20260818.py`(退出码 0 通过)。
 
@@ -117,6 +109,7 @@ Say "setup omc" or run `/oh-my-claudecode:omc-setup`.
 - **AI 尺度估时**:用分钟 / 小时 / N 个会话,不套人类 sprint/周/月;区分编码本身(快)与非编码阻塞(第三方审核、人工审批、外部服务开通、等决策、部署生效),后者单独标真实墙钟和卡在谁。
 - **大产出防截断**:预计 >300 行 / >8KB 的产出直接 Write 到文件,对话只回「已写入 <路径>,N 行」;多阶段流水线每完成一阶段把进度落盘 ledger。
 - **Context 卫生**:同一会话持续工作,避免切模型 / 改 CLAUDE.md / 加 MCP server;compact 时保留改动文件清单、ledger 路径与验证命令。
+- **缓存卫生**:prompt 前缀(tools → system → messages)逐字节命中才复用,任何前置改动使其后全部失效。同一会话中途别改 effort、别切模型、别增删 MCP/plugin;新信息一律**追加**在对话尾部,不要回头编辑早先内容;要改配置就趁会话开始时改。
 
 ## 快速指针
 
@@ -126,7 +119,6 @@ Say "setup omc" or run `/oh-my-claudecode:omc-setup`.
 - **生财 / 生财有术 / scys.com 链接**:提到这些词或给出生财内容链接**且提出检索、阅读、研究类任务**时,直接用已连接的 `scys-mcp` 实际查询后再回答,不必等我补"请使用 MCP",也不问"是否允许只读查询";只解释怎么查不算完成。单纯致谢、讨论配置或转述触发词时,不为命中关键词做无关调用。按任务读 `$HOME/.codex/references/scys-mcp.md`(与 `~/.codex/AGENTS.md` 共用真源,勿另写一套)选工具,并遵守其分页、游标、全文续读与 `MCP_RATE_LIMITED` 退避约束。
 - **scys 工具发现与授权**:以当前会话实际发现的工具名和参数为准,不要照抄其他客户端的工具前缀;所需工具未显示时先用当前官方工具发现机制检查,仍不可用再说明缺口,不为补齐工具重新登录、扩大权限或复制 Codex 凭据。默认只读;写操作(点赞/收藏/投锚/关注)及向 AI 亦仁提交问题需用户明确授权,同一任务已有授权持续有效、在授权范围内连续执行不重复确认,目标/范围/后果实质变化时再澄清。自动检索偏好不授权写操作、定时任务或外发消息。
 
-@../.config/ai-governance/MULTI_AGENT_GOVERNANCE.md
 @CLAUDE.local.md
 
 ## 按需指南(命中场景先 Read `~/.claude/guides/<文件>` 再动手;不常驻)
