@@ -1,0 +1,32 @@
+{
+  "mode": "ranking",
+  "topic": "GEO 内容工具评分",
+  "locale": "zh-CN",
+  "audience": "内容团队",
+  "entities": ["工具 A", "工具 B"],
+  "query_ids": ["qry-example"],
+  "evaluation_method": {
+    "name": "质量评分",
+    "criteria": [{"name": "质量", "weight": 1}],
+    "score_scale": "0-100"
+  },
+  "evidence": [
+    {
+      "label": "tool-a-quality",
+      "claim": "工具 A 的质量得分为 82。",
+      "source_uri": "https://example.com/tool-a",
+      "entity": "工具 A",
+      "dimension": "质量",
+      "score": 82
+    },
+    {
+      "label": "tool-b-quality",
+      "claim": "工具 B 的质量得分为 78。",
+      "source_uri": "https://example.com/tool-b",
+      "entity": "工具 B",
+      "dimension": "质量",
+      "score": 78
+    }
+  ],
+  "desired_formats": ["markdown", "json", "html"]
+}

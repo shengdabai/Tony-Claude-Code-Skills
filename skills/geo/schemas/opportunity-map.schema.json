@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yao.example/geo/schemas/opportunity-map.schema.json",
+  "title": "Opportunity Map",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocol_version", "run_id", "opportunities"],
+  "properties": {
+    "protocol_version": {"const": "1.0.0"},
+    "run_id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+    "opportunities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["opportunity_id", "query_ids", "asset_type", "priority", "rationale", "evidence_status"],
+        "properties": {
+          "opportunity_id": {"type": "string", "pattern": "\\S"},
+          "query_ids": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "\\S"}},
+          "asset_type": {"enum": ["article", "faq", "comparison", "landing-page", "knowledge-entry"]},
+          "priority": {"type": "integer", "minimum": 1, "maximum": 100},
+          "rationale": {"type": "string", "minLength": 1, "pattern": "\\S"},
+          "evidence_status": {"enum": ["provided", "missing"]}
+        }
+      }
+    }
+  }
+}

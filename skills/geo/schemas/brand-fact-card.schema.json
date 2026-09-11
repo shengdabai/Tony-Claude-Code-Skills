@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yao.example/geo/schemas/brand-fact-card.schema.json",
+  "title": "Brand Fact Card",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocol_version", "brand_id", "facts"],
+  "properties": {
+    "protocol_version": {"const": "1.0.0"},
+    "brand_id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+    "facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fact_id", "statement", "evidence_ids", "status"],
+        "properties": {
+          "fact_id": {"type": "string", "pattern": "\\S"},
+          "statement": {"type": "string", "minLength": 1, "pattern": "\\S"},
+          "evidence_ids": {"type": "array", "items": {"type": "string", "pattern": "\\S"}},
+          "status": {"enum": ["verified", "unverified", "disputed"]}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "protocol_version": "1.0.0",
+  "brief_id": "example-brief",
+  "subject": "team knowledge management",
+  "locale": "en",
+  "seed_queries": ["best knowledge base for a small team"],
+  "audiences": ["operations lead"],
+  "scenarios": ["vendor evaluation"],
+  "evidence": []
+}

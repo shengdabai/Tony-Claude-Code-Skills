@@ -1,0 +1,6 @@
+interface:
+  display_name: "万维钢·现代思维工具100讲"
+  short_description: "万维钢·用100个现代思维工具生成可验证行动"
+  default_prompt: "Use $wan-weigang-modern-thinking-tools-100 to analyze this problem and give me an evidence-aware action plan."
+policy:
+  allow_implicit_invocation: true

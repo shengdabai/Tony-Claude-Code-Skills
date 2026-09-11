@@ -56,13 +56,6 @@ function withFreezeDir(freezePath: string, fn: (stateDir: string) => void) {
   }
 }
 
-// Detect whether the safe-rm-targets regex works on this platform.
-// macOS sed -E does not support \s, so the safe exception check fails there.
-function detectSafeRmWorks(): boolean {
-  const { output } = runHook(CAREFUL_SCRIPT, carefulInput('rm -rf node_modules'));
-  return output.permissionDecision === undefined;
-}
-
 // ============================================================
 // check-careful.sh tests
 // ============================================================
@@ -88,28 +81,116 @@ describe('check-careful.sh', () => {
     test('rm -rf node_modules allows (safe exception)', () => {
       const { exitCode, output } = runHook(CAREFUL_SCRIPT, carefulInput('rm -rf node_modules'));
       expect(exitCode).toBe(0);
-      if (detectSafeRmWorks()) {
-        // GNU sed: safe exception triggers, allows through
-        expect(output.permissionDecision).toBeUndefined();
-      } else {
-        // macOS sed: safe exception regex uses \\s which is unsupported,
-        // so the safe-targets check fails and the command warns
-        expect(output.permissionDecision).toBe('ask');
-      }
+      expect(output.permissionDecision).toBeUndefined();
     });
 
     test('rm -rf .next dist allows (multiple safe targets)', () => {
       const { exitCode, output } = runHook(CAREFUL_SCRIPT, carefulInput('rm -rf .next dist'));
       expect(exitCode).toBe(0);
-      if (detectSafeRmWorks()) {
-        expect(output.permissionDecision).toBeUndefined();
-      } else {
-        expect(output.permissionDecision).toBe('ask');
-      }
+      expect(output.permissionDecision).toBeUndefined();
     });
 
     test('rm -rf node_modules /var/data warns (mixed safe+unsafe)', () => {
       const { exitCode, output } = runHook(CAREFUL_SCRIPT, carefulInput('rm -rf node_modules /var/data'));
+      expect(exitCode).toBe(0);
+      expect(output.permissionDecision).toBe('ask');
+      expect(output.message).toContain('recursive delete');
+    });
+
+    // The safe exception matches the COMPLETE command against an anchored
+    // whitelist shape — anything else (chains, comments, substitution) falls
+    // through to the destructive-pattern warning.
+    test('rm -rf /; rm -rf node_modules warns (semicolon chain, dangerous first)', () => {
+      const { exitCode, output } = runHook(CAREFUL_SCRIPT, carefulInput('rm -rf /; rm -rf node_modules'));
+      expect(exitCode).toBe(0);
+      expect(output.permissionDecision).toBe('ask');
+      expect(output.message).toContain('recursive delete');
+    });
+
+    test('rm -rf /etc/data && rm -rf dist warns (&& chain, dangerous first)', () => {
+      const { exitCode, output } = runHook(CAREFUL_SCRIPT, carefulInput('rm -rf /etc/data && rm -rf dist'));
+      expect(exitCode).toBe(0);
+      expect(output.permissionDecision).toBe('ask');
+      expect(output.message).toContain('recursive delete');
+    });
+
+    test('rm -rf node_modules; rm -rf /home/user/data warns (safe first, dangerous last)', () => {
+      const { exitCode, output } = runHook(CAREFUL_SCRIPT, carefulInput('rm -rf node_modules; rm -rf /home/user/data'));
+      expect(exitCode).toBe(0);
+      expect(output.permissionDecision).toBe('ask');
+      expect(output.message).toContain('recursive delete');
+    });
+
+    // Command substitution can end in a whitelisted suffix while running
+    // anything inside $(...) or backticks — the whitelist's target tokens
+    // exclude `(` and backtick so these cannot ride the safe exception.
+    test('rm -rf $(./wipe-all)/node_modules warns (command substitution)', () => {
+      const { exitCode, output } = runHook(CAREFUL_SCRIPT, carefulInput('rm -rf $(./wipe-all)/node_modules'));
+      expect(exitCode).toBe(0);
+      expect(output.permissionDecision).toBe('ask');
+      expect(output.message).toContain('recursive delete');
+    });
+
+    test('rm -rf `./wipe-all`/node_modules warns (backtick substitution)', () => {
+      const { exitCode, output } = runHook(CAREFUL_SCRIPT, carefulInput('rm -rf `./wipe-all`/node_modules'));
+      expect(exitCode).toBe(0);
+      expect(output.permissionDecision).toBe('ask');
+      expect(output.message).toContain('recursive delete');
+    });
+
+    // Capital -R is the documented recursive flag on BSD rm (macOS) and accepted
+    // by GNU rm. Both greps previously required a lowercase r, so `rm -R /`
+    // silently allowed.
+    test('rm -R / warns (capital -R recursive)', () => {
+      const { exitCode, output } = runHook(CAREFUL_SCRIPT, carefulInput('rm -R /'));
+      expect(exitCode).toBe(0);
+      expect(output.permissionDecision).toBe('ask');
+      expect(output.message).toContain('recursive delete');
+    });
+
+    test('rm -fR /home/user warns (capital R in flag cluster)', () => {
+      const { exitCode, output } = runHook(CAREFUL_SCRIPT, carefulInput('rm -fR /home/user'));
+      expect(exitCode).toBe(0);
+      expect(output.permissionDecision).toBe('ask');
+      expect(output.message).toContain('recursive delete');
+    });
+
+    test('rm -Rf node_modules allows (capital R, single safe target)', () => {
+      const { exitCode, output } = runHook(CAREFUL_SCRIPT, carefulInput('rm -Rf node_modules'));
+      expect(exitCode).toBe(0);
+      expect(output.permissionDecision).toBeUndefined();
+    });
+
+    // JSON-escaped newline (literal two-char \n surviving the grep extraction
+    // path) breaks the anchored whitelist shape → falls through to the warn.
+    test('newline-chained rm warns (escaped-newline separator branch)', () => {
+      const { exitCode, output } = runHook(CAREFUL_SCRIPT, carefulInput('rm -rf /etc/x\nrm -rf node_modules'));
+      expect(exitCode).toBe(0);
+      expect(output.permissionDecision).toBe('ask');
+      expect(output.message).toContain('recursive delete');
+    });
+
+    // Deliberate false positive, pinned: a safe-prefix chain ending in a safe rm
+    // is indistinguishable from the dangerous-first exploit shape without real
+    // shell parsing, so warn-on-all-chains is the designed fail-closed direction.
+    // A future per-segment parser must consciously change this test.
+    test('cd app && rm -rf node_modules asks (fail-closed on chains, by design)', () => {
+      const { exitCode, output } = runHook(CAREFUL_SCRIPT, carefulInput('cd app && rm -rf node_modules'));
+      expect(exitCode).toBe(0);
+      expect(output.permissionDecision).toBe('ask');
+      expect(output.message).toContain('recursive delete');
+    });
+
+    test.each([
+      'rm -rf /; rm -rf node_modules',
+      'rm -rf / && rm -rf node_modules',
+      'rm -rf / # rm -rf node_modules',
+      'rm -rf node_modules; rm -rf /',
+      'rm -rf node_modules || rm -rf /',
+      'echo ok && rm -rf /',
+      'rm -rf node_modules\nrm -rf /',
+    ])('never lets a safe-looking target hide a destructive command: %s', (command) => {
+      const { exitCode, output } = runHook(CAREFUL_SCRIPT, carefulInput(command));
       expect(exitCode).toBe(0);
       expect(output.permissionDecision).toBe('ask');
       expect(output.message).toContain('recursive delete');

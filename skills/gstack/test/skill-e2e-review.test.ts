@@ -427,7 +427,11 @@ This is a local-only repo so use the local branch (main) instead of origin/main 
 Write your retrospective to ${dir}/retro-output.md`,
       workingDirectory: dir,
       maxTurns: 25,
-      timeout: 240_000,
+      // 360s, not 240s: same runner-contention class as review-dashboard-via.
+      // /retro is a long multi-step flow — a clean pass measured 225s and the
+      // next CI run timed out at the 240s line (exitReason "timeout", 3/3
+      // attempts). Outer bun timeout below rises to 480s for headroom.
+      timeout: 360_000,
       testName: 'retro-base-branch',
       runId,
     });
@@ -444,7 +448,7 @@ Write your retrospective to ${dir}/retro-output.md`,
       const content = fs.readFileSync(retroPath, 'utf-8');
       expect(content.length).toBeGreaterThan(100);
     }
-  }, 300_000);
+  }, 480_000);
 });
 
 // --- Retro E2E ---
@@ -514,7 +518,7 @@ Analyze the git history and produce the narrative report as described in the SKI
       timeout: 300_000,
       testName: 'retro',
       runId,
-      model: 'claude-opus-4-6',
+      model: 'claude-opus-4-7',
     });
 
     logCost('/retro', result);
@@ -614,7 +618,13 @@ Skip the preamble, lake intro, telemetry, and all other ship steps.
 Write the dashboard output to ${dashDir}/dashboard-output.md`,
       workingDirectory: dashDir,
       maxTurns: 12,
-      timeout: 180_000,
+      // 300s, not 180s: on a saturated CI runner this file's concurrent
+      // sessions queue behind each other and session STARTUP can eat the
+      // whole budget — observed as deterministic timeout at 0 turns/$0.00
+      // for exactly 180s across 3 attempts (PR #2472 CI + its baseline),
+      // while the 240s-budget tests in the same job passed. Outer bun
+      // timeout below rises to 360s to keep headroom over the inner budget.
+      timeout: 300_000,
       testName: 'review-dashboard-via',
       runId,
     });
@@ -648,7 +658,7 @@ Write the dashboard output to ${dashDir}/dashboard-output.md`,
     );
     // Ship dashboard should not gate when eng review is clear
     expect(gateQuestions).toHaveLength(0);
-  }, 240_000);
+  }, 360_000);
 });
 
 // Module-level afterAll — finalize eval collector after all tests complete

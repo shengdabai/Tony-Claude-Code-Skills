@@ -1,0 +1,7 @@
+interface:
+  display_name: "审核优化专家"
+  short_description: "Codex 与 Claude 双模型交叉审核和优化"
+  default_prompt: "Use $review-optimizer to cross-review this artifact and return verified fixes."
+policy:
+  allow_implicit_invocation: true
+

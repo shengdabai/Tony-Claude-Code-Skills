@@ -1,0 +1,1 @@
+$HOME/.gstack/repos/gstack/sync-gbrain/SKILL.md

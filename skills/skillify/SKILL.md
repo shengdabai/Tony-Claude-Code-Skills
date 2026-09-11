@@ -1,0 +1,1 @@
+$HOME/.gstack/repos/gstack/skillify/SKILL.md

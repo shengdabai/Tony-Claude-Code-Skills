@@ -1,0 +1,2 @@
+[console_scripts]
+geo-seo-hub = geo_seo_hub.cli:main
