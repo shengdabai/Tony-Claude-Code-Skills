@@ -101,3 +101,8 @@ id_dsa
 .omc/
 .codex/
 .claude/local/
+
+# iCloud 隔离:symlink 名不带斜杠才能被忽略
+node_modules
+.venv
+*.nosync
