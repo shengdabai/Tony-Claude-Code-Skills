@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "geo-seo-hub"
+version = "0.3.1"
+description = "GEOHub: experimental, evidence-bounded GEO and SEO agent skills for AI search"
+readme = "SKILL.md"
+requires-python = ">=3.11,<3.15"
+license = {text = "AGPL-3.0-only"}
+authors = [{name = "姚金刚 / Yao"}]
+dependencies = [
+  "jsonschema>=4.21,<5",
+  "PyYAML>=6.0,<7",
+]
+
+[project.urls]
+Homepage = "https://github.com/yaojingang/GEOHub"
+Repository = "https://github.com/yaojingang/GEOHub"
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8,<9",
+  "setuptools>=68",
+]
+render = [
+  "python-docx>=1.1,<2",
+  "weasyprint>=62,<70",
+  "reportlab>=4,<5",
+]
+
+[project.scripts]
+geo-seo-hub = "geo_seo_hub.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.data-files]
+"share/geo-seo-hub" = ["PACKAGE-METADATA.json", "SKILL.md"]
+"share/geo-seo-hub/agents" = ["agents/interface.yaml"]
+"share/geo-seo-hub/manifests" = ["manifests/geo-content.json", "manifests/geo-diagnose.json", "manifests/geo-discover.json", "manifests/geo-measure.json", "manifests/geo.json", "manifests/seo.json"]
+"share/geo-seo-hub/references" = ["references/RESOLVER.md", "references/routing-contract.md"]
+"share/geo-seo-hub/references/providers" = ["references/providers/geo-content.md", "references/providers/geo-diagnose.md", "references/providers/geo-discover.md", "references/providers/geo-measure.md", "references/providers/geo.md", "references/providers/seo.md"]
+"share/geo-seo-hub/references/providers/geo-content" = ["references/providers/geo-content/content-method.md", "references/providers/geo-content/evidence-policy.md", "references/providers/geo-content/input-example.json", "references/providers/geo-content/modes.md", "references/providers/geo-content/output-contract.md"]
+"share/geo-seo-hub/references/providers/geo-diagnose" = ["references/providers/geo-diagnose/diagnosis-method.md", "references/providers/geo-diagnose/input-example.json"]
+"share/geo-seo-hub/references/providers/geo-discover" = ["references/providers/geo-discover/discovery-method.md", "references/providers/geo-discover/input-example.json"]
+"share/geo-seo-hub/references/providers/geo-measure" = ["references/providers/geo-measure/input-example.json", "references/providers/geo-measure/measurement-method.md"]
+"share/geo-seo-hub/references/providers/geo" = ["references/providers/geo/RESOLVER.md", "references/providers/geo/routing-contract.md"]
+"share/geo-seo-hub/references/providers/seo" = ["references/providers/seo/input-example.json", "references/providers/seo/seo-method.md"]
+"share/geo-seo-hub/registry" = ["registry/research-evidence.json", "registry/skills.schema.json", "registry/skills.yaml"]
+"share/geo-seo-hub/schemas" = ["schemas/brand-fact-card.schema.json", "schemas/content-evidence-units.schema.json", "schemas/content-spec.schema.json", "schemas/diagnosis-funnel.schema.json", "schemas/evidence-ledger.schema.json", "schemas/geo-brief.schema.json", "schemas/measurement-brief.schema.json", "schemas/measurement-report.schema.json", "schemas/opportunity-map.schema.json", "schemas/quality-report.schema.json", "schemas/query-map.schema.json", "schemas/research-context.schema.json", "schemas/research-evidence-registry.schema.json", "schemas/run-manifest.schema.json", "schemas/seo-brief.schema.json", "schemas/seo-plan.schema.json"]
+"share/geo-seo-hub/scripts" = ["scripts/run_content.py", "scripts/run_diagnose.py", "scripts/run_discover.py", "scripts/run_measure.py", "scripts/run_route.py", "scripts/run_seo.py"]

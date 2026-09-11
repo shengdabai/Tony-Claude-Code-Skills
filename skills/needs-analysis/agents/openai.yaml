@@ -1,0 +1,4 @@
+interface:
+  display_name: "需求分析"
+  short_description: "验证真假需求，评估广泛、刚需、高频并设计最小验证实验"
+  default_prompt: "Use $needs-analysis to investigate this need, judge whether it is real, and recommend the next validation step."

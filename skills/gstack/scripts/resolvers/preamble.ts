@@ -32,6 +32,7 @@ import {
 import { generateLakeIntro } from './preamble/generate-lake-intro';
 import { generateTelemetryPrompt } from './preamble/generate-telemetry-prompt';
 import { generateProactivePrompt } from './preamble/generate-proactive-prompt';
+import { generateFirstRunGuidance } from './preamble/generate-first-run-guidance';
 import { generateRoutingInjection } from './preamble/generate-routing-injection';
 import { generateVendoringDeprecation } from './preamble/generate-vendoring-deprecation';
 import { generateSpawnedSessionCheck } from './preamble/generate-spawned-session-check';
@@ -58,6 +59,7 @@ import { generateContextHealth } from './preamble/generate-context-health';
 // Tier 3+ repo mode + search
 import { generateRepoModeSection } from './preamble/generate-repo-mode-section';
 import { generateSearchBeforeBuildingSection } from './preamble/generate-search-before-building';
+import { generateMakePdfSetup } from './make-pdf';
 
 // Standalone export used directly by the resolver registry
 export { generateTestFailureTriage } from './preamble/generate-test-failure-triage';
@@ -81,7 +83,8 @@ export function generatePreamble(ctx: TemplateContext): string {
   }
   const sections = [
     generatePreambleBash(ctx),
-    // Plan-mode-skill semantics at position 1: after bash (so _SESSION_ID /
+    ...(ctx.skillName === 'make-pdf' ? [generateMakePdfSetup(ctx)] : []),
+    // Plan-mode-skill semantics stays near the top: after bash (so _SESSION_ID /
     // _BRANCH / _TEL env vars are live) and before all onboarding gates so
     // models read the authoritative "AskUserQuestion satisfies plan mode's
     // end-of-turn" rule before any other instruction. Renders for all skills
@@ -92,6 +95,7 @@ export function generatePreamble(ctx: TemplateContext): string {
     generateLakeIntro(),
     generateTelemetryPrompt(ctx),
     generateProactivePrompt(ctx),
+    generateFirstRunGuidance(ctx),
     generateRoutingInjection(ctx),
     generateVendoringDeprecation(ctx),
     generateSpawnedSessionCheck(),
@@ -107,10 +111,10 @@ export function generatePreamble(ctx: TemplateContext): string {
     ...(tier >= 2 ? [
       generateContextRecovery(ctx),
       generateWritingStyle(ctx),
-      generateCompletenessSection(),
-      generateConfusionProtocol(),
+      generateCompletenessSection(ctx),
+      generateConfusionProtocol(ctx),
       generateContinuousCheckpoint(),
-      generateContextHealth(),
+      generateContextHealth(ctx),
       generateQuestionTuning(ctx),
     ] : []),
     ...(tier >= 3 ? [generateRepoModeSection(), generateSearchBeforeBuildingSection(ctx)] : []),

@@ -70,17 +70,37 @@ describe('Tunnel path allowlist', () => {
 });
 
 describe('Tunnel command allowlist', () => {
-  test('TUNNEL_COMMANDS is a closed set of browser-driving commands only', () => {
+  // The full closed set of commands reachable over the tunnel surface. Adding
+  // or removing a command here means changing the literal in server.ts AND
+  // updating this list — that double-edit is the point. A single-source
+  // "include the items in the source" assertion would silently widen the
+  // surface during a refactor that adds a command to server.ts without test
+  // review. The exact-set match catches it.
+  const EXPECTED_TUNNEL_COMMANDS = new Set([
+    // Original 17
+    'goto', 'click', 'text', 'screenshot',
+    'html', 'links', 'forms', 'accessibility',
+    'attrs', 'media', 'data',
+    'scroll', 'press', 'type', 'select', 'wait', 'eval',
+    // Tab + navigation primitives operator docs and CLI hints already promised
+    'newtab', 'tabs', 'back', 'forward', 'reload',
+    // Read/inspect/write operators paired agents need to be useful
+    'snapshot', 'fill', 'url', 'closetab',
+  ]);
+
+  test('TUNNEL_COMMANDS literal matches the closed allowlist exactly (catches additions/removals without test update)', () => {
     const cmds = extractSetContents(SERVER_SRC, 'TUNNEL_COMMANDS');
-    // Must include the core browser-driving commands
-    const required = [
-      'goto', 'click', 'text', 'screenshot', 'html', 'links',
-      'forms', 'accessibility', 'attrs', 'media', 'data',
-      'scroll', 'press', 'type', 'select', 'wait', 'eval',
-    ];
-    for (const c of required) {
+    // Both directions: anything in the source must be expected, and anything
+    // expected must be in the source. The intersection-only style of the old
+    // must-include / must-exclude tests let new commands sneak into the source
+    // without a corresponding test update.
+    for (const c of cmds) {
+      expect(EXPECTED_TUNNEL_COMMANDS.has(c)).toBe(true);
+    }
+    for (const c of EXPECTED_TUNNEL_COMMANDS) {
       expect(cmds.has(c)).toBe(true);
     }
+    expect(cmds.size).toBe(EXPECTED_TUNNEL_COMMANDS.size);
   });
 
   test('TUNNEL_COMMANDS does NOT include daemon-configuration or bootstrap commands', () => {
@@ -89,11 +109,20 @@ describe('Tunnel command allowlist', () => {
       'launch', 'launch-browser', 'connect', 'disconnect',
       'restart', 'stop', 'tunnel-start', 'tunnel-stop',
       'token-mint', 'token-revoke', 'cookie-picker', 'cookie-import',
-      'inspector-pick',
+      'inspector-pick', 'pair', 'unpair', 'cookies', 'setup',
     ];
     for (const c of forbidden) {
       expect(cmds.has(c)).toBe(false);
     }
+  });
+
+  test('newtab ownership exemption preserved (catches refactors that re-introduce the catch-22)', () => {
+    // The /command handler must skip the per-tab ownership check when the
+    // command is `newtab`, otherwise paired agents have no way to create their
+    // own tab — every other write command requires an owned tab, and you can't
+    // own a tab you haven't created. The string `command !== 'newtab'` is the
+    // contract that breaks the catch-22.
+    expect(SERVER_SRC).toMatch(/command\s*!==\s*['"]newtab['"]/);
   });
 });
 
@@ -102,15 +131,23 @@ describe('Request handler factory', () => {
     expect(SERVER_SRC).toContain('makeFetchHandler = (surface: Surface)');
   });
 
-  test('Bun.serve local listener uses makeFetchHandler with "local" surface', () => {
-    expect(SERVER_SRC).toContain("fetch: makeFetchHandler('local')");
+  test('Bun.serve local listener uses handle.fetchLocal from buildFetchHandler', () => {
+    // v1.35.0.0: factory returns handle.fetchLocal; start() binds Bun.serve with it.
+    expect(SERVER_SRC).toContain("fetch: handle.fetchLocal");
   });
 
-  test('Tunnel listener bind uses makeFetchHandler with "tunnel" surface', () => {
-    const occurrences = SERVER_SRC.match(/makeFetchHandler\('tunnel'\)/g);
-    expect(occurrences).not.toBeNull();
-    // Must appear at least twice: once in /tunnel/start, once in BROWSE_TUNNEL=1 startup
-    expect(occurrences!.length).toBeGreaterThanOrEqual(2);
+  test('Tunnel listener bind uses handle.fetchTunnel from buildFetchHandler', () => {
+    // v1.35.0.0: factory returns handle.fetchTunnel; tunnel start sites use it
+    // (BROWSE_TUNNEL=1 startup + BROWSE_TUNNEL_LOCAL_ONLY=1 test path).
+    // The /tunnel/start handler INSIDE the factory still uses makeFetchHandler('tunnel')
+    // because it has the local helper in closure scope.
+    const tunnelOccurrences = SERVER_SRC.match(/fetch: handle\.fetchTunnel/g);
+    expect(tunnelOccurrences).not.toBeNull();
+    expect(tunnelOccurrences!.length).toBeGreaterThanOrEqual(2);
+    // The factory's internal makeFetchHandler('tunnel') still appears at least
+    // once for the /tunnel/start route's self-reference + the factory's return.
+    const internalOccurrences = SERVER_SRC.match(/makeFetchHandler\('tunnel'\)/g);
+    expect(internalOccurrences).not.toBeNull();
   });
 });
 
@@ -176,14 +213,14 @@ describe('GET /connect alive probe', () => {
 });
 
 describe('/command tunnel command allowlist', () => {
-  test('/command handler checks TUNNEL_COMMANDS when surface is tunnel', () => {
+  test('/command handler delegates to canDispatchOverTunnel when surface is tunnel', () => {
     const commandBlock = sliceBetween(
       SERVER_SRC,
       "url.pathname === '/command' && req.method === 'POST'",
       'return handleCommand(body, tokenInfo)'
     );
     expect(commandBlock).toContain("surface === 'tunnel'");
-    expect(commandBlock).toContain('TUNNEL_COMMANDS.has');
+    expect(commandBlock).toContain('canDispatchOverTunnel(body?.command)');
     expect(commandBlock).toContain('disallowed_command');
     expect(commandBlock).toContain('is not allowed over the tunnel surface');
     expect(commandBlock).toContain('status: 403');
@@ -255,7 +292,8 @@ describe('Tunnel listener lifecycle', () => {
     );
     expect(startupBlock).toContain('Bun.serve');
     expect(startupBlock).toContain('port: 0');
-    expect(startupBlock).toContain("makeFetchHandler('tunnel')");
+    // v1.35.0.0: start() refactored to use handle.fetchTunnel from the factory.
+    expect(startupBlock).toContain('handle.fetchTunnel');
     expect(startupBlock).toContain('addr: tunnelPort');
     // Must NOT forward ngrok at the local port
     expect(startupBlock).not.toContain('addr: port,');

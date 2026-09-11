@@ -1,0 +1,15 @@
+{
+  "subject": "Example product documentation page",
+  "scope": "page",
+  "source_html": "<!doctype html><title>Example product documentation</title><main><h1>Product documentation</h1><h2>Evidence</h2><p>Maintained by the product team and updated in 2026.</p></main>",
+  "evidence": [
+    {
+      "evidence_id": "ev-product-docs",
+      "claim": "The documentation is maintained by the product team.",
+      "source_uri": "https://example.com/docs"
+    }
+  ],
+  "locale": "en",
+  "audience": "technical evaluator",
+  "goals": ["Improve extractability and evidence clarity"]
+}

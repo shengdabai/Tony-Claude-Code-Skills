@@ -43,9 +43,13 @@ The command:
 3. Pushes an initial commit with just the config.
 4. Writes `~/.gstack-brain-remote.txt` (URL-only, no secrets —
    safe to copy to another machine).
-5. Registers GBrain as a reader if `GBRAIN_URL` + `GBRAIN_TOKEN` are
-   configured. Otherwise you can add readers later with
-   `gstack-brain-reader add <name> --ingest-url <url> --token <token>`.
+5. Wires the gstack-brain repo into your local gbrain as a federated
+   source (via `gbrain sources add` + `git worktree`) so `gbrain search`
+   can index your synced learnings, plans, and designs. Implementation
+   lives in `bin/gstack-gbrain-source-wireup`. The old
+   `gstack-brain-reader add --ingest-url ...` HTTP path was removed in
+   v1.15.1.0 — it depended on a `/ingest-repo` endpoint gbrain never
+   shipped.
 
 After init, the **next skill you run** will ask you ONE question about
 privacy mode:
@@ -55,7 +59,7 @@ privacy mode:
 - **Only artifacts**: plans, designs, retros, learnings — skip
   behavioral data (timelines, developer profile).
 - **Decline**: keep everything local. You can turn sync on later with
-  `gstack-config set gbrain_sync_mode full`.
+  `gstack-config set artifacts_sync_mode full`.
 
 Your answer is persisted. You won't be asked again.
 
@@ -103,8 +107,8 @@ output. Scan it for problems.
 
 Change anytime with:
 ```bash
-gstack-config set gbrain_sync_mode full
-gstack-config set gbrain_sync_mode off
+gstack-config set artifacts_sync_mode full
+gstack-config set artifacts_sync_mode off
 ```
 
 ## Secret protection
@@ -166,7 +170,7 @@ gstack-brain-uninstall
 This:
 
 - Removes `~/.gstack/.git/` and all `.brain-*` config files.
-- Clears `gbrain_sync_mode` in `gstack-config`.
+- Clears `artifacts_sync_mode` in `gstack-config`.
 - Does NOT touch your learnings, plans, retros, or developer profile.
 
 Add `--delete-remote` to also delete the private GitHub repo (GitHub only,

@@ -1,0 +1,14 @@
+{
+  "verified_at": "2026-08-26",
+  "refresh_after_days": 30,
+  "codex": {
+    "model": "gpt-5.6-sol",
+    "role": "latest_verified_sol_for_chatgpt_account",
+    "source": "https://developers.openai.com/api/docs/models/gpt-5.6-sol"
+  },
+  "claude": {
+    "model": "opus",
+    "role": "latest_official_opus_alias",
+    "required_effective_prefix": "claude-opus-"
+  }
+}

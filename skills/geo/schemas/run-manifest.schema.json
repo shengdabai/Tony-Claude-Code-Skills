@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yao.example/geo/schemas/run-manifest.schema.json",
+  "title": "Run Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocol_version", "run_id", "created_at", "generator", "input_artifact", "artifacts", "status"],
+  "properties": {
+    "protocol_version": {"const": "1.0.0"},
+    "run_id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "generator": {"type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": {"name": {"type": "string", "pattern": "\\S"}, "version": {"type": "string", "pattern": "\\S"}}},
+    "input_artifact": {"type": "string", "minLength": 1, "pattern": "\\S"},
+    "artifacts": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "pattern": "\\S"}},
+    "status": {"enum": ["completed", "completed-with-warnings", "failed"]},
+    "degraded": {"type": "boolean"},
+    "missing_dependencies": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "pattern": "\\S"}},
+    "renderer_errors": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "pattern": "\\S"}}
+  }
+}

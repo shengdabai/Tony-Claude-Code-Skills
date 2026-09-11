@@ -39,6 +39,20 @@ function run(...args: string[]): { stdout: string; stderr: string; status: numbe
   };
 }
 
+function runWithStdin(input: string, ...args: string[]): { stdout: string; stderr: string; status: number } {
+  const res = spawnSync(BIN, args, {
+    env: { ...process.env, GSTACK_HOME: tmpHome },
+    encoding: 'utf-8',
+    cwd: ROOT,
+    input,
+  });
+  return {
+    stdout: res.stdout ?? '',
+    stderr: res.stderr ?? '',
+    status: res.status ?? -1,
+  };
+}
+
 // -----------------------------------------------------------------------
 // --check
 // -----------------------------------------------------------------------
@@ -100,6 +114,108 @@ describe('--check with preferences set', () => {
     setPref('ship-test-failure-triage', 'ask-only-for-one-way');
     const r = run('--check', 'ship-test-failure-triage');
     expect(r.stdout.trim()).toContain('ASK_NORMALLY');
+  });
+});
+
+// #2024: the keyword net only fires when the question TEXT reaches the
+// classifier. --summary-stdin pipes it (stdin, not argv — summaries carry
+// quotes/newlines/shell metacharacters). Without the summary, an unregistered
+// id with never-ask auto-decides even for destructive phrasings.
+describe('--check --summary-stdin (#2024 keyword net plumb-through)', () => {
+  function setPref(id: string, pref: string) {
+    return run('--write', JSON.stringify({ question_id: id, preference: pref, source: 'plan-tune' }));
+  }
+
+  test('destructive summary on unregistered never-ask id → ASK_NORMALLY (keyword net fires)', () => {
+    setPref('adhoc-cleanup-question', 'never-ask');
+    const r = runWithStdin('Should I reset my secrets now?', '--check', 'adhoc-cleanup-question', '--summary-stdin');
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain('ASK_NORMALLY');
+    expect(r.stdout).toContain('one-way door overrides');
+  });
+
+  test('same id WITHOUT summary still AUTO_DECIDEs (id-only fallback, current semantics)', () => {
+    setPref('adhoc-cleanup-question', 'never-ask');
+    const r = run('--check', 'adhoc-cleanup-question');
+    expect(r.stdout.trim()).toContain('AUTO_DECIDE');
+  });
+
+  test('benign summary on unregistered never-ask id → AUTO_DECIDE (no over-match)', () => {
+    setPref('adhoc-cleanup-question', 'never-ask');
+    const r = runWithStdin('Reorganize the TODOs file?', '--check', 'adhoc-cleanup-question', '--summary-stdin');
+    expect(r.stdout.trim()).toContain('AUTO_DECIDE');
+  });
+
+  test('summary with quotes/newlines/dashes survives the stdin transport', () => {
+    setPref('adhoc-cleanup-question', 'never-ask');
+    const summary = 'Run "cleanup" --now\nthen rotate the access keys?';
+    const r = runWithStdin(summary, '--check', 'adhoc-cleanup-question', '--summary-stdin');
+    expect(r.stdout).toContain('ASK_NORMALLY');
+  });
+
+  test('empty stdin with --summary-stdin → id-only behavior (fail-safe)', () => {
+    setPref('adhoc-cleanup-question', 'never-ask');
+    const r = runWithStdin('', '--check', 'adhoc-cleanup-question', '--summary-stdin');
+    expect(r.stdout.trim()).toContain('AUTO_DECIDE');
+  });
+});
+
+// Split-chain carve-out: question_ids matching <skill>-split-<option-slug>
+// must always ASK_NORMALLY regardless of stored preferences.
+// See scripts/resolvers/preamble/generate-ask-user-format.ts
+// "Handling 5+ options — split, never drop" for the surrounding mechanism.
+describe('--check split-chain carve-out (*-split-* always ASK_NORMALLY)', () => {
+  function setPref(id: string, pref: string) {
+    return run('--write', JSON.stringify({ question_id: id, preference: pref, source: 'plan-tune' }));
+  }
+
+  test('split-id without preference → ASK_NORMALLY', () => {
+    const r = run('--check', 'plan-ceo-review-split-e4-detect-mappings');
+    expect(r.stdout.trim()).toContain('ASK_NORMALLY');
+  });
+
+  test('split-id + never-ask → ASK_NORMALLY (carve-out overrides preference)', () => {
+    setPref('plan-ceo-review-split-e4-detect-mappings', 'never-ask');
+    const r = run('--check', 'plan-ceo-review-split-e4-detect-mappings');
+    expect(r.stdout).toContain('ASK_NORMALLY');
+    expect(r.stdout).not.toContain('AUTO_DECIDE');
+  });
+
+  test('split-id + never-ask → emits explanatory note', () => {
+    setPref('plan-ceo-review-split-e4-detect-mappings', 'never-ask');
+    const r = run('--check', 'plan-ceo-review-split-e4-detect-mappings');
+    expect(r.stdout).toContain('split-chain per-option calls always ASK_NORMALLY');
+    expect(r.stdout).toContain('never-ask');
+  });
+
+  test('split-id + ask-only-for-one-way → ASK_NORMALLY (carve-out overrides preference)', () => {
+    setPref('ship-split-version-bump', 'ask-only-for-one-way');
+    const r = run('--check', 'ship-split-version-bump');
+    expect(r.stdout).toContain('ASK_NORMALLY');
+    expect(r.stdout).not.toContain('AUTO_DECIDE');
+  });
+
+  test('split-id + always-ask → ASK_NORMALLY (no note since preference agrees)', () => {
+    setPref('plan-eng-review-split-add-test', 'always-ask');
+    const r = run('--check', 'plan-eng-review-split-add-test');
+    expect(r.stdout.trim()).toContain('ASK_NORMALLY');
+    expect(r.stdout).not.toContain('does not apply');
+  });
+
+  test('non-split id that just happens to contain "split" word is NOT carved out', () => {
+    // The carve-out matches `-split-` (kebab-cased), not the substring "split".
+    // A question id like `qa-splitscreen-test` (hypothetical) would not match.
+    // Verify by using a never-ask pref that should fire AUTO_DECIDE.
+    setPref('qa-splitscreen-test', 'never-ask');
+    const r = run('--check', 'qa-splitscreen-test');
+    expect(r.stdout.trim()).toContain('AUTO_DECIDE');
+  });
+
+  test('multiple split-id formats: skill-split-anything matches', () => {
+    setPref('autoplan-split-ceo-finding-7', 'never-ask');
+    const r = run('--check', 'autoplan-split-ceo-finding-7');
+    expect(r.stdout).toContain('ASK_NORMALLY');
+    expect(r.stdout).not.toContain('AUTO_DECIDE');
   });
 });
 

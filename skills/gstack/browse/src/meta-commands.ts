@@ -6,14 +6,18 @@ import type { BrowserManager } from './browser-manager';
 import { handleSnapshot } from './snapshot';
 import { getCleanText } from './read-commands';
 import { READ_COMMANDS, WRITE_COMMANDS, META_COMMANDS, PAGE_CONTENT_COMMANDS, wrapUntrustedContent, canonicalizeCommand } from './commands';
+import { handleDomainSkillCommand } from './domain-skill-commands';
+import { handleSkillCommand } from './browser-skill-commands';
 import { validateNavigationUrl } from './url-validation';
 import { checkScope, type TokenInfo } from './token-registry';
 import { validateOutputPath, validateReadPath, SAFE_DIRECTORIES, escapeRegExp } from './path-security';
+import { guardScreenshotBuffer, guardScreenshotPath } from './screenshot-size-guard';
 // Re-export for backward compatibility (tests import from meta-commands)
 export { validateOutputPath, escapeRegExp } from './path-security';
 import * as Diff from 'diff';
 import * as fs from 'fs';
 import * as path from 'path';
+import { writeSecureFile, mkdirSecure } from './file-permissions';
 import { TEMP_DIR } from './platform';
 import { resolveConfig } from './config';
 import type { Frame } from 'playwright';
@@ -133,7 +137,7 @@ function parsePdfArgs(args: string[]): ParsedPdfArgs {
   return result;
 }
 
-function parsePdfFromFile(payloadPath: string): ParsedPdfArgs {
+export function parsePdfFromFile(payloadPath: string): ParsedPdfArgs {
   // Parity with load-html --from-file (browse/src/write-commands.ts) and
   // the direct load-html <file> path: every caller-supplied file path
   // must pass validateReadPath so the safe-dirs policy can't be skirted
@@ -146,7 +150,16 @@ function parsePdfFromFile(payloadPath: string): ParsedPdfArgs {
     );
   }
   const raw = fs.readFileSync(payloadPath, 'utf8');
-  const json = JSON.parse(raw);
+  let json: any;
+  try {
+    json = JSON.parse(raw);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`pdf: --from-file ${payloadPath} is not valid JSON (${msg}).`);
+  }
+  if (json === null || typeof json !== 'object' || Array.isArray(json)) {
+    throw new Error(`pdf: --from-file ${payloadPath} must be a JSON object, got ${Array.isArray(json) ? 'array' : typeof json}.`);
+  }
   const out: ParsedPdfArgs = {
     output: json.output || `${TEMP_DIR}/browse-page.pdf`,
     format: json.format,
@@ -234,6 +247,8 @@ export interface MetaCommandOpts {
   chainDepth?: number;
   /** Callback to route subcommands through the full security pipeline (handleCommandInternal) */
   executeCommand?: (body: { command: string; args?: string[]; tabId?: number }, tokenInfo?: TokenInfo | null) => Promise<{ status: number; result: string; json?: boolean }>;
+  /** The port the daemon is listening on (needed by `$B skill run` to point spawned scripts at the daemon). */
+  daemonPort?: number;
 }
 
 export async function handleMetaCommand(
@@ -492,6 +507,10 @@ export async function handleMetaCommand(
           buffer = await page.screenshot({ clip: clipRect });
         } else {
           buffer = await page.screenshot({ fullPage: !viewportOnly });
+          // Guard the most common API-bricking case (fullPage). Element /
+          // clip captures usually stay within the cap; we still guard the
+          // path-mode below for fullPage writes.
+          ({ buffer } = await guardScreenshotBuffer(buffer));
         }
         if (buffer.length > 10 * 1024 * 1024) {
           throw new Error('Screenshot too large for --base64 (>10MB). Use disk path instead.');
@@ -512,6 +531,7 @@ export async function handleMetaCommand(
       }
 
       await page.screenshot({ path: outputPath, fullPage: !viewportOnly });
+      if (!viewportOnly) await guardScreenshotPath(outputPath);
       return `Screenshot saved${viewportOnly ? ' (viewport)' : ''}: ${outputPath}`;
     }
 
@@ -562,6 +582,7 @@ export async function handleMetaCommand(
         const screenshotPath = `${prefix}-${vp.name}.png`;
         validateOutputPath(screenshotPath);
         await page.screenshot({ path: screenshotPath, fullPage: true });
+        await guardScreenshotPath(screenshotPath);
         results.push(`${vp.name} (${vp.width}x${vp.height}): ${screenshotPath}`);
       }
 
@@ -913,7 +934,7 @@ export async function handleMetaCommand(
 
       const config = resolveConfig();
       const stateDir = path.join(config.stateDir, 'browse-states');
-      fs.mkdirSync(stateDir, { recursive: true });
+      mkdirSecure(stateDir);
       const statePath = path.join(stateDir, `${name}.json`);
 
       if (action === 'save') {
@@ -925,7 +946,7 @@ export async function handleMetaCommand(
           cookies: state.cookies,
           pages: state.pages.map(p => ({ url: p.url, isActive: p.isActive })),
         };
-        fs.writeFileSync(statePath, JSON.stringify(saveData, null, 2), { mode: 0o600 });
+        writeSecureFile(statePath, JSON.stringify(saveData, null, 2));
         return `State saved: ${statePath} (${state.cookies.length} cookies, ${state.pages.length} pages)\n⚠️  Cookies stored in plaintext. Delete when no longer needed.`;
       }
 
@@ -1119,6 +1140,32 @@ export async function handleMetaCommand(
       });
 
       return JSON.stringify(data, null, 2);
+    }
+
+    case 'domain-skill': {
+      return await handleDomainSkillCommand(args, bm);
+    }
+
+    case 'skill': {
+      const port = opts?.daemonPort;
+      if (port === undefined) {
+        throw new Error('skill command requires daemonPort in MetaCommandOpts (server bug)');
+      }
+      return await handleSkillCommand(args, { port });
+    }
+
+    case 'cdp': {
+      // Lazy import — cdp-bridge introduces module deps we don't want loaded
+      // for projects that never use the CDP escape hatch.
+      const { handleCdpCommand } = await import('./cdp-commands');
+      return await handleCdpCommand(args, bm);
+    }
+
+    case 'memory': {
+      // Lazy import — pulls in cdp-bridge + memory-snapshot + buffer accessors
+      // that aren't useful for projects that never run the diagnostic.
+      const { handleMemoryCommand } = await import('./memory-command');
+      return await handleMemoryCommand(args, bm);
     }
 
     default:

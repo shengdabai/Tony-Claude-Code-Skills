@@ -55,8 +55,8 @@ your-project/
     │   └── terse.md           # 例:只给代码,不废话
     ├── plugins/           # 通过插件形式集成命令、代理和 MCP
     │   └── vercel/
-    ├── rules/             # 局部规则,根据文件路径匹配加载
-    │   └── api.md             # 仅当处理 API 相关目录时才加载的规则
+    ├── rules/             # 规则文件:无 paths: 的每会话全量加载;带 paths: 的按路径匹配加载
+    │   └── api.md             # 例:frontmatter paths: ["src/api/**"] → 仅处理 API 目录时加载
     ├── statusline         # 命令行底部状态栏的显示配置
     ├── settings.json      # 权限设置、模型选择及钩子注册中心
     └── settings.local.json    # 本地个人偏好设置,gitignored
@@ -136,13 +136,13 @@ your-project/
 
 ### `.claude/rules/`
 
-- **作用**:**根据文件路径匹配加载**的局部规则,避免 CLAUDE.md 全量加载所有规则
-- **触发机制**:Claude 编辑某路径时自动注入对应规则
-- **典型用法**:
-  - `api.md` — 仅 API 相关目录加载
-  - `frontend.md` — 仅前端目录加载
-  - `tests.md` — 仅测试目录加载
-- **优势**:CLAUDE.md 保持精简,规则按需加载
+- **作用**:把规则按主题拆成多个文件,与 CLAUDE.md 同优先级
+- **⚠️ 加载机制(2026-09-06 按官方 memory 文档核实)**:`rules/*.md` **没有 `paths:` frontmatter 的每会话全量加载**,不是按需;只有写了 `paths:` 的才在 Claude 读到匹配文件时加载。用户级 `~/.claude/rules/` 同理。
+- **典型用法**(必须带 `paths:` 才是按需):
+  - `api.md` — `paths: ["src/api/**"]`,仅 API 目录加载
+  - `frontend.md` — `paths: ["src/**/*.tsx"]`,仅前端文件加载
+  - `tests.md` — `paths: ["**/*.test.*"]`,仅测试文件加载
+- **真正的按需文档**:不按路径、按场景触发的长文(工作流手册、集成指南)不要放 rules/,放 `guides/`(命中场景手动 Read)或做成 skill(描述触发)。
 
 ### `.claude/statusline`
 
@@ -272,13 +272,12 @@ your-project/
 
 ## 与本人 `~/.claude/` 现状对照
 
-本机 `~/.claude/` 已按本 skill 标准配置完成(2026-05-09 硬化):
-- ✅ `CLAUDE.md` 153 行(原 345)
-- ✅ `CLAUDE.local.md` + `.gitignore` 已创建
-- ✅ `hooks/env-guard.sh` PreToolUse 拦截机密文件
-- ✅ `hooks/secret-scan.sh` PostToolUse 扫密钥模式
-- ✅ `output-styles/terse.md` 极简回复风格
-- ✅ `rules/` 14 个分领域规则文件,主文件 `@rules/xxx.md` 引用
-- ✅ Cardinal Rules 6 条,新增"机密文件防线"
+本机 `~/.claude/` 现状(2026-09-06 第三轮瘦身后):
+- ✅ `CLAUDE.md` 152 行,Cardinal Rules 8 条;OMC 托管区 1-71 行不动
+- ✅ `CLAUDE.local.md` 本机私有事实;`.gitignore` 已建
+- ✅ `hooks/env-guard.sh`(PreToolUse 拦机密文件)+ `hooks/secret-scan.sh`(PostToolUse 扫密钥)
+- ✅ `rules/` 只剩 5 个常驻文件(secrets-firewall / intent-defaults / verification / language-protocol,coding-style 带 `paths:`)
+- ✅ `guides/` 20 个按需手册,CLAUDE.md 末尾指针表按场景索引,命中才 Read
+- ✅ 回滚备份 `backups/fable51-slim-20260906/`,详情 memory `project_fable51-config-slim-202609`
 
 任何新项目都应复制此模式。

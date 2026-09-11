@@ -35,7 +35,8 @@ import {
 } from '@anthropic-ai/claude-agent-sdk';
 import * as fs from 'fs';
 import * as path from 'path';
-import { execSync } from 'child_process';
+import { resolveClaudeBinary as resolveClaudeBinaryShared } from '../../browse/src/claude-bin';
+import { hermeticChildEnv } from './hermetic-env';
 import type { SkillTestResult } from './session-runner';
 
 // ---------------------------------------------------------------------------
@@ -278,11 +279,7 @@ function resolveSdkVersion(): string {
 }
 
 export function resolveClaudeBinary(): string | null {
-  try {
-    return execSync('which claude', { encoding: 'utf-8' }).trim() || null;
-  } catch {
-    return null;
-  }
+  return resolveClaudeBinaryShared();
 }
 
 // ---------------------------------------------------------------------------
@@ -303,6 +300,18 @@ export async function runAgentSdkTest(
   const maxRetries = opts.maxRetries ?? 3;
   const queryImpl: QueryProvider = opts.queryProvider ?? query;
   const model = opts.model ?? 'claude-opus-4-7';
+
+  // NOTE on env: the SDK child gets the COMPLETE hermetic env (allowlist
+  // scrub + ANTHROPIC_API_KEY + hermetic CLAUDE_CONFIG_DIR/GSTACK_HOME), with
+  // per-test opts.env merging last. The historical "passing env: breaks SDK
+  // auth" failure (old CLAUDE.md warning) was partial-env replacement —
+  // Options.env REPLACES the child's entire environment, so an object without
+  // the key killed auth. A complete env is safe (validated 2026-06-12 via
+  // query() with hermeticChildEnv(): success, real cost, Bash tool working).
+  // Do not mutate process.env ambiently here (it would leak into later
+  // interactive-path tests in the same Bun process — Codex review finding);
+  // ambient ANTHROPIC_API_KEY mutation by tests still works because the
+  // builder reads process.env at call time.
 
   let attempt = 0;
   let lastErr: unknown = null;
@@ -353,7 +362,7 @@ export async function runAgentSdkTest(
         permissionMode: resolvedPermissionMode,
         allowDangerouslySkipPermissions: resolvedPermissionMode === 'bypassPermissions',
         settingSources: opts.settingSources ?? [],
-        env: opts.env,
+        env: hermeticChildEnv(opts.env),
         pathToClaudeCodeExecutable: opts.pathToClaudeCodeExecutable,
         ...(hasCanUseTool ? { canUseTool: opts.canUseTool } : {}),
       };

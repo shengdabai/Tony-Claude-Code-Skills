@@ -1,0 +1,11 @@
+jsonschema<5,>=4.21
+PyYAML<7,>=6.0
+
+[dev]
+pytest<9,>=8
+setuptools>=68
+
+[render]
+python-docx<2,>=1.1
+weasyprint<70,>=62
+reportlab<5,>=4

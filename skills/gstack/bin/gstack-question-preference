@@ -5,7 +5,9 @@
 # Schema: { "<question_id>": "always-ask" | "never-ask" | "ask-only-for-one-way" }
 #
 # Subcommands:
-#   --check <id>                   → emit ASK_NORMALLY | AUTO_DECIDE | ASK_ONLY_ONE_WAY
+#   --check <id> [--summary-stdin] → emit ASK_NORMALLY | AUTO_DECIDE | ASK_ONLY_ONE_WAY
+#                                    (--summary-stdin pipes the question text so the
+#                                    keyword net can catch ad-hoc destructive ids, #2024)
 #   --write '{...}'                → set a preference (user-origin gate enforced)
 #   --read                         → dump preferences JSON
 #   --clear [<id>]                 → clear one or all preferences
@@ -23,7 +25,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-GSTACK_HOME="${GSTACK_HOME:-$HOME/.gstack}"
+# GSTACK_STATE_ROOT takes precedence over GSTACK_HOME (test isolation per D16).
+GSTACK_HOME="${GSTACK_STATE_ROOT:-${GSTACK_HOME:-$HOME/.gstack}}"
 eval "$("$SCRIPT_DIR/gstack-slug" 2>/dev/null || true)"
 SLUG="${SLUG:-unknown}"
 PREF_FILE="$GSTACK_HOME/projects/$SLUG/question-preferences.json"
@@ -43,27 +46,59 @@ ensure_file() {
 # --check <question_id>
 # -----------------------------------------------------------------------
 do_check() {
-  local QID="${1:-}"
+  local QID="" SUMMARY_STDIN=false
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --summary-stdin) SUMMARY_STDIN=true; shift ;;
+      *) [ -z "$QID" ] && QID="$1"; shift ;;
+    esac
+  done
   if [ -z "$QID" ]; then
     echo "ASK_NORMALLY"
     return 0
   fi
+  # #2024: the question text feeds the keyword classifier for unregistered
+  # ids. Transport is stdin (not argv) — summaries carry quotes, newlines,
+  # and shell metacharacters an argv tail would mangle. Handed to bun via
+  # env so no shell re-quoting happens. Empty summary = id-only behavior.
+  local QSUMMARY=""
+  if [ "$SUMMARY_STDIN" = true ]; then
+    QSUMMARY=$(cat 2>/dev/null || true)
+  fi
   ensure_file
   cd "$ROOT_DIR"
-  PREF_FILE_PATH="$PREF_FILE" QID="$QID" bun -e "
+  PREF_FILE_PATH="$PREF_FILE" QID="$QID" QSUMMARY="$QSUMMARY" bun -e "
     import('./scripts/one-way-doors.ts').then((oneway) => {
       const fs = require('fs');
       const qid = process.env.QID;
+      const summary = process.env.QSUMMARY || undefined;
       const prefs = JSON.parse(fs.readFileSync(process.env.PREF_FILE_PATH, 'utf-8'));
       const pref = prefs[qid];
 
       // Always check one-way status first — safety overrides preferences.
-      const oneWay = oneway.isOneWayDoor({ question_id: qid });
+      // summary (when piped) lets the keyword net catch ad-hoc destructive
+      // questions whose id has no registry entry (#2024).
+      const oneWay = oneway.isOneWayDoor({ question_id: qid, summary });
 
       if (oneWay) {
         console.log('ASK_NORMALLY');
         if (pref === 'never-ask') {
           console.log('NOTE: one-way door overrides your never-ask preference for safety.');
+        }
+        return;
+      }
+
+      // Split-chain carve-out: per-option calls in N-option splits emit
+      // question_ids of the form <skill>-split-<option-slug>. These are
+      // NEVER AUTO_DECIDE-eligible regardless of stored preferences — the
+      // whole point of splitting is restoring user sovereignty over the
+      // option set. See scripts/resolvers/preamble/generate-ask-user-format.ts
+      // \"Handling 5+ options — split, never drop\" for the surrounding
+      // mechanism that generates these ids.
+      if (/-split-/.test(qid)) {
+        console.log('ASK_NORMALLY');
+        if (pref === 'never-ask' || pref === 'ask-only-for-one-way') {
+          console.log('NOTE: split-chain per-option calls always ASK_NORMALLY; your ' + pref + ' preference does not apply to options inside a sequential split.');
         }
         return;
       }

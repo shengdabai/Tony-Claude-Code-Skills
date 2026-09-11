@@ -25,34 +25,29 @@ fi
 # Normalize: lowercase for case-insensitive SQL matching
 CMD_LOWER=$(printf '%s' "$CMD" | tr '[:upper:]' '[:lower:]')
 
-# --- Check for safe exceptions (rm -rf of build artifacts) ---
-if printf '%s' "$CMD" | grep -qE 'rm\s+(-[a-zA-Z]*r[a-zA-Z]*\s+|--recursive\s+)' 2>/dev/null; then
-  SAFE_ONLY=true
-  RM_ARGS=$(printf '%s' "$CMD" | sed -E 's/.*rm\s+(-[a-zA-Z]+\s+)*//;s/--recursive\s*//')
-  for target in $RM_ARGS; do
-    case "$target" in
-      */node_modules|node_modules|*/\.next|\.next|*/dist|dist|*/__pycache__|__pycache__|*/\.cache|\.cache|*/build|build|*/\.turbo|\.turbo|*/coverage|coverage)
-        ;; # safe target
-      -*)
-        ;; # flag, skip
-      *)
-        SAFE_ONLY=false
-        break
-        ;;
-    esac
-  done
-  if [ "$SAFE_ONLY" = true ]; then
-    echo '{}'
-    exit 0
-  fi
+# --- Check for safe exceptions (one standalone rm of build artifacts) ---
+# Match the complete command. Parsing only the last rm is unsafe because shell
+# syntax or comments can hide an earlier destructive command, for example:
+#   rm -rf / # rm -rf node_modules
+# Unknown syntax fails closed and falls through to the destructive checks.
+# Two hardenings on top of the anchored shape (#2039 wave):
+#   - flag cluster accepts capital -R (BSD/macOS recursive), so a single
+#     `rm -Rf node_modules` stays allowed instead of prompting;
+#   - target tokens exclude `(` and backtick, so command substitution that
+#     ENDS in a whitelisted suffix (`rm -rf $(./wipe-all)/node_modules`)
+#     cannot ride the whitelist. Plain $VAR expansion (no parenthesis) is
+#     still allowed.
+if printf '%s' "$CMD" | grep -qE '^[[:space:]]*rm[[:space:]]+(-[a-zA-Z]*[rR][a-zA-Z]*[[:space:]]+|--recursive[[:space:]]+)(([^[:space:];&|#(`]*/)?(node_modules|\.next|dist|__pycache__|\.cache|build|\.turbo|coverage)[[:space:]]*)+$' 2>/dev/null; then
+  echo '{}'
+  exit 0
 fi
 
 # --- Destructive pattern checks ---
 WARN=""
 PATTERN=""
 
-# rm -rf / rm -r / rm --recursive
-if printf '%s' "$CMD" | grep -qE 'rm\s+(-[a-zA-Z]*r|--recursive)' 2>/dev/null; then
+# rm -rf / rm -r / rm -R / rm --recursive (capital -R is BSD/macOS recursive)
+if printf '%s' "$CMD" | grep -qE 'rm\s+(-[a-zA-Z]*[rR]|--recursive)' 2>/dev/null; then
   WARN="Destructive: recursive delete (rm -r). This permanently removes files."
   PATTERN="rm_recursive"
 fi

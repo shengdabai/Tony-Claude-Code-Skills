@@ -133,7 +133,7 @@ describe('gstack-model-benchmark --dry-run', () => {
       const notReadyLines = out.split('\n').filter(l => l.includes('NOT READY'));
       expect(notReadyLines.length).toBeGreaterThanOrEqual(2);
       for (const line of notReadyLines) {
-        expect(line).toMatch(/(install|Install|login|export|Run|Log in)/);
+        expect(line).toMatch(/(install|login|export|run|log in)/i);
       }
     } finally {
       fs.rmSync(emptyHome, { recursive: true, force: true });
@@ -158,6 +158,33 @@ describe('gstack-model-benchmark prompt resolution', () => {
       const r = run([promptFile, '--dry-run']);
       expect(r.status).toBe(0);
       expect(r.stdout).toContain('hello from file');
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test('positional file still works when value flags come first', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-prompt-'));
+    const promptFile = path.join(tmp, 'prompt.txt');
+    fs.writeFileSync(promptFile, 'hello after flags');
+    try {
+      const r = run(['--models', 'claude', '--output', 'json', promptFile, '--dry-run']);
+      expect(r.status).toBe(0);
+      expect(r.stdout).toContain('hello after flags');
+      expect(r.stdout).not.toContain('EISDIR');
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test('positional file still works after equals-form value flags', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-prompt-'));
+    const promptFile = path.join(tmp, 'prompt.txt');
+    fs.writeFileSync(promptFile, 'hello after equals flags');
+    try {
+      const r = run(['--models=claude', '--output=markdown', promptFile, '--dry-run']);
+      expect(r.status).toBe(0);
+      expect(r.stdout).toContain('hello after equals flags');
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }

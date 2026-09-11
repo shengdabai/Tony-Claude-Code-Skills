@@ -1,0 +1,4 @@
+interface:
+  display_name: "深聊 · Deep Dialogue"
+  short_description: "逐步拷问理解、类比边界、复述校验、证据审核与知识沉淀"
+  default_prompt: "Use $deep-dialogue 按原始深聊流程逐步带我探索一个主题。"
