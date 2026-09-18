@@ -57,8 +57,8 @@ metadata:
 
 读取参考资料时：
 
-1. 先用 `rg -n '^#{2,3} ' $HOME/.codex/skills/wan-weigang-modern-thinking-tools-100/references/full-course.md` 列出标题，再从标题表选择最相关条目。
-2. 用字面标题抽取，避免关键词被当作正则：`awk -v target='完整标题' '$0 == target { capture=1; print; next } capture && /^##/ { exit } capture { print }' $HOME/.codex/skills/wan-weigang-modern-thinking-tools-100/references/full-course.md`。内容遇下一个 `###` 或 `##` 标题即停止；组合工具时再读取对应条目。
+1. 先用 `rg -n '^#{2,3} ' ~/.codex/skills/wan-weigang-modern-thinking-tools-100/references/full-course.md` 列出标题，再从标题表选择最相关条目。
+2. 用字面标题抽取，避免关键词被当作正则：`awk -v target='完整标题' '$0 == target { capture=1; print; next } capture && /^##/ { exit } capture { print }' ~/.codex/skills/wan-weigang-modern-thinking-tools-100/references/full-course.md`。内容遇下一个 `###` 或 `##` 标题即停止；组合工具时再读取对应条目。
 3. 若问题跨板块或不知道工具名，先读取原文中的“快速路由”“九类任务运行卡”或相关板块标题，再定位具体工具。
 4. 需要证据纪律、工具冲突裁决或安全边界时，读取原文相应协议；不要为了保险加载整份材料。
 

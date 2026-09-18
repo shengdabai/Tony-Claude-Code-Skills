@@ -71,7 +71,7 @@ Favor Tony on camera and real B-roll. Suggest only footage he can actually captu
 
 ## Sources behind this system
 
-- `$HOME/Desktop/02-学习资料/00-想法工坊/pages/Zturns-YouTube-全球频道作战图-V2.html`
-- `$HOME/Desktop/03-内容创作/16-飞书HTML/20260803-Zturns-YouTube频道战略规划.html`
+- `~/Desktop/02-学习资料/00-想法工坊/pages/Zturns-YouTube-全球频道作战图-V2.html`
+- `~/Desktop/03-内容创作/16-飞书HTML/20260803-Zturns-YouTube频道战略规划.html`
 
 The first document has stronger evidence boundaries and should win if the two differ. The second contributes useful channel positioning and production-flow ideas, but statements about algorithm behavior, upload cadence, growth, or benchmark counts must be treated as hypotheses until revalidated.

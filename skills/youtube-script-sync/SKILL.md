@@ -91,7 +91,7 @@ The English script is not a subtitle pass. Rebuild it from the same source evide
 Validate the candidate with:
 
 ```bash
-python3 $HOME/.agents/skills/youtube-script-sync/scripts/validate_transcript.py <candidate.md>
+python3 ~/.agents/skills/youtube-script-sync/scripts/validate_transcript.py <candidate.md>
 ```
 
 Fix all errors before a GetNote write. Warnings require judgment but do not automatically block.

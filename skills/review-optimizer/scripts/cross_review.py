@@ -164,7 +164,7 @@ def run_codex(prompt: str, args: argparse.Namespace) -> dict[str, Any]:
 
 def run_claude(prompt: str, args: argparse.Namespace) -> dict[str, Any]:
     command = [
-        "$HOME/.claude/bin/claude",
+        str(Path.home() / ".claude/bin/claude"),
         "--print",
         "--model",
         args.claude_model,

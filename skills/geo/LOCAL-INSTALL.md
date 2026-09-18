@@ -13,7 +13,7 @@ The Skill and provider instructions use the bundled `.venv` instead of the syste
 
 ## Shared entrypoints
 
-- Codex: `$HOME/.codex/skills/geo`
-- Claude Code: `$HOME/.claude/skills/geo`
+- Codex: `~/.codex/skills/geo`
+- Claude Code: `~/.claude/skills/geo`
 
 Both entrypoints are symbolic links to this canonical directory.

@@ -116,7 +116,7 @@ Say "setup omc" or run `/oh-my-claudecode:omc-setup`.
 - **GPT-5.5 Pro**:意图是要 GPT-5.5 Pro 的答复时 → `gpt5pro "<自包含 prompt>"`(推理 1-5 分钟,先报一行进度)。详见 memory `reference_gpt5pro-bridge`。
 - **飞书 bot 会话**:当条消息带 `<bridge_context>` 块时,先 Read `guides/feishu-bot.md` 再执行;本地终端会话绝不触发。
 - **Web 浏览**:统一用 gstack `/browse`,不用 `mcp__claude-in-chrome__*`。
-- **生财 / 生财有术 / scys.com 链接**:提到这些词或给出生财内容链接**且提出检索、阅读、研究类任务**时,直接用已连接的 `scys-mcp` 实际查询后再回答,不必等我补"请使用 MCP",也不问"是否允许只读查询";只解释怎么查不算完成。单纯致谢、讨论配置或转述触发词时,不为命中关键词做无关调用。按任务读 `$HOME/.codex/references/scys-mcp.md`(与 `~/.codex/AGENTS.md` 共用真源,勿另写一套)选工具,并遵守其分页、游标、全文续读与 `MCP_RATE_LIMITED` 退避约束。
+- **生财 / 生财有术 / scys.com 链接**:提到这些词或给出生财内容链接**且提出检索、阅读、研究类任务**时,直接用已连接的 `scys-mcp` 实际查询后再回答,不必等我补"请使用 MCP",也不问"是否允许只读查询";只解释怎么查不算完成。单纯致谢、讨论配置或转述触发词时,不为命中关键词做无关调用。按任务读 `~/.codex/references/scys-mcp.md`(与 `~/.codex/AGENTS.md` 共用真源,勿另写一套)选工具,并遵守其分页、游标、全文续读与 `MCP_RATE_LIMITED` 退避约束。
 - **scys 工具发现与授权**:以当前会话实际发现的工具名和参数为准,不要照抄其他客户端的工具前缀;所需工具未显示时先用当前官方工具发现机制检查,仍不可用再说明缺口,不为补齐工具重新登录、扩大权限或复制 Codex 凭据。默认只读;写操作(点赞/收藏/投锚/关注)及向 AI 亦仁提交问题需用户明确授权,同一任务已有授权持续有效、在授权范围内连续执行不重复确认,目标/范围/后果实质变化时再澄清。自动检索偏好不授权写操作、定时任务或外发消息。
 
 @CLAUDE.local.md
@@ -149,5 +149,5 @@ Say "setup omc" or run `/oh-my-claudecode:omc-setup`.
 ## Web UI delivery requirement
 
 - All AI-authored web UI must be **100% tokenized and well organized**: every design value uses the project's token system; structural CSS and genuine runtime data are classified separately.
-- Before creating or changing web UI, read and follow `$HOME/.codex/rules/web-design-tokens.md`. Reuse existing tokens, organize style ownership, and audit the complete claimed scope before delivery. Do not equate variable count with compliance or claim 100% without evidence.
+- Before creating or changing web UI, read and follow `~/.codex/rules/web-design-tokens.md`. Reuse existing tokens, organize style ownership, and audit the complete claimed scope before delivery. Do not equate variable count with compliance or claim 100% without evidence.
 <!-- WEB_DESIGN_TOKENS:END -->
