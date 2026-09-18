@@ -156,9 +156,9 @@ const PLACEHOLDER_STRUCTURAL = [
 // Substring placeholder words (example/test/dummy/...). These are NOT applied to
 // compound spans containing `://` or `@`, because a legit URL/host can contain
 // "example" (e.g. db.example.com) without being a placeholder secret. AWS docs
-// keys like AKIAIOSFODNN7EXAMPLE are bare tokens, so the guard still catches them.
+// keys like AKIA…EXAMPLE are bare tokens, so the guard still catches them.
 const PLACEHOLDER_SUBSTRING = [
-  /example/i, // AKIAIOSFODNN7EXAMPLE etc — AWS docs convention
+  /example/i, // AKIA…EXAMPLE etc — AWS docs convention
   /^changeme$/i,
   /^redacted/i,
   /^placeholder/i,
