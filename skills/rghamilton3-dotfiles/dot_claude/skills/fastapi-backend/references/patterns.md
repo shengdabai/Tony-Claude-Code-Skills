@@ -284,12 +284,13 @@ settings = get_settings()
 
 ```python
 import pytest
-from httpx import AsyncClient
+import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
 from app.main import app
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client():
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
 @pytest.mark.asyncio
@@ -302,10 +303,11 @@ async def test_read_users(client: AsyncClient):
 
 ```python
 import pytest
+import pytest_asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def db_session():
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)

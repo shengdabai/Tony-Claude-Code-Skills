@@ -6,7 +6,7 @@ The remediation updates every manifest occurrence associated with the original 1
 
 - Refresh the GetNote MCP dependency lock and raise SDK, Axios, form-data and Hono minimum versions.
 - Upgrade Vitest and explicitly provide its Vite peer dependency in both alias-manager copies; refresh vulnerable transitive packages.
-- Update all three FastAPI and TypeScript MCP templates. Convert the MCP prompt's string argument to a number before interpolation.
+- Update all three FastAPI and TypeScript MCP templates. Convert the MCP prompt's string argument to a number before interpolation; update httpx transport and pytest-asyncio fixture examples.
 - Update diagram-render dependencies, diff, sharp, image-size, python-dotenv, the skills-ref lock, and copied global CLI manifests.
 - Address additional FastAPI, Starlette and pyasn1 findings discovered by scanning the installed Python dependency tree.
 
@@ -16,7 +16,7 @@ The remediation updates every manifest occurrence associated with the original 1
 - TypeScript template build; MCP prompt defaults and numeric string arguments; calculator tool call.
 - Alias-manager tests (7), type checking and build; npm-registry audit reports no vulnerabilities.
 - Diagram bundle build and 50 diagram/prepass tests; real-browser Mermaid SVG/PNG and Excalidraw conversion/export checks. Generated distribution artifacts remain excluded from this source collection.
-- Sharp PNG generation, image dimensions and PPTX export; malformed zero-length ICNS input is rejected.
+- Node requirements are explicit for the Vitest templates/alias manager and sharp-based exporter. Sharp PNG generation, image dimensions and PPTX export; malformed zero-length ICNS input is rejected.
 - Python dependency consistency; multipart upload, JWT signature validation and asyncio plugin tests; actual template health endpoint and token creation.
 - The independent review also reconciled all 192 occurrences with no missing mappings or vulnerable resolutions. Original advisory/version-range reconciliation covers all 192 occurrences. GitHub closure is confirmed separately after the default branch is rescanned.
 
