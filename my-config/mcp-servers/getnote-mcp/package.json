@@ -16,9 +16,9 @@
   "author": "Get笔记",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
-    "axios": "^1.7.0",
-    "form-data": "^4.0.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "axios": "^1.20.0",
+    "form-data": "^4.0.6",
     "zod": "^3.22.0"
   },
   "devDependencies": {
@@ -30,6 +30,7 @@
   },
   "overrides": {
     "express-rate-limit": "^8.2.2",
-    "hono": "^4.12.7"
+    "hono": "^4.13.5",
+    "@hono/node-server": "^1.19.15"
   }
 }

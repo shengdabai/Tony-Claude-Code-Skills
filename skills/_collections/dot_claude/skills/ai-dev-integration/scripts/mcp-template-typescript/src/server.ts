@@ -346,7 +346,7 @@ Be specific and constructive in your feedback.`
 
     case "summarization_prompt": {
       const text = (args?.text as string) || "";
-      const maxSentences = (args?.max_sentences as number) || 3;
+      const maxSentences = Number(args?.max_sentences) || 3;
 
       return {
         messages: [
