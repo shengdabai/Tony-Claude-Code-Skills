@@ -15,10 +15,10 @@ The remediation updates every manifest occurrence associated with the original 1
 - GetNote TypeScript build; MCP initialization and tool listing with dummy credentials; mocked Axios success/error behavior.
 - TypeScript template build; MCP prompt defaults and numeric string arguments; calculator tool call.
 - Alias-manager tests (7), type checking and build; npm-registry audit reports no vulnerabilities.
-- Diagram bundle build and 50 diagram/prepass tests; generated distribution artifacts remain excluded from this source collection.
+- Diagram bundle build and 50 diagram/prepass tests; real-browser Mermaid SVG/PNG and Excalidraw conversion/export checks. Generated distribution artifacts remain excluded from this source collection.
 - Sharp PNG generation, image dimensions and PPTX export; malformed zero-length ICNS input is rejected.
 - Python dependency consistency; multipart upload, JWT signature validation and asyncio plugin tests; actual template health endpoint and token creation.
-- Original advisory/version-range reconciliation covers all 192 occurrences. GitHub closure is confirmed separately after the default branch is rescanned.
+- The independent review also reconciled all 192 occurrences with no missing mappings or vulnerable resolutions. Original advisory/version-range reconciliation covers all 192 occurrences. GitHub closure is confirmed separately after the default branch is rescanned.
 
 ## Remaining dependency finding
 
