@@ -20,10 +20,18 @@ The remediation updates every manifest occurrence associated with the original 1
 - Python dependency consistency; multipart upload, JWT signature validation and asyncio plugin tests; actual template health endpoint and token creation.
 - The independent review also reconciled all 192 occurrences with no missing mappings or vulnerable resolutions. Original advisory/version-range reconciliation covers all 192 occurrences. GitHub closure is confirmed separately after the default branch is rescanned.
 
-## Remaining dependency finding
+## Indirect ECDSA dependency removed
 
-The Python template still installs `ecdsa` through `python-jose`. `GHSA-wj6h-64fc-37mp` / `CVE-2024-23342` describes timing leakage in python-ecdsa signing/key-generation operations; the upstream advisory lists no fixed version. The template defaults to HS256 and installs the cryptography backend. This does not remove the affected package or prove safety for callers choosing different algorithms/backends. The finding is not dismissed. Removing it requires replacing python-jose and validating that authentication migration separately.
+The three FastAPI copies now use `PyJWT[crypto]==2.14.0` instead of `python-jose`. The old package unconditionally installed `ecdsa`, affected by `GHSA-wj6h-64fc-37mp` / `CVE-2024-23342`, even when the cryptography backend was selected. The replacement removes that dependency path rather than suppressing the advisory. The now-orphaned direct `pyasn1` constraint is removed as well.
+
+- A fresh Python 3.11 environment installs the complete template requirements. `pip check` passes; installed-tree `pip-audit` reports **0 known vulnerabilities across 100 packages**, including audit tooling. Distribution metadata confirms that `python-jose`, `ecdsa`, `rsa`, and `pyasn1` are absent.
+- Each of the three copies passes 54 JWT regressions in a separate Python process. Public synthetic access/refresh fixtures generated with python-jose 3.5.0 remain valid. New token creation, missing-user rejection, optional claims and scope authorization are covered.
+- Invalid signatures, unsigned/disallowed algorithms, expired/malformed tokens, missing/non-string subjects and unsupported audience/OpenID hash claims retain the 401 response and Bearer header at the scaffold and reusable middleware consumers. Explicit guards preserve jose's rejection of present `aud`/`at_hash` claims; no verifier is disabled. Configured RSA/EC private keys are converted to their public half for verification. Actual scaffold and middleware tests cover RS256/ES256 issuance, successful authentication and wrong-key rejection; all generated keys stay in memory. The cryptography-backed path works without python-ecdsa.
+- PyJWT's stricter future-`iat` and expiration-boundary handling is retained. The scaffold does not issue `iat`. No keys are rotated and no real account, database or external service is used for validation.
+- Tests stub the database lookup to isolate the JWT boundary. The pre-existing `crud.user.get(..., id=...)` versus `get(db, user_id)` mismatch is outside this migration and remains unresolved; these checks do not claim a complete database login-flow test. Other baseline authentication limitations remain: those consumers do not distinguish access from refresh tokens, a nonnumeric string subject can fail integer conversion, and the reference scope example lacks JWT-to-HTTP error mapping. This dependency migration does not claim to repair those separate application-policy defects.
+
+Regression tests and synthetic fixtures live in each FastAPI skill's `tests/` directory. With that copy's template requirements installed, run `python -m pytest tests/test_jwt_migration.py -q` from the skill directory.
 
 ## Synchronization
 
-Installed skill/MCP sources can overwrite repository copies during automatic synchronization. Apply equivalent dependency changes to the maintained source before the next sync. Vendored duplicate manifests must remain consistent.
+Installed skill/MCP sources can overwrite repository copies during automatic synchronization. The user explicitly requested that the installed GetNote, gstack and huashu-design sources remain unchanged. Their prior dependency changes therefore remain repository-only; a later source sync may reintroduce older dependencies. Vendored duplicate manifests must remain consistent.

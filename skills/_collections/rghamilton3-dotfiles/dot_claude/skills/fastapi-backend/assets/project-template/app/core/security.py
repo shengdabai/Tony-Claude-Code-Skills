@@ -3,7 +3,8 @@ Security Utilities
 """
 from datetime import datetime, timedelta
 from typing import Optional
-from jose import jwt
+import jwt
+from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
 from app.core.config import settings
 
@@ -39,3 +40,16 @@ def create_refresh_token(subject: str) -> str:
     expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode = {"exp": expire, "sub": str(subject), "type": "refresh"}
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def decode_token(token: str) -> dict:
+    """Verify a token using configured keys and the local-token claim policy."""
+    key = jwt.get_algorithm_by_name(settings.ALGORITHM).prepare_key(settings.SECRET_KEY)
+    # Private asymmetric keys sign tokens; their public half verifies them.
+    if hasattr(key, "public_key"):
+        key = key.public_key()
+    payload = jwt.decode(token, key, algorithms=[settings.ALGORITHM])
+    # No audience or OpenID access token is configured for these tokens.
+    if "aud" in payload or "at_hash" in payload:
+        raise InvalidTokenError("Unsupported audience or access-token hash")
+    return payload

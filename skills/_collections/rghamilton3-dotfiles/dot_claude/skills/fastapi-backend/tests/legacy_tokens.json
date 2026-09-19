@@ -1,0 +1,8 @@
+{
+  "source": "python-jose 3.5.0",
+  "key": "jwt-migration-public-test-key-not-for-production",
+  "tokens": {
+    "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0MiIsImV4cCI6NDEwMjQ0NDgwMCwidHlwZSI6ImFjY2VzcyIsInNjb3BlcyI6WyJ1c2VyIl19.WQM8WPHScHP923ef0nGDprq7939wzb5_zgexC630OKo",
+    "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0MiIsImV4cCI6NDEwMjQ0NDgwMCwidHlwZSI6InJlZnJlc2gifQ.YPdMMwHNuc1ZzDAYmz3rTAikG610lNeK4cuYBj543_8"
+  }
+}

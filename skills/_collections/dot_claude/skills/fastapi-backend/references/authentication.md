@@ -1,5 +1,7 @@
 # Authentication Patterns for FastAPI
 
+Install `PyJWT[crypto]` using the pinned project-template requirements. The examples use a configured algorithm allowlist and preserve the prior rejection of tokens containing `aud` or `at_hash`: these local token flows do not configure an audience or an OpenID access token. If adding OpenID Connect later, implement its audience and hash validation explicitly. Existing scaffold-issued HS256 tokens remain compatible; PyJWT also rejects future `iat` values and expires tokens at the expiration boundary.
+
 ## JWT Authentication Flow
 
 ### Overview
@@ -54,7 +56,8 @@ def get_password_hash(password: str) -> str:
 ```python
 # app/core/security.py
 from datetime import datetime, timedelta
-from jose import jwt
+import jwt
+from jwt.exceptions import InvalidTokenError
 from app.core.config import settings
 
 def create_access_token(subject: str, scopes: list[str] = None) -> str:
@@ -91,6 +94,18 @@ def create_refresh_token(subject: str) -> str:
         algorithm=settings.ALGORITHM
     )
     return encoded_jwt
+
+def decode_token(token: str) -> dict:
+    """Verify a token using configured keys and the local-token claim policy."""
+    key = jwt.get_algorithm_by_name(settings.ALGORITHM).prepare_key(settings.SECRET_KEY)
+    # Private asymmetric keys sign tokens; their public half verifies them.
+    if hasattr(key, "public_key"):
+        key = key.public_key()
+    payload = jwt.decode(token, key, algorithms=[settings.ALGORITHM])
+    # No audience or OpenID access token is configured for these tokens.
+    if "aud" in payload or "at_hash" in payload:
+        raise InvalidTokenError("Unsupported audience or access-token hash")
+    return payload
 ```
 
 ### Login Endpoint
@@ -183,9 +198,11 @@ async def authenticate(
 from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt, JWTError
+import jwt
+from jwt.exceptions import InvalidTokenError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
+from app.core.security import decode_token
 from app import crud
 from app.models.user import User
 
@@ -203,18 +220,14 @@ async def get_current_user(
     )
 
     try:
-        payload = jwt.decode(
-            token,
-            settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM]
-        )
+        payload = decode_token(token)
         user_id: str = payload.get("sub")
         token_type: str = payload.get("type")
 
         if user_id is None or token_type != "access":
             raise credentials_exception
 
-    except JWTError:
+    except InvalidTokenError:
         raise credentials_exception
 
     user = await crud.user.get(db, id=int(user_id))
@@ -251,6 +264,7 @@ async def get_current_superuser(
 ```python
 # app/api/endpoints/auth.py
 from app.schemas.token import TokenRefresh
+from app.core.security import decode_token
 
 @router.post("/refresh", response_model=Token)
 async def refresh_token(
@@ -264,18 +278,14 @@ async def refresh_token(
     )
 
     try:
-        payload = jwt.decode(
-            refresh_token.refresh_token,
-            settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM]
-        )
+        payload = decode_token(refresh_token.refresh_token)
         user_id: str = payload.get("sub")
         token_type: str = payload.get("type")
 
         if user_id is None or token_type != "refresh":
             raise credentials_exception
 
-    except JWTError:
+    except InvalidTokenError:
         raise credentials_exception
 
     user = await crud.user.get(db, id=int(user_id))
@@ -301,6 +311,7 @@ async def refresh_token(
 ```python
 # app/api/deps.py
 from fastapi import Security
+from app.core.security import decode_token
 
 def require_scopes(required_scopes: list[str]):
     """Factory for scope-based authorization."""
@@ -309,7 +320,7 @@ def require_scopes(required_scopes: list[str]):
         token: str = Depends(oauth2_scheme)
     ):
         # Decode token
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = decode_token(token)
         token_scopes = payload.get("scopes", [])
 
         # Check scopes

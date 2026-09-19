@@ -9,8 +9,7 @@ asyncpg==0.29.0
 alembic==1.13.1
 
 # Authentication
-python-jose[cryptography]==3.5.0
-pyasn1>=0.6.4,<0.7
+PyJWT[crypto]==2.14.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.31
 

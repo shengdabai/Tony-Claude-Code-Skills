@@ -4,7 +4,8 @@ Includes JWT encoding/decoding and OAuth2 password flow setup.
 """
 from datetime import datetime, timedelta
 from typing import Optional, Any
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -69,6 +70,19 @@ def create_refresh_token(data: dict) -> str:
     return encoded_jwt
 
 
+def decode_token(token: str) -> dict:
+    """Verify a token using configured keys and the local-token claim policy."""
+    key = jwt.get_algorithm_by_name(ALGORITHM).prepare_key(SECRET_KEY)
+    # Private asymmetric keys sign tokens; their public half verifies them.
+    if hasattr(key, "public_key"):
+        key = key.public_key()
+    payload = jwt.decode(token, key, algorithms=[ALGORITHM])
+    # No audience or OpenID access token is configured for these tokens.
+    if "aud" in payload or "at_hash" in payload:
+        raise InvalidTokenError("Unsupported audience or access-token hash")
+    return payload
+
+
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> TokenData:
     """
     Dependency to get the current user from JWT token.
@@ -81,13 +95,13 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> TokenData:
     )
 
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = decode_token(token)
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
         token_scopes = payload.get("scopes", [])
         token_data = TokenData(username=username, scopes=token_scopes)
-    except JWTError:
+    except InvalidTokenError:
         raise credentials_exception
 
     return token_data
