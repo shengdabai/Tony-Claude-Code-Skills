@@ -23,7 +23,7 @@ PGLITE_DIR="$HOME/.gbrain/brain.pglite"
 
 # 兜底:canonical 源不在时退回桌面副本。
 if [ ! -f "$CLI" ]; then
-  CLI="$HOME/Desktop/01-项目开发/00-Home-Projects/gbrain/src/cli.ts"
+  CLI="$HOME/Desktop/01-项目开发/00-Home-Projects/02-gbrain/src/cli.ts"
 fi
 
 if [ ! -f "$CLI" ]; then

@@ -23,7 +23,7 @@ PGLITE_DIR="$HOME/.gbrain/brain.pglite"
 
 # 兜底:canonical 源不在时,退回桌面 git 仓库副本。
 if [ ! -f "$GBRAIN_SRC" ]; then
-  GBRAIN_SRC="$HOME/Desktop/01-项目开发/00-Home-Projects/gbrain/src/cli.ts"
+  GBRAIN_SRC="$HOME/Desktop/01-项目开发/00-Home-Projects/02-gbrain/src/cli.ts"
 fi
 
 # 匹配真实 serve 进程签名 "gbrain/src/cli.ts serve"。本 wrapper 自身 argv 是

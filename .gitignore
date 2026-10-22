@@ -106,3 +106,7 @@ id_dsa
 node_modules
 .venv
 *.nosync
+
+# macOS/iCloud conflict copies numbered 3-9 (e.g. "SKILL 3.md", "sections 3")
+**/* [3-9].*
+**/* [3-9]
