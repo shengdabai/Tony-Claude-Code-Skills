@@ -39,9 +39,9 @@ case "$BASENAME" in
         DENY_REASON="密钥/证书文件" ;;
     id_rsa|id_rsa.*|id_ed25519|id_ed25519.*|id_ecdsa|id_ecdsa.*|id_dsa|id_dsa.*)
         DENY_REASON="SSH 私钥" ;;
-    credentials|credentials.json|credentials.yaml|credentials.yml)
+    credentials|credentials.*)
         DENY_REASON="凭证文件" ;;
-    secrets|secrets.json|secrets.yaml|secrets.yml|secrets.env)
+    secrets|secrets.*)
         DENY_REASON="secrets 文件" ;;
     .npmrc|.pypirc|.netrc|.pgpass|.my.cnf)
         DENY_REASON="工具凭证文件" ;;
