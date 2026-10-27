@@ -34,10 +34,7 @@ Smart Browser - 智能网页内容获取工具
 选项:
   --method <auto|bb|browse|both>  指定使用的方法 (默认: auto)
   --output <path>                 输出文件路径
-  --format <text|json|markdown>   输出格式 (默认: markdown)
-  --depth <n>                     内容获取深度 (默认: 3)
   --screenshot                    同时获取截图
-  --full-page                     获取完整页面内容
   --help                          显示帮助
 
 示例:
@@ -215,10 +212,7 @@ main() {
     local url=""
     local method="auto"
     local output=""
-    local format="markdown"
-    local depth="3"
     local screenshot="false"
-    local full_page="false"
 
     # 解析参数
     while [[ $# -gt 0 ]]; do
@@ -231,20 +225,8 @@ main() {
                 output="$2"
                 shift 2
                 ;;
-            --format)
-                format="$2"
-                shift 2
-                ;;
-            --depth)
-                depth="$2"
-                shift 2
-                ;;
             --screenshot)
                 screenshot="true"
-                shift
-                ;;
-            --full-page)
-                full_page="true"
                 shift
                 ;;
             --help)
