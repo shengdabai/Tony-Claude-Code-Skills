@@ -106,10 +106,10 @@ fi
 
 # ── 5. Check config risks ──
 if [ -f "$SETTINGS" ]; then
-  has_bypass=$(grep -c "bypassPermissions" "$SETTINGS" 2>/dev/null || echo "0")
-  has_skip_dangerous=$(grep -c "skipDangerousModePermissionPrompt" "$SETTINGS" 2>/dev/null || echo "0")
+  has_bypass=$(grep -c "bypassPermissions" "$SETTINGS" 2>/dev/null || true)  # grep -c already prints 0 on no match
+  has_skip_dangerous=$(grep -c "skipDangerousModePermissionPrompt" "$SETTINGS" 2>/dev/null || true)  # grep -c already prints 0 on no match
 
-  if [ "$has_bypass" -gt 0 ] && [ "$has_skip_dangerous" -gt 0 ]; then
+  if [ "${has_bypass:-0}" -gt 0 ] && [ "${has_skip_dangerous:-0}" -gt 0 ]; then
     warnings+=("🔵 INFO: bypassPermissions + skipDangerousModePermissionPrompt 已开启 — 这是官方功能不会封号，但会降低对恶意插件/hooks 的防护")
   fi
 fi
@@ -129,7 +129,7 @@ if cd "$HOME" 2>/dev/null && git rev-parse --git-dir &>/dev/null; then
 fi
 
 # ── 7. Check telemetry data accumulation ──
-telemetry_files=$(find "$CLAUDE_DIR/telemetry" -name "*.json" 2>/dev/null | wc -l | tr -d ' ')
+telemetry_files=$({ find "$CLAUDE_DIR/telemetry" -name "*.json" 2>/dev/null || true; } | wc -l | tr -d ' ')  # no telemetry dir is fine under pipefail
 if [ "${telemetry_files:-0}" -gt 0 ]; then
   warnings+=("🟡 WARNING: 发现 ${telemetry_files} 个遥测数据文件残留 — 包含个人信息，建议清理: rm ~/.claude/telemetry/*.json")
   risk_level=$((risk_level > 2 ? risk_level : 2))
@@ -140,7 +140,7 @@ for f in "$CLAUDE_DIR/settings.json" "$HOME/.claude.json" "$CLAUDE_DIR/.env.secr
   if [ -f "$f" ]; then
     perms=$(stat -f "%Lp" "$f" 2>/dev/null || stat -c "%a" "$f" 2>/dev/null || echo "unknown")
     if [ "$perms" != "600" ] && [ "$perms" != "unknown" ]; then
-      warnings+=("🟡 WARNING: $f 权限为 $perms（应为 600）— 其他用户可读取你的密钥")
+      warnings+=("🟡 WARNING: $f 权限为 ${perms}（应为 600）— 其他用户可读取你的密钥")
       risk_level=$((risk_level > 2 ? risk_level : 2))
     fi
   fi
