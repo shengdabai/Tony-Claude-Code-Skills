@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/design-html/SKILL.md
+../gstack/design-html/SKILL.md

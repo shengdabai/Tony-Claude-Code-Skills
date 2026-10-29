@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/setup-gbrain/SKILL.md
+../gstack/setup-gbrain/SKILL.md

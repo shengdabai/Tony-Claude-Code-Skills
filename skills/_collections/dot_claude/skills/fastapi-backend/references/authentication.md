@@ -221,16 +221,17 @@ async def get_current_user(
 
     try:
         payload = decode_token(token)
-        user_id: str = payload.get("sub")
+        subject = payload.get("sub")
         token_type: str = payload.get("type")
 
-        if user_id is None or token_type != "access":
+        if not isinstance(subject, str) or token_type != "access":
             raise credentials_exception
+        user_id = int(subject)
 
-    except InvalidTokenError:
+    except (InvalidTokenError, ValueError):
         raise credentials_exception
 
-    user = await crud.user.get(db, id=int(user_id))
+    user = await crud.user.get(db, user_id=user_id)
     if user is None:
         raise credentials_exception
 
@@ -279,16 +280,17 @@ async def refresh_token(
 
     try:
         payload = decode_token(refresh_token.refresh_token)
-        user_id: str = payload.get("sub")
+        subject = payload.get("sub")
         token_type: str = payload.get("type")
 
-        if user_id is None or token_type != "refresh":
+        if not isinstance(subject, str) or token_type != "refresh":
             raise credentials_exception
+        user_id = int(subject)
 
-    except InvalidTokenError:
+    except (InvalidTokenError, ValueError):
         raise credentials_exception
 
-    user = await crud.user.get(db, id=int(user_id))
+    user = await crud.user.get(db, user_id=user_id)
     if not user or not user.is_active:
         raise credentials_exception
 
@@ -311,6 +313,7 @@ async def refresh_token(
 ```python
 # app/api/deps.py
 from fastapi import Security
+from jwt.exceptions import InvalidTokenError
 from app.core.security import decode_token
 
 def require_scopes(required_scopes: list[str]):
@@ -319,9 +322,19 @@ def require_scopes(required_scopes: list[str]):
         db: AsyncSession = Depends(get_db),
         token: str = Depends(oauth2_scheme)
     ):
-        # Decode token
-        payload = decode_token(token)
-        token_scopes = payload.get("scopes", [])
+        credentials_exception = HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        try:
+            payload = decode_token(token)
+            token_scopes = payload.get("scopes", [])
+            if payload.get("type") != "access" or not isinstance(token_scopes, list) or any(not isinstance(scope, str) for scope in token_scopes):
+                raise credentials_exception
+            user_id = int(payload.get("sub"))
+        except (InvalidTokenError, ValueError, TypeError):
+            raise credentials_exception
 
         # Check scopes
         for scope in required_scopes:
@@ -332,8 +345,9 @@ def require_scopes(required_scopes: list[str]):
                 )
 
         # Get and return user
-        user_id = int(payload.get("sub"))
-        user = await crud.user.get(db, id=user_id)
+        user = await crud.user.get(db, user_id=user_id)
+        if user is None:
+            raise credentials_exception
         return user
 
     return check_scopes

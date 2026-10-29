@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/plan-eng-review/SKILL.md
+../gstack/plan-eng-review/SKILL.md

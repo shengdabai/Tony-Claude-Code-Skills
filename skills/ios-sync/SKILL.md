@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/ios-sync/SKILL.md
+../gstack/ios-sync/SKILL.md

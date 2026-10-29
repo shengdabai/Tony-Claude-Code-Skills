@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/pair-agent/SKILL.md
+../gstack/pair-agent/SKILL.md

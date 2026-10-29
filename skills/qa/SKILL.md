@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/qa/SKILL.md
+../gstack/qa/SKILL.md

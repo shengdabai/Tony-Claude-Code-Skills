@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/scrape/SKILL.md
+../gstack/scrape/SKILL.md

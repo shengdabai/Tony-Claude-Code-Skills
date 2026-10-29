@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/context-restore/SKILL.md
+../gstack/context-restore/SKILL.md

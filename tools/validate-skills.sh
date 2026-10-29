@@ -24,9 +24,12 @@ for skill_dir in "$SKILLS_DIR"/*/; do
   [ -d "$skill_dir" ] || continue
   skill_name=$(basename "$skill_dir")
 
-  # Match CI: these directories contain collections, not standalone skills.
+  # Explicit vendored collection roots (verified against their READMEs).
+  # Do not infer a collection merely because its SKILL.md is missing.
   case "$skill_name" in
-    _repos|_collections|0) continue ;;
+    _repos|_collections|0|JamesPrial-github-skills|d-kimuson-dotfiles|\
+    rghamilton3-dotfiles|rsmdt-the-startup|superpowers|\
+    travisvn-awesome-claude-skills|wshobson-agents) continue ;;
   esac
 
   # Check for required files
@@ -37,10 +40,9 @@ for skill_dir in "$SKILLS_DIR"/*/; do
     FAIL=$((FAIL + 1))
   fi
 
-  # Check for empty skills
-  file_count=$(find "$skill_dir" -type f | wc -l)
-  if [ "$file_count" -eq 0 ]; then
-    echo "FAIL: $skill_name is empty"
+  # A readable linked document is sufficient; find -type f skips file symlinks.
+  if [ -f "$skill_dir/SKILL.md" ] && [ ! -s "$skill_dir/SKILL.md" ]; then
+    echo "FAIL: $skill_name has empty SKILL.md"
     FAIL=$((FAIL + 1))
   fi
 done

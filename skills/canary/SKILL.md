@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/canary/SKILL.md
+../gstack/canary/SKILL.md

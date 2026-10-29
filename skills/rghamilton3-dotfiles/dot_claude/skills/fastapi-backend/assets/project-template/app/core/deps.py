@@ -41,13 +41,14 @@ async def get_current_user(
 
     try:
         payload = decode_token(token)
-        user_id: str = payload.get("sub")
-        if user_id is None:
+        subject = payload.get("sub")
+        if not isinstance(subject, str) or payload.get("type") != "access":
             raise credentials_exception
-    except InvalidTokenError:
+        user_id = int(subject)
+    except (InvalidTokenError, ValueError):
         raise credentials_exception
 
-    user = await crud.user.get(db, id=int(user_id))
+    user = await crud.user.get(db, user_id=user_id)
     if user is None:
         raise credentials_exception
 

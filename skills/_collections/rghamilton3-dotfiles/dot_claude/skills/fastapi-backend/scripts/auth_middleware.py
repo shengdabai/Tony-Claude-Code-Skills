@@ -97,9 +97,11 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> TokenData:
     try:
         payload = decode_token(token)
         username: str = payload.get("sub")
-        if username is None:
+        if not isinstance(username, str) or not username or payload.get("type") != "access":
             raise credentials_exception
         token_scopes = payload.get("scopes", [])
+        if not isinstance(token_scopes, list) or any(not isinstance(scope, str) for scope in token_scopes):
+            raise credentials_exception
         token_data = TokenData(username=username, scopes=token_scopes)
     except InvalidTokenError:
         raise credentials_exception

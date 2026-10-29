@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/plan-tune/SKILL.md
+../gstack/plan-tune/SKILL.md

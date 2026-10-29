@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/setup-deploy/SKILL.md
+../gstack/setup-deploy/SKILL.md

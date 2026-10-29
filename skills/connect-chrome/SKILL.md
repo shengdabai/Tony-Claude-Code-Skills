@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/connect-chrome/SKILL.md
+../gstack/connect-chrome/SKILL.md

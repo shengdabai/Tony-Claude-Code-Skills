@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/cso/SKILL.md
+../gstack/cso/SKILL.md

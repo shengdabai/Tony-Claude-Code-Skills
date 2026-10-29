@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/benchmark/SKILL.md
+../gstack/benchmark/SKILL.md
