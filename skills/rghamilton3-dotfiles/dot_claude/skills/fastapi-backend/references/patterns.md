@@ -45,7 +45,7 @@ Always use `async def` for route handlers that perform I/O operations:
 ```python
 @app.get("/users/{user_id}")
 async def read_user(user_id: int, db: AsyncSession = Depends(get_db)):
-    user = await crud.user.get(db, id=user_id)
+    user = await crud.user.get(db, user_id=user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
@@ -161,7 +161,7 @@ async def read_user(
     db: AsyncSession = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_current_user)
 ):
-    user = await crud.user.get(db, id=user_id)
+    user = await crud.user.get(db, user_id=user_id)
     if current_user and (current_user.id == user_id or current_user.is_superuser):
         return user  # Full User model
     return PublicUser.model_validate(user)  # Limited public model

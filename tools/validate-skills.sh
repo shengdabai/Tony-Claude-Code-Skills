@@ -7,6 +7,9 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SKILLS_DIR="$REPO_DIR/skills"
+# Match CI: collection roots are defined in the shared helper.
+# shellcheck source=tools/skill-collections.sh
+source "$REPO_DIR/tools/skill-collections.sh"
 PASS=0
 FAIL=0
 
@@ -24,13 +27,9 @@ for skill_dir in "$SKILLS_DIR"/*/; do
   [ -d "$skill_dir" ] || continue
   skill_name=$(basename "$skill_dir")
 
-  # Explicit vendored collection roots (verified against their READMEs).
-  # Do not infer a collection merely because its SKILL.md is missing.
-  case "$skill_name" in
-    _repos|_collections|0|JamesPrial-github-skills|d-kimuson-dotfiles|\
-    rghamilton3-dotfiles|rsmdt-the-startup|superpowers|\
-    travisvn-awesome-claude-skills|wshobson-agents) continue ;;
-  esac
+  if is_skill_collection "$skill_name"; then
+    continue
+  fi
 
   # Check for required files
   if [ -f "$skill_dir/SKILL.md" ]; then
