@@ -1,10 +1,11 @@
+#!/usr/bin/env bash
 # Skills Validation Test Suite
 
 set -euo pipefail
 
 # Validates that all skills in the skills/ directory have proper structure
 
-REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SKILLS_DIR="$REPO_DIR/skills"
 PASS=0
 FAIL=0
@@ -22,6 +23,11 @@ fi
 for skill_dir in "$SKILLS_DIR"/*/; do
   [ -d "$skill_dir" ] || continue
   skill_name=$(basename "$skill_dir")
+
+  # Match CI: these directories contain collections, not standalone skills.
+  case "$skill_name" in
+    _repos|_collections|0) continue ;;
+  esac
 
   # Check for required files
   if [ -f "$skill_dir/SKILL.md" ]; then
@@ -56,6 +62,9 @@ if [ -f "$REPO_DIR/install.sh" ]; then
     echo "FAIL: install.sh has syntax errors"
     FAIL=$((FAIL + 1))
   fi
+else
+  echo "FAIL: install.sh not found"
+  FAIL=$((FAIL + 1))
 fi
 
 # 5. Check NOTICE.md exists

@@ -55,7 +55,9 @@ run() {
   fi
 }
 
-mkdir -p "$CLAUDE_DIR"
+if [[ $DRY -eq 0 ]]; then
+  mkdir -p "$CLAUDE_DIR"
+fi
 
 # Step 1: my-config → ~/.claude/{rules,scripts,agents,commands,hooks,output-styles}
 echo ""
@@ -77,7 +79,9 @@ done
 # Step 2: skills/ → ~/.claude/skills/
 echo ""
 echo "[2/4] Deploying 100+ skills to ~/.claude/skills/..."
-mkdir -p "$CLAUDE_DIR/skills"
+if [[ $DRY -eq 0 ]]; then
+  mkdir -p "$CLAUDE_DIR/skills"
+fi
 for skill_dir in "$REPO_DIR/skills"/*/; do
   name=$(basename "$skill_dir")
   dst="$CLAUDE_DIR/skills/$name"
