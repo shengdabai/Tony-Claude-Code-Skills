@@ -15,6 +15,7 @@ jobs:
       - name: Validate SKILL.md frontmatter (warnings only)
         run: |
           set +e
+          source tools/skill-collections.sh
           warn=0
           total=0
           ok=0
@@ -24,11 +25,9 @@ jobs:
             skill_name=$(basename "$dir")
 
             # Skip infrastructure / collection containers
-            case "$skill_name" in
-              _repos|_collections|0)
-                continue
-                ;;
-            esac
+            if is_skill_collection "$skill_name"; then
+              continue
+            fi
 
             total=$((total+1))
             if [ ! -f "$dir/SKILL.md" ]; then

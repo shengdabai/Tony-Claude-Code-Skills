@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/autoplan/SKILL.md
+../gstack/autoplan/SKILL.md

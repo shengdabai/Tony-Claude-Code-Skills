@@ -3,6 +3,7 @@
 Run from the skill directory with pytest tests/test_jwt_migration.py.
 Database lookup is stubbed: these checks exercise JWT behavior, not CRUD.
 """
+import ast
 import importlib
 import importlib.metadata
 import importlib.util
@@ -10,7 +11,7 @@ import json
 import sys
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import create_autospec
 
 import jwt
 import pytest
@@ -40,7 +41,7 @@ def auth(tmp_path_factory):
         middleware = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(middleware)
         patch.setattr(middleware, "SECRET_KEY", KEY)
-        lookup = AsyncMock(return_value=SimpleNamespace(id=42))
+        lookup = create_autospec(deps.crud.user.get, return_value=SimpleNamespace(id=42))
         patch.setattr(deps.crud.user, "get", lookup)
         app = FastAPI()
         app.dependency_overrides[deps.get_db] = lambda: None
@@ -53,6 +54,17 @@ def auth(tmp_path_factory):
         async def middleware_route(user=Depends(middleware.get_current_user)):
             return {"sub": user.username}
 
+        # Execute the documented scope factory, not a separate test implementation.
+        reference = (ROOT / "references/authentication.md").read_text()
+        code = reference.split("### Scope-Based Authorization", 1)[1].split("```python\n", 1)[1].split("\n```", 1)[0]
+        factory = next(node for node in ast.parse(code).body if isinstance(node, ast.FunctionDef) and node.name == "require_scopes")
+        namespace = vars(deps).copy()
+        exec(compile(ast.Module(body=[factory], type_ignores=[]), "<scope-reference>", "exec"), namespace)
+
+        @app.get("/scoped")
+        async def scoped_route(user=Depends(namespace["require_scopes"](["admin"]))):
+            return {"sub": str(user.id)}
+
         with TestClient(app) as client:
             yield SimpleNamespace(
                 security=security, deps=deps, middleware=middleware,
@@ -61,7 +73,7 @@ def auth(tmp_path_factory):
 
 
 def signed(**claims):
-    return jwt.encode({"sub": "42", "exp": 4102444800, **claims}, KEY, algorithm="HS256")
+    return jwt.encode({"sub": "42", "type": "access", "exp": 4102444800, **claims}, KEY, algorithm="HS256")
 
 
 @pytest.mark.parametrize("route", ["template", "middleware"])
@@ -111,7 +123,7 @@ BAD_TOKENS = {
 }
 
 
-@pytest.mark.parametrize("route", ["template", "middleware"])
+@pytest.mark.parametrize("route", ["template", "middleware", "scoped"])
 @pytest.mark.parametrize("token", BAD_TOKENS.values(), ids=BAD_TOKENS.keys())
 def test_invalid_tokens_keep_bearer_401(auth, route, token):
     auth.lookup.reset_mock()
@@ -152,7 +164,7 @@ async def test_scope_authorization_unchanged(auth):
 
 @pytest.mark.parametrize("route", ["template", "middleware"])
 def test_preexisting_optional_claims_remain_optional(auth, route):
-    token = jwt.encode({"sub": "42"}, KEY, algorithm="HS256")
+    token = jwt.encode({"sub": "42", "type": "access"}, KEY, algorithm="HS256")
     response = auth.client.get(f"/{route}", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
 
@@ -213,3 +225,62 @@ def test_configured_asymmetric_private_key(auth, monkeypatch, route, algorithm):
     response = auth.client.get(f"/{route}", headers={"Authorization": f"Bearer {invalid}"})
     assert response.status_code == 401
     assert response.headers["www-authenticate"] == "Bearer"
+
+
+@pytest.mark.parametrize("route", ["template", "middleware", "scoped"])
+@pytest.mark.parametrize("token_type", ["refresh", None, "unknown", 1, ["access"]])
+def test_only_access_tokens_authenticate(auth, route, token_type):
+    claims = {"sub": "42", "scopes": ["admin"]}
+    if token_type is not None:
+        claims["type"] = token_type
+    token = jwt.encode(claims, KEY, algorithm="HS256")
+    auth.lookup.reset_mock()
+    response = auth.client.get(f"/{route}", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 401, response.text
+    assert response.headers["www-authenticate"] == "Bearer"
+    auth.lookup.assert_not_called()
+
+
+@pytest.mark.parametrize("subject", ["not-an-id", "", "1.5", "1" * 5000])
+def test_invalid_database_subject_returns_401(auth, subject):
+    auth.lookup.reset_mock()
+    response = auth.client.get("/template", headers={"Authorization": f"Bearer {signed(sub=subject)}"})
+    assert response.status_code == 401, response.text
+    auth.lookup.assert_not_called()
+
+
+@pytest.mark.parametrize("route", ["middleware", "scoped"])
+@pytest.mark.parametrize("scopes", ["admin", None, [1], {"admin": True}])
+def test_invalid_scopes_return_401(auth, route, scopes):
+    response = auth.client.get(f"/{route}", headers={"Authorization": f"Bearer {signed(scopes=scopes)}"})
+    assert response.status_code == 401, response.text
+    assert response.headers["www-authenticate"] == "Bearer"
+
+
+def test_scoped_reference_allows_required_scope(auth):
+    response = auth.client.get("/scoped", headers={"Authorization": f"Bearer {signed(scopes=['admin'])}"})
+    assert response.status_code == 200, response.text
+    auth.lookup.assert_awaited_with(None, user_id=42)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("section, name, kind", [
+    ("### Protected Route Dependencies", "get_current_user", "access"),
+    ("### Refresh Token Endpoint", "refresh_token", "refresh"),
+])
+async def test_reference_user_lookup_matches_crud(auth, section, name, kind):
+    reference = (ROOT / "references/authentication.md").read_text()
+    code = reference.split(section, 1)[1].split("```python\n", 1)[1].split("\n```", 1)[0]
+    node = next(node for node in ast.parse(code).body if isinstance(node, ast.AsyncFunctionDef) and node.name == name)
+    node.decorator_list = []
+    namespace = vars(auth.deps).copy()
+    namespace.update(deps=auth.deps, security=auth.security, TokenRefresh=object, Token=dict)
+    exec(compile(ast.Module(body=[node], type_ignores=[]), "<auth-reference>", "exec"), namespace)
+    auth.lookup.return_value = SimpleNamespace(id=42, is_active=True, is_superuser=False)
+    token = signed(type=kind)
+    try:
+        kwargs = {"token": token} if kind == "access" else {"refresh_token": SimpleNamespace(refresh_token=token)}
+        await namespace[name](db=None, **kwargs)
+        auth.lookup.assert_awaited_with(None, user_id=42)
+    finally:
+        auth.lookup.return_value = SimpleNamespace(id=42)

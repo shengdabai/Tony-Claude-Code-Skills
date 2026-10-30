@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/ship/SKILL.md
+../gstack/ship/SKILL.md

@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/diagram/SKILL.md
+../gstack/diagram/SKILL.md

@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/unfreeze/SKILL.md
+../gstack/unfreeze/SKILL.md

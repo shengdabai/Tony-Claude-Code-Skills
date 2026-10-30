@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/devex-review/SKILL.md
+../gstack/devex-review/SKILL.md

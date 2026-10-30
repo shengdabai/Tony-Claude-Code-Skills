@@ -1,11 +1,15 @@
+#!/usr/bin/env bash
 # Skills Validation Test Suite
 
 set -euo pipefail
 
 # Validates that all skills in the skills/ directory have proper structure
 
-REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SKILLS_DIR="$REPO_DIR/skills"
+# Match CI: collection roots are defined in the shared helper.
+# shellcheck source=tools/skill-collections.sh
+source "$REPO_DIR/tools/skill-collections.sh"
 PASS=0
 FAIL=0
 
@@ -23,6 +27,10 @@ for skill_dir in "$SKILLS_DIR"/*/; do
   [ -d "$skill_dir" ] || continue
   skill_name=$(basename "$skill_dir")
 
+  if is_skill_collection "$skill_name"; then
+    continue
+  fi
+
   # Check for required files
   if [ -f "$skill_dir/SKILL.md" ]; then
     PASS=$((PASS + 1))
@@ -31,10 +39,9 @@ for skill_dir in "$SKILLS_DIR"/*/; do
     FAIL=$((FAIL + 1))
   fi
 
-  # Check for empty skills
-  file_count=$(find "$skill_dir" -type f | wc -l)
-  if [ "$file_count" -eq 0 ]; then
-    echo "FAIL: $skill_name is empty"
+  # A readable linked document is sufficient; find -type f skips file symlinks.
+  if [ -f "$skill_dir/SKILL.md" ] && [ ! -s "$skill_dir/SKILL.md" ]; then
+    echo "FAIL: $skill_name has empty SKILL.md"
     FAIL=$((FAIL + 1))
   fi
 done
@@ -56,6 +63,9 @@ if [ -f "$REPO_DIR/install.sh" ]; then
     echo "FAIL: install.sh has syntax errors"
     FAIL=$((FAIL + 1))
   fi
+else
+  echo "FAIL: install.sh not found"
+  FAIL=$((FAIL + 1))
 fi
 
 # 5. Check NOTICE.md exists

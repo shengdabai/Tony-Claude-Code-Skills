@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/setup-browser-cookies/SKILL.md
+../gstack/setup-browser-cookies/SKILL.md

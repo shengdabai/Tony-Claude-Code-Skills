@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/office-hours/SKILL.md
+../gstack/office-hours/SKILL.md

@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/ios-clean/SKILL.md
+../gstack/ios-clean/SKILL.md

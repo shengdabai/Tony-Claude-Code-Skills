@@ -109,7 +109,7 @@ async def get_user(
     user_id: int,
     db: AsyncSession = Depends(get_db)
 ):
-    user = await crud.user.get(db, id=user_id)
+    user = await crud.user.get(db, user_id=user_id)
     if not user:
         raise NotFoundException(f"User with id {user_id} not found")
     return user

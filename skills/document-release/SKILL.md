@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/document-release/SKILL.md
+../gstack/document-release/SKILL.md

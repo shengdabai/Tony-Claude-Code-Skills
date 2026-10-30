@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/health/SKILL.md
+../gstack/health/SKILL.md

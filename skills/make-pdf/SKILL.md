@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/make-pdf/SKILL.md
+../gstack/make-pdf/SKILL.md

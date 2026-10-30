@@ -1,1 +1,1 @@
-$HOME/.gstack/repos/gstack/design-shotgun/SKILL.md
+../gstack/design-shotgun/SKILL.md

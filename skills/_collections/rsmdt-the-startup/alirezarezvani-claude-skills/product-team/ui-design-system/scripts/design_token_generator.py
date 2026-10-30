@@ -61,9 +61,7 @@ class DesignTokenGenerator:
                 },
                 'warning': {
                     'base': '#F59E0B',
-                    'light': '#FBB
-
-D24',
+                    'light': '#FBBD24',
                     'dark': '#D97706',
                     'contrast': '#FFFFFF'
                 },
@@ -477,6 +475,21 @@ D24',
         css.append('}')
         
         return '\n'.join(css)
+
+    def _export_as_scss(self, tokens: Dict) -> str:
+        """Export nested tokens as flattened SCSS variables."""
+        scss = []
+
+        def flatten_dict(obj, prefix=''):
+            for key, value in obj.items():
+                name = f'{prefix}-{key}' if prefix else key
+                if isinstance(value, dict):
+                    flatten_dict(value, name)
+                else:
+                    scss.append(f'${name}: {value};')
+
+        flatten_dict(tokens)
+        return '\n'.join(scss)
     
     def _hex_to_rgb(self, hex_color: str) -> Tuple[int, int, int]:
         """Convert hex to RGB"""

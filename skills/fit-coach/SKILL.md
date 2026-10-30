@@ -1,6 +1,7 @@
 ---
 name: fit-coach
-description: Professional fitness coach combining nutrition planning and adaptive training. Use when users mention fitness, workout, gym, exercise, diet, meal plan, weight loss, muscle gain, body composition, BMI, calories, macros, training schedule, or say they want to get fit / lose weight / build muscle. Triggers on Chinese keywords too: 健身, 减脂, 增肌, 饮食计划, 训练, 体脂, 卡路里, 蛋白质, 锻炼, 塑形, 健康.
+description: >-
+  Professional fitness coach combining nutrition planning and adaptive training. Use when users mention fitness, workout, gym, exercise, diet, meal plan, weight loss, muscle gain, body composition, BMI, calories, macros, training schedule, or say they want to get fit / lose weight / build muscle. Triggers on Chinese keywords too: 健身, 减脂, 增肌, 饮食计划, 训练, 体脂, 卡路里, 蛋白质, 锻炼, 塑形, 健康.
 ---
 
 # Fit Coach — Adaptive Fitness & Nutrition Coach
