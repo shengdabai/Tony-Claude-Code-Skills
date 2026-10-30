@@ -14,7 +14,7 @@ description: 飞书 bot 专用规则。仅当条用户消息顶部带 <bridge_co
 
 **仅当**本条用户消息顶部带有 `<bridge_context>` 块(即来自飞书 lark-channel-bridge bot),
 且正文正好是「记忆」「查看记忆」「看记忆」「查看所有ai对话记录」「ai对话记录」「我的记忆」之一时:
-直接用 Bash 运行 `/Volumes/2T/ai-memory-system/bin/ai-mem-feishu`,把它的 stdout **原样**回复
+直接用 Bash 运行 `<external-disk> stdout **原样**回复
 (已含飞书文档链接 + 状态,勿改写、勿追加解释、勿再贴 markdown)。约 7 秒,耐心等它跑完。
 **没有 `<bridge_context>` 块的会话(本地终端交互)绝不触发本规则**——那只是普通对话里出现了"记忆"二字。
 
@@ -54,7 +54,7 @@ LARK_CLI_NO_PROXY=1 lark-cli --profile cli_aa80e81017f85bc0 --as user \
 ## 🎛 飞书全设备指挥
 
 **仅当**本条消息带 `<bridge_context>` 块,且用户要求**操作/查看/重启设备、服务器、定时任务、agent、会话、健康状态**(如"看下上海云""重跑日报""服务器状态""Air 在线吗""现在有什么任务在跑""把 X 任务重启")时:
-先 Read `/Volumes/2T/ai-memory-system/command-center/docs/commander-playbook.md`(设备直达表 + 任务控制命令 + 安全红线),按手册执行。
+先 Read `<external-disk> + 任务控制命令 + 安全红线),按手册执行。
 要点:双云走 ssh 别名 shanghai / silicon-valley;破坏性操作必须先复述等用户回"确认";长任务先回"在跑了"再报结果;本地终端会话不触发本节。
 
 ## ✅ 飞书任务完成回复格式

@@ -56,7 +56,7 @@ status() {
     # —— 磁盘 ——
     echo ""
     echo "💾 磁盘:"
-    df -h / /System/Volumes/Data /Volumes/2T 2>/dev/null | awk 'NR==1 || /Data|2T|disk3s1s1/ {print "   " $0}'
+    df -h / /System<external-disk> <external-disk> 2>/dev/null | awk 'NR==1 || /Data|2T|disk3s1s1/ {print "   " $0}'
 
     # —— loop 健康 ——
     echo ""; echo "⚙️  守护 loop 状态:"

@@ -137,7 +137,7 @@ EOF
 
 ## 已建成的本地库
 
-**李笑来全集**：`/Volumes/2T/02-NotebookLM/Xiaolai李笑来/所有资料/电子书PDF/`
+**李笑来全集**：`<external-disk>
 来源全部为作者本人在 GitHub（`xiaolai` / `selfteaching` / `ZuodaoTech`）与 lixiaolai.com 的公开发布。
 同目录 `xiaolai share/` 是既有的音频与课程资料，**不要动**。
 

@@ -299,7 +299,7 @@ fi
 if command -v lark-cli >/dev/null 2>&1; then
   LARK_TMP="$(mktemp "${TMPDIR:-/tmp}/daily-doctor-lark.XXXXXX")"
   if LARK_CLI_NO_PROXY=1 lark-cli --profile cli_aa80e81017f85bc0 --as user \
-       im +chat-messages-list --chat-id oc_43c5ee271f2b76bd073779a169736142 --page-size 50 >"$LARK_TMP" 2>/dev/null; then
+       im +chat-messages-list --chat-id oc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx --page-size 50 >"$LARK_TMP" 2>/dev/null; then
     DIGEST_COUNT="$(grep -o "盛大白每日 · ${TODAY}" "$LARK_TMP" | wc -l | tr -d ' ')"
     if [ "$DIGEST_COUNT" -eq 1 ]; then
       pass "飞书历史中当日 digest 恰好 1 条"
