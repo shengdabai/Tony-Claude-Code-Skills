@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 # ai-archive-daily.sh — launchd 每日驱动:轻量备份 + 备份轮转
-# 会话归一化与搜索已统一交给 /Volumes/2T/03-ai-memory-system/bin/ai-mem；
+# 会话归一化与搜索已统一交给 <external-disk>
 # 此任务不再写入 ~/AI-Archive/normalized，避免长期生成第二套会话库。
 # 用绝对路径,避免 nvm/pyenv lazy-load 在 launchd 环境 PATH 缺失
 set -Eeuo pipefail

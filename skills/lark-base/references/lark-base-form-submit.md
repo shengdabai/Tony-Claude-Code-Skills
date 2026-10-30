@@ -91,7 +91,7 @@ lark-cli base +form-submit \
   "多选字段": ["选项A", "选项B"],
   "时间字段": "2026-04-27 14:30:00",
   "复选框字段": true,
-  "人员字段": [{ "id": "ou_7094d131420c8749632145f08fbf114a" }],
+  "人员字段": [{ "id": "ou_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" }],
   "关联字段": [{ "id": "recXXXXXXXXXXXX" }],
   "地理位置字段": { "lng": 116.397428, "lat": 39.90923 }
 }

@@ -76,7 +76,7 @@ print("\n".join(out))
                 block "rm -rf 系统级目录 ${expanded}。" ;;
             "$home/Desktop"|"$home/Documents"|"$home/.claude"|"$home/.codex"|"$home/.ssh"|"$home/.config")
                 block "rm -rf 关键工作目录 ${expanded}。" ;;
-            "/Volumes/2T")
+            "<external-disk>")
                 block "rm -rf 整个 2T 外接硬盘挂载点。" ;;
             "*")
                 block "rm -rf 裸通配符 *，删除范围取决于当前目录，不可预测。" ;;

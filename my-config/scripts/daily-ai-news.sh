@@ -179,7 +179,7 @@ release_audit_ok() {
     grep -q "$TODAY" "$source" || { log "FATAL: 正文缺少发布日期 $TODAY: $relative"; rm -rf -- "$audit_dir"; return 1; }
     # sk- 必须带左边界，否则 "risk-management-framework-ai-rmf-10" 这类正常英文
     # 连字符长串会被误判成 OpenAI key（2026-08-27 因此漏发一次）。
-    if grep -Eq '(/Users/|/Volumes/|(^|[^A-Za-z0-9])sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|[A-Za-z0-9_]*(TOKEN|SECRET|API_KEY)[[:space:]]*[=:])' "$source"; then
+    if grep -Eq '(/Users/|<external-disk>)sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|[A-Za-z0-9_]*(TOKEN|SECRET|API_KEY)[[:space:]]*[=:])' "$source"; then
       log "FATAL: 脱敏检查命中内部路径或凭据模式: $relative"; rm -rf -- "$audit_dir"; return 1
     fi
     mkdir -p "$audit_dir/$(dirname "$relative")"

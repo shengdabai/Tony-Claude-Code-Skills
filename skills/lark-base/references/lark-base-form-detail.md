@@ -171,8 +171,8 @@ lark-cli base +form-detail \
 | 文本类（text / phone / email / url 等） | 字符串数组 | `["1", "2"]` |
 | 数字类（number） | 数字数组 | `[1, 2]` |
 | 选项类（select / multi_select） | 选项名称数组 | `["选项A", "选项B"]` |
-| 人员类（user） | open_id 数组 | `["ou_d57864434a537020cf7a4a681d393e2d"]` |
-| 群聊类（group_chat） | open_id 数组 | `["oc_f62478de5cc958583191e778db972603"]` |
+| 人员类（user） | open_id 数组 | `["ou_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]` |
+| 群聊类（group_chat） | open_id 数组 | `["oc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]` |
 | 地理位置（location） | 地点名称数组 | `["北京总部"]` |
 | 日期时间类（datetime） | 时间字符串数组，固定格式 `yyyy-MM-dd HH:mm:ss` | `["2026-05-07 14:30:00"]` |
 | 关联（link / duplexlink） | 记录 ID 数组 | `["recxxxxxxx", "recyyyyyyy"]` |
