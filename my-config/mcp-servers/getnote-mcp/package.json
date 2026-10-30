@@ -31,6 +31,6 @@
   "overrides": {
     "express-rate-limit": "^8.2.2",
     "hono": "^4.13.5",
-    "@hono/node-server": "^1.19.15"
+    "@hono/node-server": "^2.1.3"
   }
 }
