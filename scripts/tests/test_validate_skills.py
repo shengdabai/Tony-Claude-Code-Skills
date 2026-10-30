@@ -117,7 +117,82 @@ class ValidateSkillsTests(unittest.TestCase):
         document.symlink_to("missing.md")
         result = self.scan()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("demo missing SKILL.md", result.stdout)
+        self.assertIn(
+            "FAIL: demo/SKILL.md symlink -> 'missing.md' dangles", result.stdout)
+        self.assertIn("Failed: 1", result.stdout)
+
+    # Issue #17: a symlinked SKILL.md must resolve to a regular file inside
+    # the checkout; outside or dangling targets fail and name the entry.
+    def link_skill_document(self, target):
+        document = self.skill / "SKILL.md"
+        content = document.read_text()
+        document.unlink()
+        document.symlink_to(target)
+        return content
+
+    def test_link_outside_repository_fails_even_when_target_exists(self):
+        outside = Path(self.temp.name) / "outside.md"
+        outside.write_text(self.link_skill_document("../../../outside.md"))
+        result = self.scan()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(
+            "FAIL: demo/SKILL.md symlink -> '../../../outside.md' resolves "
+            "outside the repository", result.stdout)
+        self.assertIn("Failed: 1", result.stdout)
+
+    def test_absolute_link_outside_repository_fails(self):
+        outside = Path(self.temp.name) / "outside.md"
+        outside.write_text(self.link_skill_document(outside))
+        result = self.scan()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("demo/SKILL.md symlink ->", result.stdout)
+        self.assertIn("resolves outside the repository", result.stdout)
+
+    def test_dangling_absolute_link_fails(self):
+        self.link_skill_document(Path(self.temp.name) / "gone" / "SKILL.md")
+        result = self.scan()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("demo/SKILL.md symlink ->", result.stdout)
+        self.assertIn("dangles (target does not exist)", result.stdout)
+
+    def test_link_chain_inside_repository_passes(self):
+        content = self.link_skill_document("../shared/alias.md")
+        shared = self.root / "skills/shared"
+        shared.mkdir()
+        (shared / "real.md").write_text(content)
+        (shared / "alias.md").symlink_to("real.md")
+        (shared / "SKILL.md").write_text(content)
+        result = self.scan()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Failed: 0", result.stdout)
+
+    def test_link_through_repository_alias_path_passes(self):
+        (self.root / "shared.md").write_text(
+            self.link_skill_document("../../shared.md"))
+        alias = Path(self.temp.name) / "alias"
+        alias.symlink_to(self.root, target_is_directory=True)
+        result = subprocess.run(
+            ["bash", str(alias / "tools/validate-skills.sh")],
+            cwd=self.temp.name, capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Failed: 0", result.stdout)
+
+    def test_link_to_directory_inside_repository_fails(self):
+        self.link_skill_document("../../my-config/rules")
+        result = self.scan()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(
+            "FAIL: demo/SKILL.md symlink -> '../../my-config/rules' is not a "
+            "regular file", result.stdout)
+
+    def test_symlink_loop_fails(self):
+        self.link_skill_document("SKILL.md")
+        result = self.scan()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(
+            "FAIL: demo/SKILL.md symlink -> 'SKILL.md' is a symlink loop",
+            result.stdout)
 
 
 if __name__ == "__main__":

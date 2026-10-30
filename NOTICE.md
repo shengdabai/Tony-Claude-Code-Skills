@@ -20,6 +20,17 @@ If you are an author and want your work removed from this collection, please ope
 
 如果你是作者并希望从本收藏集中移除你的作品，请提 issue，我会在 24 小时内移除。
 
+## Local patches to vendored code / 第三方代码的本地补丁
+
+A re-sync from upstream overwrites these fixes. Re-apply them (or confirm upstream fixed them) after every re-sync; `scripts/tests/test_design_token_generator.py` fails if a fix is lost.
+
+从上游重新同步会覆盖以下修复。每次同步后重新应用（或确认上游已修复）；修复丢失时 `scripts/tests/test_design_token_generator.py` 会失败。
+
+| File 文件 | Local fix 本地修复 |
+|---|---|
+| `skills/rsmdt-the-startup/alirezarezvani-claude-skills/product-team/ui-design-system/scripts/design_token_generator.py` | Syntax fix in the `warning.light` color literal; adds the missing `_export_as_scss` method |
+| `skills/_collections/rsmdt-the-startup/alirezarezvani-claude-skills/product-team/ui-design-system/scripts/design_token_generator.py` | Same fix (second vendored copy) |
+
 ## My own work / 我的原创内容
 
 The following are written by me and licensed under MIT (do whatever you want, no warranty):
