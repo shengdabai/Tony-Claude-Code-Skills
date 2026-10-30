@@ -6,11 +6,19 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   validate-skills:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Validate SKILL.md frontmatter (warnings only)
         run: |
@@ -77,3 +85,23 @@ jobs:
             exit 1
           fi
           echo "✅ 无嵌套 .git"
+
+  script-tests:
+    name: Script tests and skill structure
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Run scripts/tests (all unittest suites)
+        run: python -m unittest discover -s scripts/tests -p 'test_*.py' -v
+
+      - name: Validate skill structure (tools/validate-skills.sh)
+        run: bash tools/validate-skills.sh
