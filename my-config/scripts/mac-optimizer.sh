@@ -12,6 +12,9 @@
 #   mem-guardian  每15min compressor 超阈时优雅退出 Genspark / 清孤儿 MCP
 #   cpu-throttler 每2min  系统CPU>80% 或热节流时 renice+taskpolicy 非白名单大户
 #   storage-advisor 每周  储存巡检报告
+#
+# 可选环境变量:
+#   EXT_DISK  外接硬盘挂载点(如 /Volumes/MyDisk)；设置后磁盘一栏会一并显示它。
 
 set -u
 export LC_ALL="en_US.UTF-8" LANG="en_US.UTF-8"
@@ -56,7 +59,9 @@ status() {
     # —— 磁盘 ——
     echo ""
     echo "💾 磁盘:"
-    df -h / /System<external-disk> <external-disk> 2>/dev/null | awk 'NR==1 || /Data|2T|disk3s1s1/ {print "   " $0}'
+    local df_targets=(/ /System/Volumes/Data)
+    [ -n "${EXT_DISK:-}" ] && df_targets+=("${EXT_DISK:-}")
+    df -h "${df_targets[@]}" 2>/dev/null | awk '{print "   " $0}'
 
     # —— loop 健康 ——
     echo ""; echo "⚙️  守护 loop 状态:"
