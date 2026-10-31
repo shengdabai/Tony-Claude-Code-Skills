@@ -105,3 +105,75 @@ jobs:
 
       - name: Validate skill structure (tools/validate-skills.sh)
         run: bash tools/validate-skills.sh
+
+  shell-syntax:
+    name: Shell syntax (bash -n on tracked *.sh)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: bash -n every tracked shell script
+        run: |
+          set -uo pipefail
+          fail=0
+          count=0
+          while IFS= read -r -d '' f; do
+            count=$((count + 1))
+            bash -n "$f" || { echo "FAIL: $f"; fail=1; }
+          done < <(git ls-files -z '*.sh')
+          echo "Checked $count shell scripts"
+          exit "$fail"
+
+  getnote-mcp:
+    name: getnote-mcp (npm ci + tsc)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: my-config/mcp-servers/getnote-mcp
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Install (lockfile, no install scripts)
+        run: npm ci --ignore-scripts
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+  alias-manager:
+    name: alias-manager (pnpm vitest + tsc)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: skills/d-kimuson-dotfiles/alias-manager
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: skills/d-kimuson-dotfiles/alias-manager/package.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Unit tests
+        run: pnpm vitest run
+
+      - name: Type-check
+        run: pnpm tsc --noEmit

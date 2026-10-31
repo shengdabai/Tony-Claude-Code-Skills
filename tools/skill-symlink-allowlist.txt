@@ -1,0 +1,44 @@
+# Skill directories under skills/ that are symlinks which dangle or point
+# outside this repository, accepted for now so CI stays green.
+# tools/validate-skills.sh reports each listed name as WARN instead of FAIL;
+# any other such symlink is a FAIL.
+# Pending decision in Issue #31 (vendor the skills, replace with real dirs, or
+# delete the links): https://github.com/shengdabai/Tony-Claude-Code-Skills/issues/31
+# Remove a name here as soon as its link is fixed. One name per line.
+
+algorithmic-art
+brand-guidelines
+canvas-design
+claude-api
+do
+doc-coauthoring
+docx
+frontend-design
+internal-comms
+make-plan
+mama
+mcp-builder
+mem-search
+p10
+p7
+p9
+pdf
+pptx
+pro
+pua
+pua-en
+pua-ja
+pua-loop
+shot
+skill-creator
+slack-gif-creator
+smart-explore
+smux
+template-skill
+theme-factory
+timeline-report
+web-access
+web-artifacts-builder
+webapp-testing
+xlsx
+yes

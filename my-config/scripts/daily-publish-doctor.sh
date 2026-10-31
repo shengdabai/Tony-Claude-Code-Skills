@@ -1,9 +1,14 @@
 #!/bin/bash
 # Tony Articles 每日发布链路只读体检：不生成、不提交、不推送、不发飞书。
+#
+# 必需环境变量:
+#   FEISHU_TARGET  daily-digest 推送的飞书群 chat_id(oc_ 开头,可带 feishu: 前缀),
+#                  用于回查当日 digest 条数。未设置时直接报错退出。
 set -uo pipefail
 
 WORK="${TONY_ARTICLES_WORK:-$HOME/.local/share/tony-articles}"
 TODAY="${DAILY_DOCTOR_DATE:-$(TZ=Asia/Shanghai date +%Y-%m-%d)}"
+FEISHU_TARGET="${FEISHU_TARGET:?set FEISHU_TARGET (Feishu chat id)}"
 SCRIPT_DIR="$HOME/.claude/scripts"
 COMMON="$SCRIPT_DIR/daily-publish-common.sh"
 PLISTS=(
@@ -299,7 +304,7 @@ fi
 if command -v lark-cli >/dev/null 2>&1; then
   LARK_TMP="$(mktemp "${TMPDIR:-/tmp}/daily-doctor-lark.XXXXXX")"
   if LARK_CLI_NO_PROXY=1 lark-cli --profile cli_aa80e81017f85bc0 --as user \
-       im +chat-messages-list --chat-id oc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx --page-size 50 >"$LARK_TMP" 2>/dev/null; then
+       im +chat-messages-list --chat-id "${FEISHU_TARGET#feishu:}" --page-size 50 >"$LARK_TMP" 2>/dev/null; then
     DIGEST_COUNT="$(grep -o "盛大白每日 · ${TODAY}" "$LARK_TMP" | wc -l | tr -d ' ')"
     if [ "$DIGEST_COUNT" -eq 1 ]; then
       pass "飞书历史中当日 digest 恰好 1 条"

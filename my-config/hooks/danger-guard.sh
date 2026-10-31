@@ -8,6 +8,10 @@
 #
 # 约定：exit 2 = 阻断并把 stderr 回传给模型；exit 0 = 放行。
 # 只拦「无法撤销且会毁掉真实工作」的操作，日常清理不受影响。
+#
+# 可选环境变量:
+#   DANGER_GUARD_EXTRA_PATHS  额外受保护路径，冒号分隔(如 /srv/data:/mnt/backup)。
+#                             精确匹配该路径本身(尾部斜杠可有可无)，不含其子路径。
 
 set -uo pipefail
 
@@ -76,11 +80,23 @@ print("\n".join(out))
                 block "rm -rf 系统级目录 ${expanded}。" ;;
             "$home/Desktop"|"$home/Documents"|"$home/.claude"|"$home/.codex"|"$home/.ssh"|"$home/.config")
                 block "rm -rf 关键工作目录 ${expanded}。" ;;
-            "<external-disk>")
-                block "rm -rf 整个 2T 外接硬盘挂载点。" ;;
+            /Volumes/*)
+                # 只拦外接卷挂载点本身(/Volumes/<name>)，卷内子路径照常放行
+                case "${expanded#/Volumes/}" in
+                    */*) ;;
+                    *) block "rm -rf 整个外接卷挂载点 ${expanded}。" ;;
+                esac ;;
             "*")
                 block "rm -rf 裸通配符 *，删除范围取决于当前目录，不可预测。" ;;
         esac
+
+        # 用户自定义的额外受保护路径(DANGER_GUARD_EXTRA_PATHS，冒号分隔)
+        while IFS= read -r extra; do
+            extra=${extra%/}
+            [ -z "$extra" ] && continue
+            [ "$expanded" = "$extra" ] \
+                && block "rm -rf 受保护路径 ${expanded}(DANGER_GUARD_EXTRA_PATHS)。"
+        done <<< "$(printf '%s' "${DANGER_GUARD_EXTRA_PATHS:-}" | tr ':' '\n')"
     done <<< "$targets"
 fi
 
