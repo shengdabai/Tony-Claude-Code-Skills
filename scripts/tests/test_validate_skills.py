@@ -195,5 +195,82 @@ class ValidateSkillsTests(unittest.TestCase):
             result.stdout)
 
 
+    # Issue #31: a skill DIRECTORY that is itself a symlink must resolve to a
+    # directory inside the checkout. Case A (SKILL.md symlink outside) is
+    # test_link_outside_repository_fails_even_when_target_exists above.
+    def write_allowlist(self, *names):
+        lines = ["# fixture allowlist", ""] + list(names)
+        (self.root / "tools/skill-symlink-allowlist.txt").write_text(
+            "\n".join(lines) + "\n")
+
+    def test_directory_link_outside_repository_fails(self):  # case B
+        outside = Path(self.temp.name) / "outside-skill"
+        outside.mkdir()
+        (outside / "SKILL.md").write_text("---\nname: x\ndescription: X\n---\n")
+        (self.root / "skills/outside").symlink_to(outside, target_is_directory=True)
+        result = self.scan()
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("FAIL: outside symlink ->", result.stdout)
+        self.assertIn("resolves outside the repository", result.stdout)
+        self.assertIn("Failed: 1", result.stdout)
+
+    def test_dangling_directory_link_fails(self):  # case C
+        (self.root / "skills/gone").symlink_to(
+            "../../.agents/skills/gone", target_is_directory=True)
+        result = self.scan()
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn(
+            "FAIL: gone symlink -> '../../.agents/skills/gone' dangles",
+            result.stdout)
+        self.assertIn("Failed: 1", result.stdout)
+
+    def test_allowlisted_directory_link_passes_with_warning(self):  # case D
+        self.write_allowlist("gone", "outside")
+        (self.root / "skills/gone").symlink_to(
+            "../../.agents/skills/gone", target_is_directory=True)
+        outside = Path(self.temp.name) / "outside-skill"
+        outside.mkdir()
+        (self.root / "skills/outside").symlink_to(outside, target_is_directory=True)
+        result = self.scan()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("WARN: gone symlink -> '../../.agents/skills/gone' dangles",
+                      result.stdout)
+        self.assertIn("WARN: outside symlink ->", result.stdout)
+        self.assertIn("allowlisted", result.stdout)
+        self.assertIn("Passed: 8", result.stdout)
+        self.assertIn("Failed: 0", result.stdout)
+
+    def test_allowlist_does_not_cover_other_names(self):
+        self.write_allowlist("other")
+        (self.root / "skills/gone").symlink_to(
+            "../../.agents/skills/gone", target_is_directory=True)
+        result = self.scan()
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("FAIL: gone symlink ->", result.stdout)
+
+    def test_directory_link_inside_repository_is_a_skill(self):
+        (self.root / "skills/alias").symlink_to("demo", target_is_directory=True)
+        result = self.scan()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Passed: 9", result.stdout)
+
+    def test_plain_files_in_skills_root_are_ignored(self):
+        (self.root / "skills/README.md").write_text("index\n")
+        result = self.scan()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Passed: 8", result.stdout)
+
+    def test_repository_allowlist_points_to_issue_31(self):
+        allowlist = SCRIPT.with_name("skill-symlink-allowlist.txt")
+        text = allowlist.read_text()
+        self.assertIn("#31", text)
+        names = [line.strip() for line in text.splitlines()
+                 if line.strip() and not line.lstrip().startswith("#")]
+        self.assertEqual(len(names), len(set(names)))
+        for name in names:
+            with self.subTest(name=name):
+                self.assertTrue((SCRIPT.parents[1] / "skills" / name).is_symlink())
+
+
 if __name__ == "__main__":
     unittest.main()
