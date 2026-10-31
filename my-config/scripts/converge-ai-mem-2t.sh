@@ -1,10 +1,14 @@
 #!/bin/bash
-# 把 AI 记忆系统收敛回 <external-disk> 为唯一权威库(2026-06-24)
+# 把 AI 记忆系统收敛回外接盘上的 AI_MEM_T2_ROOT 为唯一权威库(2026-06-24)
 # 在有完整磁盘访问的终端/Ghostty 里跑:  bash ~/.claude/scripts/converge-ai-mem-2t.sh
 # 安全:不删任何东西(home 改名作回滚)、union 合并(不 --delete)、可重复跑
+#
+# 必需环境变量:
+#   AI_MEM_T2_ROOT  外接盘上 AI 记忆系统根目录(如 /Volumes/MyDisk/ai-memory-system)。
+#                   未设置时脚本直接报错退出，不做任何改动。
 set -uo pipefail
 HOME_ROOT="$HOME/ai-memory-system"
-T2_ROOT="<external-disk>"
+T2_ROOT="${AI_MEM_T2_ROOT:?set AI_MEM_T2_ROOT (AI memory root on the external disk)}"
 U=$(id -u)
 TS=$(date +%Y%m%d-%H%M)
 JOBS="com.tony.ai-mem com.tony.ai-mem-fast com.tony.ai-mem-backfill com.tony.cloud-session-pull com.tony.command-center-health"
@@ -38,7 +42,7 @@ python3 -c "import json;print('2T 会话总数:',len(json.load(open('$T2_ROOT/in
 
 echo "== 7) 关键:测 launchd 自己能否真写 2T =="
 launchctl kickstart -k gui/$U/com.tony.ai-mem-fast 2>/dev/null; sleep 10
-if tail -4 "$HOME/Library/Logs/2t-jobs/com.tony.ai-mem-fast.log" 2>/dev/null | grep -q "<external-disk>"; then
+if tail -4 "$HOME/Library/Logs/2t-jobs/com.tony.ai-mem-fast.log" 2>/dev/null | grep -qF "$T2_ROOT"; then
   echo "✅ launchd 已成功写 2T —— 收敛稳了"
 else
   echo "⚠️ launchd 日志没出现 2T 路径!很可能 launchd 进程没 FDA(这正是 6/15 当初迁 home 的原因)。"

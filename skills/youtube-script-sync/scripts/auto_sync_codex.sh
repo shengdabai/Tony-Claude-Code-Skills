@@ -1,5 +1,9 @@
 #!/bin/bash
 # GetNote Youtube视频逐字稿：轻量轮询，只有发现新源笔记才启动 Codex。
+#
+# 必需环境变量:
+#   YT_SYNC_REPORT_DIR  每轮同步报告(<时间戳>.md)的输出目录，不存在会自动创建。
+#                       未设置时脚本直接报错退出。
 set -euo pipefail
 
 export TZ="Asia/Shanghai"
@@ -11,7 +15,7 @@ SKILL_DIR="$HOME/.agents/skills/youtube-script-sync"
 TOPIC_ID="YkWaVRqY"
 TOPIC_NAME="Youtube视频逐字稿"
 LOG_DIR="$HOME/Library/Logs/yt-script-sync"
-REPORT_DIR="<external-disk>"
+REPORT_DIR="${YT_SYNC_REPORT_DIR:?set YT_SYNC_REPORT_DIR (directory for sync reports)}"
 STATE_DIR="$SKILL_DIR/scripts/.state"
 STATE_FILE="$STATE_DIR/processed-source-ids.txt"
 LOCK_DIR="$STATE_DIR/run.lock"
