@@ -2,13 +2,17 @@
 # 每日合并推送: 思考(daily-article) + AI 热点(daily-ai-news) 两篇都齐后,
 # 渲染国内静态站 → 只推【一条】飞书(双篇摘要 + 国内秒开全文链接)。
 # 幂等 + 飞书送达回查。由 launchd 定时触发,也支持 DAILY_DIGEST_DATE=YYYY-MM-DD 补发。
+#
+# 必需环境变量:
+#   FEISHU_TARGET  接收 digest 的飞书群 chat_id(oc_ 开头,可带 feishu: 前缀)。
+#                  未设置时脚本直接报错退出,不渲染、不发送。
 set -uo pipefail
 
 WORK="$HOME/.local/share/tony-articles"
 LOG="$HOME/.claude/logs/daily-digest.log"
 TODAY="${DAILY_DIGEST_DATE:-$(TZ=Asia/Shanghai date +%Y-%m-%d)}"
 SITE_BASE="http://111.229.77.103:8080"
-FEISHU_TARGET="feishu:oc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+FEISHU_TARGET="${FEISHU_TARGET:?set FEISHU_TARGET (Feishu chat id)}"
 FEISHU_PROFILE="cli_aa80e81017f85bc0"
 FEISHU_CHAT_ID="${FEISHU_TARGET#feishu:}"
 RENDER="$HOME/.claude/scripts/render-site.py"
