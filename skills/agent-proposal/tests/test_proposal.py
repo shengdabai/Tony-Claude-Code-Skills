@@ -1,4 +1,4 @@
-"""Regression tests for proposal.py. Run: python3 -I -m unittest discover -s tests (from the skill dir).
+"""Regression tests for proposal.py (second Codex round 2026-11-01 added: zero-context tail deletion, sidecar ordering/non-clobbering, last-moment edit refusal, conflicts-only discovery, lock coverage for propose/reject). Run: python3 -I -m unittest discover -s tests (from the skill dir).
 Covers the 2026-11-01 Codex review: final-newline round trips, rebase keeps unapplied hunks, unique backups,
 mid-apply edits, bounded reads, symlink refusal, strict newline markers, oversized numbers, unanchored
 insertions under --rebase, permission-copy failure."""
@@ -49,10 +49,10 @@ class ProposalTests(unittest.TestCase):
         self.assertEqual(code, 0, err)
         return P.proposal_path(doc)
 
-    def round_trip(self, old: str, new: str, **kw):
+    def round_trip(self, old: str, new: str, *extra: str):
         doc = self.dir / "rt.txt"
         doc.write_text(old, encoding="utf-8")
-        self.propose(new, doc=doc, **kw)
+        self.propose(new, *extra, doc=doc)
         code, _, err = run("apply", str(doc), "--all")
         self.assertEqual(code, 0, err)
         self.assertEqual(doc.read_text(encoding="utf-8"), new)
@@ -128,6 +128,13 @@ class ProposalTests(unittest.TestCase):
         self.assertEqual(states, {"note.md": "fresh", "b.txt": "malformed"})
 
     # ------------------------------------------------------- final newline (P1)
+
+    def test_final_newline_round_trips_all_contexts(self):
+        cases = [("a\nb", "a\n"), ("a\nb\n", "a\n"), ("a\nb\nc", "a\n"), ("a\nb", "a"), ("a", "a\nb"), ("a\nb\nc\n", "a\nb\nc"), ("x\ny\nz", "x\nz\n")]
+        for ctx in ("0", "1", "3"):
+            for old, new in cases:
+                with self.subTest(ctx=ctx, old=old, new=new):
+                    self.round_trip(old, new, "--context", ctx)
 
     def test_final_newline_round_trips(self):
         self.round_trip(DOC, DOC.rstrip("\n"))
@@ -285,6 +292,100 @@ class ProposalTests(unittest.TestCase):
         code, _, err = run("apply", str(link), "--all")
         self.assertEqual(code, 4)
         self.assertEqual(real.read_text(encoding="utf-8"), DOC)
+
+    def test_existing_conflicts_file_blocks_a_different_rebase_but_allows_identical_retry(self):
+        self.propose(DOC.replace("alpha", "ALPHA").replace("zeta", "ZETA"), "--context", "0")
+        self.doc.write_text(DOC.replace("alpha", "alpha!"), encoding="utf-8")
+        # first rebase: hunk 2 applied, hunk 1 saved to the sidecar
+        code, _, err = run("apply", str(self.doc), "--hunks", "2", "--rebase")
+        self.assertEqual(code, 0, err)
+        sidecar = P.conflicts_path(self.doc).read_bytes()
+        after_first = self.doc.read_text(encoding="utf-8")
+        # a new, different proposal that also conflicts must not clobber the sidecar
+        self.propose(after_first.replace("beta", "BETA").replace("delta", "DELTA"), "--context", "0")
+        self.doc.write_text(after_first.replace("beta", "beta!"), encoding="utf-8")
+        code, _, err = run("apply", str(self.doc), "--all", "--rebase")
+        self.assertEqual(code, 5, err)
+        self.assertIn("already holds unresolved hunks", err)
+        self.assertEqual(P.conflicts_path(self.doc).read_bytes(), sidecar)
+        self.assertEqual(self.doc.read_text(encoding="utf-8"), after_first.replace("beta", "beta!"), "document untouched")
+        self.assertTrue(P.proposal_path(self.doc).exists(), "proposal kept")
+        # merging by hand then clearing only the sidecar unblocks the apply
+        code, _, _ = run("reject", str(self.doc), "--conflicts-only")
+        self.assertEqual(code, 0)
+        self.assertTrue(P.proposal_path(self.doc).exists())
+        code, _, err = run("apply", str(self.doc), "--all", "--rebase")
+        self.assertEqual(code, 0, err)
+        self.assertIn("DELTA", self.doc.read_text(encoding="utf-8"))
+
+    def test_conflicts_sidecar_is_written_before_the_document(self):
+        self.propose(DOC.replace("alpha", "ALPHA").replace("zeta", "ZETA"), "--context", "0")
+        stale = DOC.replace("alpha", "alpha!")
+        self.doc.write_text(stale, encoding="utf-8")
+        original_write = P.atomic_write
+
+        def failing_sidecar(path, data, **kw):
+            if path.name.endswith(P.CONFLICTS_SUFFIX):
+                raise OSError(28, "No space left on device")
+            return original_write(path, data, **kw)
+
+        with mock.patch.object(P, "atomic_write", failing_sidecar):
+            code, _, err = run("apply", str(self.doc), "--all", "--rebase")
+        self.assertEqual(code, 4, err)
+        self.assertIn("nothing written", err)
+        self.assertEqual(self.doc.read_text(encoding="utf-8"), stale, "document untouched when the sidecar cannot be saved")
+        self.assertTrue(P.proposal_path(self.doc).exists(), "full proposal kept")
+        self.assertFalse(P.conflicts_path(self.doc).exists())
+        self.assertFalse(P.lock_path(self.doc).exists())
+
+    def test_edit_during_temp_file_preparation_is_refused(self):
+        self.propose(DOC.replace("alpha", "A1"))
+        original_chmod = P.os.chmod
+
+        def editor_writes_now(path, mode):
+            self.doc.write_text(DOC.replace("gamma", "edited at the last moment"), encoding="utf-8")
+            return original_chmod(path, mode)
+
+        with mock.patch.object(P.os, "chmod", editor_writes_now):
+            code, _, err = run("apply", str(self.doc), "--all")
+        self.assertEqual(code, 4)
+        self.assertIn("changed while the proposal was being applied", err)
+        self.assertEqual(self.doc.read_text(encoding="utf-8"), DOC.replace("gamma", "edited at the last moment"))
+        self.assertTrue(P.proposal_path(self.doc).exists())
+
+    def test_conflicts_only_documents_are_listed_and_shown(self):
+        self.propose(DOC.replace("alpha", "ALPHA").replace("zeta", "ZETA"), "--context", "0")
+        self.doc.write_text(DOC.replace("alpha", "alpha!"), encoding="utf-8")
+        code, _, err = run("apply", str(self.doc), "--all", "--rebase")
+        self.assertEqual(code, 0, err)
+        self.assertFalse(P.proposal_path(self.doc).exists())
+        self.assertTrue(P.conflicts_path(self.doc).exists())
+        code, out, _ = run("list", str(self.dir), "--json")
+        rows = {Path(r["document"]).name: r for r in json.loads(out)}
+        self.assertEqual(rows["note.md"]["state"], "conflicts-only")
+        self.assertEqual(rows["note.md"]["hunks"], 1)
+        code, out, _ = run("show", str(self.doc))
+        self.assertEqual(code, 2)
+        self.assertIn("unresolved hunk", out)
+        self.assertIn("+ ALPHA", out)
+        code, out, _ = run("check", str(self.doc))
+        self.assertEqual(code, 2)
+        self.assertIn("conflicts-only", out)
+
+    def test_propose_and_reject_respect_the_document_lock(self):
+        P.lock_path(self.doc).write_text("1\n")
+        new = self.dir / "new.txt"
+        new.write_text(DOC.replace("alpha", "A1"), encoding="utf-8")
+        code, _, err = run("propose", str(self.doc), "--new", str(new))
+        self.assertEqual(code, 6, err)
+        self.assertFalse(P.proposal_path(self.doc).exists())
+        P.lock_path(self.doc).unlink()
+        self.propose(DOC.replace("alpha", "A1"))
+        P.lock_path(self.doc).write_text("1\n")
+        code, _, err = run("reject", str(self.doc))
+        self.assertEqual(code, 6, err)
+        self.assertTrue(P.proposal_path(self.doc).exists())
+        P.lock_path(self.doc).unlink()
 
     # ------------------------------------------------------- malformed input (P2)
 

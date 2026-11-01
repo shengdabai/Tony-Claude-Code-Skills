@@ -24,7 +24,8 @@ description: Agents propose edits to a protected document as a reviewable unifie
 
 - 原文变了 → 提案 **stale**,`apply` 拒绝(退出码 2);`apply --rebase` 只应用上下文仍精确匹配的 hunk(无上下文的纯插入没有锚点,一律跳过),其余 hunk **不丢**:原样保存到 `.<name>.proposal.conflicts.diff`(保留原 base 哈希,供手工合并),`--discard-rest` 才丢弃。
 - 应用前先把原文备份到 `~/.cache/agent-proposal/backups/`(或 `$AGENT_PROPOSAL_BACKUP_DIR`),备份名带时间戳 + 路径哈希 + 序号,独占创建,同一秒多次 apply 也不会互相覆盖;写入用临时文件 + 原子替换,并复制原文件权限位(复制失败则不写)。
-- 并发防线:apply 期间持有 `.<name>.proposal.lock`(另一 apply 得退出码 6);替换前再读一次原文字节,与读取时不同就放弃写入(退出码 4),提案保留可重试。
+- 并发防线:propose / apply / reject 都持有 `.<name>.proposal.lock`(撞锁退出码 6);apply 在临时文件备好、紧邻替换前再比一次原文字节和 inode,不同就放弃(退出码 4),提案保留可重试。这只能缩小、不能消除不配合加锁的编辑器的覆盖窗口。
+- 写入顺序(崩溃安全):先写 conflicts 侧车(新文件),再换文档,最后重写或删提案;任一步失败都不丢提案内容。已有 conflicts 文件且内容不同 → 拒绝(退出码 5),先手工合并再 `reject --conflicts-only`;内容相同(上次中断重试)直接放行。
 - 只处理普通文件:文档是符号链接 → 退出码 4,请对真实文件操作。
 - 部分接受后,剩余 hunk 以新原文为基重写进同一提案文件;全部接受或 `reject` 后提案文件删除。
 - 提案文件 > 5 MB(只读到上限 +1 字节即拒)、版本不对、hunk 行数与头部不符、`\ No newline at end of file` 标记不是逐字或位置不对、行号/计数超过 9 位 → malformed,退出码 3。
@@ -35,11 +36,11 @@ description: Agents propose edits to a protected document as a reviewable unifie
 | 命令 | 作用 |
 |---|---|
 | `propose <doc> --new <file> [--author X] [--summary S]` | 用完整新稿生成提案(也可从 stdin 读新稿) |
-| `show <doc> [--json]` | 列出 hunk、显示 fresh/stale、标出 out of date 的 hunk |
+| `show <doc> [--json]` | 列出 hunk、显示 fresh/stale、标出 out of date 的 hunk;只剩 conflicts 文件时列出其中的 hunk(退出码 2) |
 | `check <doc>` | 退出码 0 fresh / 1 无提案 / 2 stale / 3 malformed |
 | `apply <doc> --hunks 1,3` 或 `--all` [`--rebase`] [`--discard-rest`] [`--dry-run`] | 应用接受的 hunk,带备份;未接受的 hunk 重基后留在提案里,过期 hunk 进 conflicts 文件 |
-| `reject <doc>` | 删除提案和 conflicts 文件,不碰文档 |
-| `list [dir] [--json]` | 找出目录下所有提案及状态(跳过 .git / node_modules) |
+| `reject <doc>` [`--conflicts-only`] | 删除提案和 conflicts 文件(或只删 conflicts 文件),不碰文档 |
+| `list [dir] [--json]` | 找出目录下所有提案及状态(含 `conflicts-only`;跳过 .git / node_modules) |
 
 ## Agent 侧用法
 
@@ -64,6 +65,6 @@ agent-proposal reject path/to/doc.md               # 全拒
 cd skills/agent-proposal && python3 -I -m unittest discover -s tests
 ```
 
-21 例,3.9 与 3.13 都要过。覆盖:propose/show/apply 往返、部分接受后剩余 hunk 重基、stale 拒绝与 `--rebase`(未接受 hunk 保留、过期 hunk 进 conflicts、`--discard-rest`)、无锚点纯插入跳过、hunk 过期冲突、备份不互相覆盖、读写之间被改拒写、锁冲突、权限复制失败不写、符号链接拒绝、有界读取、换行标记逐字校验、超长数字、末行换行 12 种往返、首行插入与尾部追加、含冒号/非 ASCII 的头部、list 状态。
+27 例,3.9 与 3.13 都要过。覆盖:propose/show/apply 往返、部分接受后剩余 hunk 重基、stale 拒绝与 `--rebase`(未接受 hunk 保留、过期 hunk 进 conflicts、`--discard-rest`)、无锚点纯插入跳过、hunk 过期冲突、备份不互相覆盖、读写之间被改拒写、锁冲突、权限复制失败不写、符号链接拒绝、有界读取、换行标记逐字校验、超长数字、末行换行 12 种往返 + 7 组 × 上下文 0/1/3(含零上下文删文件尾)、侧车先于文档写且不覆盖旧侧车、临时文件备好后被改仍拒写、conflicts-only 的 list/show/check、propose/reject 撞锁、首行插入与尾部追加、含冒号/非 ASCII 的头部、list 状态。
 
-退出码总表:0 成功 / 1 用法或无事可做 / 2 stale / 3 malformed / 4 文档缺失、不可读、符号链接或应用期间被改 / 5 hunk 冲突 / 6 被锁。
+退出码总表:0 成功 / 1 用法或无事可做 / 2 stale 或 conflicts-only / 3 malformed / 4 文档缺失、不可读、符号链接、应用期间被改或磁盘写入失败 / 5 hunk 冲突或 conflicts 文件未处理 / 6 被锁。

@@ -18,7 +18,8 @@ scratch, stdlib only, runs on python3 3.9+):
 
 Exit codes: 0 ok, 1 usage / nothing to do, 2 stale base, 3 malformed proposal,
 4 document missing / unreadable / unsafe (symlink, changed while applying), 5 hunk
-conflict (out of date / overlapping), 6 another apply holds the document lock.
+conflict (out of date / overlapping / unresolved conflicts file), 6 another command holds the
+document lock.
 """
 from __future__ import annotations
 
@@ -413,7 +414,9 @@ def apply_hunks(text: str, hunks: Iterable[Hunk], *, strict: bool = True) -> tup
         out.extend(h.new_lines)
         cursor = h.old_index + h.old_count
         if cursor == total and h.old_count:
-            out_nl = h.new_last_has_newline if h.new_count else source_nl
+            # The hunk reaches the end of the file, so the new side decides the final newline. A pure
+            # tail deletion leaves a formerly non-last line as the last one; it always had a newline.
+            out_nl = h.new_last_has_newline if h.new_count else True
         elif cursor == total and not h.old_count and h.new_count:
             # appended at the very end of the file: the new lines decide the final newline
             out_nl = h.new_last_has_newline
@@ -421,15 +424,20 @@ def apply_hunks(text: str, hunks: Iterable[Hunk], *, strict: bool = True) -> tup
     return join_lines(out, out_nl), skipped
 
 
-def atomic_write(path: Path, data: bytes, *, preserve_mode: bool) -> None:
+def atomic_write(path: Path, data: bytes, *, preserve_mode: bool, expect: bytes | None = None) -> None:
     """Write data to path through a temp file + rename. With preserve_mode the existing file's
-    permission bits are copied first and any failure to read or copy them aborts the replace."""
+    permission bits are copied first and any failure to read or copy them aborts the replace.
+    With expect, the current bytes and inode of path are compared once more right before the
+    rename (after the temp file is complete) and a mismatch aborts without touching path."""
     mode = None
+    ident = None
     if preserve_mode:
         try:
-            mode = path.stat().st_mode & 0o7777
+            st = path.stat()
         except OSError as exc:
             raise DocumentUnreadable(f"cannot read permissions of {path}: {exc.strerror}") from exc
+        mode = st.st_mode & 0o7777
+        ident = (st.st_ino, st.st_dev)
     fd, tmp = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent))
     try:
         with os.fdopen(fd, "wb") as fh:
@@ -441,6 +449,15 @@ def atomic_write(path: Path, data: bytes, *, preserve_mode: bool) -> None:
                 os.chmod(tmp, mode)
             except OSError as exc:
                 raise DocumentUnreadable(f"cannot copy permissions onto the new {path.name}: {exc.strerror}; document left unchanged") from exc
+        if expect is not None:
+            try:
+                with open(path, "rb") as fh:
+                    current = fh.read()
+                st2 = os.stat(path)
+            except OSError as exc:
+                raise DocumentUnreadable(f"cannot re-read {path} before replacing it: {exc.strerror}; document left unchanged") from exc
+            if current != expect or (ident is not None and (st2.st_ino, st2.st_dev) != ident):
+                raise DocumentUnreadable(f"{path.name} changed while the proposal was being applied; nothing written")
         os.replace(tmp, path)
     except BaseException:
         try:
@@ -479,9 +496,10 @@ def default_backup_dir() -> Path:
 
 
 class DocumentLock:
-    """Exclusive lock file beside the document so two applies cannot interleave. It only
-    coordinates this CLI; an editor that does not take the lock is caught by the re-check
-    of the document bytes right before the replace."""
+    """Exclusive lock file beside the document so propose/apply/reject from this CLI cannot
+    interleave. It coordinates only this CLI. An editor that ignores the lock is detected by
+    the byte/inode re-check right before the rename, which narrows but cannot close the
+    window between that check and the rename."""
 
     def __init__(self, document: Path):
         self.path = lock_path(document)
@@ -549,15 +567,16 @@ def cmd_propose(args: argparse.Namespace) -> int:
     old_text = decode(old_bytes, str(document))
     new_text = decode(new_bytes, "new content")
     target = proposal_path(document)
-    if target.exists() and not args.force:
-        print(f"proposal already exists: {target} (use --force to replace, or `reject` first)", file=sys.stderr)
-        return 1
-    hunks = build_hunks(old_text, new_text, args.context)
-    if not hunks:
-        print("no changes: the new content equals the document", file=sys.stderr)
-        return 1
-    proposal = Proposal(VERSION, document.name, sha256(old_bytes), hunks, args.author or "", args.summary or "")
-    atomic_write(target, render(proposal).encode("utf-8"), preserve_mode=False)
+    with DocumentLock(document):
+        if target.exists() and not args.force:
+            print(f"proposal already exists: {target} (use --force to replace, or `reject` first)", file=sys.stderr)
+            return 1
+        hunks = build_hunks(old_text, new_text, args.context)
+        if not hunks:
+            print("no changes: the new content equals the document", file=sys.stderr)
+            return 1
+        proposal = Proposal(VERSION, document.name, sha256(old_bytes), hunks, args.author or "", args.summary or "")
+        atomic_write(target, render(proposal).encode("utf-8"), preserve_mode=False)
     print(f"wrote {target} ({len(hunks)} hunk{'s' if len(hunks) != 1 else ''})")
     print(f"review: {prog_name()} show {shell_quote(str(document))}")
     return 0
@@ -574,13 +593,21 @@ def status_of(proposal: Proposal, data: bytes) -> tuple[str, list[int]]:
 def cmd_show(args: argparse.Namespace) -> int:
     document = Path(args.document)
     target = proposal_path(document)
+    conflicts = conflicts_path(document)
     if not target.is_file():
+        if conflicts.is_file():
+            kept = load(conflicts)
+            print(f"{document.name}: no open proposal, but {len(kept.hunks)} unresolved hunk{'s' if len(kept.hunks) != 1 else ''} in {conflicts.name} (original base; merge by hand, then `reject --conflicts-only`)")
+            for h in kept.hunks:
+                print(f"\n--- conflict {h.index}: old lines {h.old_start}-{h.old_start + max(h.old_count, 1) - 1}")
+                for kind, text in h.display_lines():
+                    print(f"{kind} {text}")
+            return 2
         print(f"no proposal for {document.name} (expected {target})", file=sys.stderr)
         return 1
     proposal = load(target)
     data = read_document(document)
     state, out_of_date = status_of(proposal, data)
-    conflicts = conflicts_path(document)
     if args.json:
         payload = {
             "document": str(document),
@@ -626,6 +653,9 @@ def cmd_check(args: argparse.Namespace) -> int:
     document = Path(args.document)
     target = proposal_path(document)
     if not target.is_file():
+        if conflicts_path(document).is_file():
+            print(f"conflicts-only {len(load(conflicts_path(document)).hunks)} hunks")
+            return 2
         print("none")
         return 1
     proposal = load(target)
@@ -666,49 +696,71 @@ def cmd_apply(args: argparse.Namespace) -> int:
         if args.dry_run:
             print(f"would apply hunks {','.join(map(str, applied))}" + (f"; skipped {','.join(map(str, skipped))}" if skipped else ""))
             return 0
-        backup_path = backup(document, data, Path(args.backup_dir).expanduser() if args.backup_dir else default_backup_dir())
-        new_bytes = new_text.encode("utf-8")
-        # Re-check right before the replace: an editor that ignores the lock may have written meanwhile.
-        if read_document(document) != data:
-            raise DocumentUnreadable(f"{document.name} changed while the proposal was being applied; nothing written (backup of the version that was read: {backup_path})")
-        atomic_write(document, new_bytes, preserve_mode=True)
-        # Remaining hunks that still apply: the proposal's intent minus what was applied, rebased on the new document.
         notes: list[str] = []
-        remaining_applicable = [h for h in applicable if h.index not in applied]
-        if remaining_applicable and not args.discard_rest:
-            full_text, _ = apply_hunks(text, applicable, strict=True)
-            remaining = build_hunks(new_text, full_text, args.context)
-            if remaining:
-                rest = Proposal(VERSION, document.name, sha256(new_bytes), remaining, proposal.author, proposal.summary)
-                atomic_write(target, render(rest).encode("utf-8"), preserve_mode=False)
-                notes.append(f"{len(remaining)} hunk{'s' if len(remaining) != 1 else ''} remain in {target.name}")
-            else:
-                target.unlink()
-        else:
-            target.unlink()
+        cpath = conflicts_path(document)
+        kept = None
         if conflicting and not args.discard_rest:
             # Cannot be rebased: keep them verbatim (original base hash) in a sidecar so nothing is lost.
             kept = Proposal(VERSION, document.name, proposal.base_hash, [Hunk(n, h.old_start, h.old_count, h.new_start, h.new_count, h.section, h.old_lines, h.new_lines, h.old_last_has_newline, h.new_last_has_newline) for n, h in enumerate(conflicting, start=1)], proposal.author, proposal.summary, proposal.created)
-            cpath = conflicts_path(document)
-            atomic_write(cpath, render(kept).encode("utf-8"), preserve_mode=False)
+            if cpath.exists():
+                if not same_hunks(load(cpath), kept):
+                    raise HunkConflict(f"{cpath.name} already holds unresolved hunks from an earlier rebase; merge them by hand and run `reject --conflicts-only`, or pass --discard-rest; nothing written")
+                kept = None  # identical sidecar already on disk (retry after an earlier failure)
+        backup_path = backup(document, data, Path(args.backup_dir).expanduser() if args.backup_dir else default_backup_dir())
+        new_bytes = new_text.encode("utf-8")
+        # Order matters for crash safety: (1) conflicts sidecar, a new file nothing depends on; (2) the
+        # document, re-checked against the bytes read above right before the rename; (3) the proposal.
+        if kept is not None:
+            try:
+                atomic_write(cpath, render(kept).encode("utf-8"), preserve_mode=False)
+            except OSError as exc:
+                raise DocumentUnreadable(f"could not save the out-of-date hunks to {cpath.name}: {exc.strerror}; nothing written, proposal kept") from exc
+        if conflicting and not args.discard_rest:
             notes.append(f"{len(conflicting)} out-of-date hunk{'s' if len(conflicting) != 1 else ''} kept in {cpath.name} (manual merge; original base)")
         elif conflicting:
             notes.append(f"{len(conflicting)} out-of-date hunk{'s' if len(conflicting) != 1 else ''} discarded (--discard-rest)")
+        if read_document(document) != data:
+            raise DocumentUnreadable(f"{document.name} changed while the proposal was being applied; nothing written (backup of the version that was read: {backup_path})")
+        atomic_write(document, new_bytes, preserve_mode=True, expect=data)
+        # Remaining hunks that still apply: the proposal's intent minus what was applied, rebased on the new document.
+        remaining_applicable = [h for h in applicable if h.index not in applied]
+        try:
+            if remaining_applicable and not args.discard_rest:
+                full_text, _ = apply_hunks(text, applicable, strict=True)
+                remaining = build_hunks(new_text, full_text, args.context)
+                if remaining:
+                    rest = Proposal(VERSION, document.name, sha256(new_bytes), remaining, proposal.author, proposal.summary)
+                    atomic_write(target, render(rest).encode("utf-8"), preserve_mode=False)
+                    notes.append(f"{len(remaining)} hunk{'s' if len(remaining) != 1 else ''} remain in {target.name}")
+                else:
+                    target.unlink()
+            else:
+                target.unlink()
+        except OSError as exc:
+            raise DocumentUnreadable(f"document updated (backup {backup_path}) but {target.name} could not be rewritten: {exc.strerror}; run `reject` to clear the now-stale proposal") from exc
     print(f"applied hunks {','.join(map(str, applied))} to {document}" + (f"; skipped out-of-date {','.join(map(str, skipped))}" if skipped else "") + ("; " + "; ".join(notes) if notes else ""))
     print(f"backup: {backup_path}")
     return 0
 
 
+def same_hunks(a: Proposal, b: Proposal) -> bool:
+    def key(h: Hunk):
+        return (h.old_start, h.old_count, h.new_start, h.new_count, h.old_lines, h.new_lines, h.old_last_has_newline, h.new_last_has_newline)
+
+    return a.base_hash == b.base_hash and [key(h) for h in a.hunks] == [key(h) for h in b.hunks]
+
+
 def cmd_reject(args: argparse.Namespace) -> int:
     document = Path(args.document)
-    target = proposal_path(document)
+    targets = [conflicts_path(document)] if args.conflicts_only else [proposal_path(document), conflicts_path(document)]
     removed = []
-    for p in (target, conflicts_path(document)):
-        if p.is_file():
-            p.unlink()
-            removed.append(p)
+    with DocumentLock(document):
+        for p in targets:
+            if p.is_file():
+                p.unlink()
+                removed.append(p)
     if not removed:
-        print("no proposal to reject", file=sys.stderr)
+        print("no proposal to reject" if not args.conflicts_only else "no conflicts file to remove", file=sys.stderr)
         return 1
     for p in removed:
         print(f"removed {p}")
@@ -719,15 +771,30 @@ def iter_proposals(root: Path) -> Iterable[Path]:
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
         for name in filenames:
-            if name.startswith(".") and name.endswith(".proposal.diff"):
+            if name.startswith(".") and name.endswith((".proposal.diff", CONFLICTS_SUFFIX)):
                 yield Path(dirpath) / name
 
 
 def cmd_list(args: argparse.Namespace) -> int:
     root = Path(args.root or ".")
     rows = []
-    for p in sorted(iter_proposals(root)):
-        document = p.parent / p.name[1 : -len(".proposal.diff")]
+    found: dict[Path, dict[str, Path]] = {}
+    for p in iter_proposals(root):
+        if p.name.endswith(CONFLICTS_SUFFIX):
+            found.setdefault(p.parent / p.name[1 : -len(CONFLICTS_SUFFIX)], {})["conflicts"] = p
+        else:
+            found.setdefault(p.parent / p.name[1 : -len(".proposal.diff")], {})["proposal"] = p
+    for document in sorted(found):
+        p = found[document].get("proposal")
+        if p is None:
+            c = found[document]["conflicts"]
+            try:
+                n = len(load(c).hunks)
+            except ProposalError as exc:
+                rows.append({"proposal": str(c), "document": str(document), "state": "malformed", "hunks": 0, "error": str(exc)})
+                continue
+            rows.append({"proposal": str(c), "document": str(document), "state": "conflicts-only", "hunks": n, "out_of_date": [], "conflicts": True})
+            continue
         try:
             proposal = load(p)
         except ProposalError as exc:
@@ -777,7 +844,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--json", action="store_true")
     sp.set_defaults(func=cmd_show)
 
-    sp = sub.add_parser("check", help="exit 0 fresh, 1 none, 2 stale, 3 malformed")
+    sp = sub.add_parser("check", help="exit 0 fresh, 1 none, 2 stale or conflicts-only, 3 malformed")
     sp.add_argument("document")
     sp.set_defaults(func=cmd_check)
 
@@ -794,6 +861,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = sub.add_parser("reject", help="delete the proposal (and any conflicts sidecar) without touching the document")
     sp.add_argument("document")
+    sp.add_argument("--conflicts-only", action="store_true", help="remove only .<doc>.proposal.conflicts.diff (after merging it by hand)")
     sp.set_defaults(func=cmd_reject)
 
     sp = sub.add_parser("list", help="find proposals under a directory")
@@ -813,6 +881,9 @@ def main(argv: list[str] | None = None) -> int:
     except (ValueError, OverflowError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
+    except OSError as exc:
+        print(f"error: {exc.strerror or exc} ({exc.filename})" if exc.filename else f"error: {exc}", file=sys.stderr)
+        return 4
 
 
 if __name__ == "__main__":
