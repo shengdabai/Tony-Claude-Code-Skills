@@ -103,6 +103,13 @@ jobs:
       - name: Run scripts/tests (all unittest suites)
         run: python -m unittest discover -s scripts/tests -p 'test_*.py' -v
 
+      - name: Run skill unit tests (agent-proposal, design-token-ledger)
+        run: |
+          set -e
+          for d in skills/agent-proposal skills/design-token-ledger; do
+            echo "== $d"; (cd "$d" && python -I -m unittest discover -s tests -v)
+          done
+
       - name: Validate skill structure (tools/validate-skills.sh)
         run: bash tools/validate-skills.sh
 
