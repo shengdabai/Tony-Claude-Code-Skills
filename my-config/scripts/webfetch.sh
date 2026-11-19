@@ -21,7 +21,7 @@ emit() {  # $1=markdown
 set -a; source ~/.config/firecrawl/.env 2>/dev/null || true; set +a
 KEY="${FIRECRAWL_API_KEY:-${FIRECRAWL_KEY:-}}"
 if [ -n "$KEY" ]; then
-  resp=$(curl -s --max-time 60 -X POST https://api.firecrawl.dev/v1/scrape \
+  resp=$(curl -s --max-time 60 -X POST https://api.firecrawl.dev/v2/scrape \
     -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
     -d "{\"url\":\"$URL\",\"formats\":[\"markdown\"],\"onlyMainContent\":true}" 2>/dev/null || true)
   md=$(printf '%s' "$resp" | python3 -c "
